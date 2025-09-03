@@ -116,14 +116,42 @@ function getBusinessDaysCount(startDate: Date, endDate: Date): number {
 // --- User & Branch ---
 export interface User {
   id: string
-  email?: string
+  email: string
   name: string
-  role?: string
-  branch_id?: string
+  role: string
   phone?: string
   address?: string
-  status?: string
-  created_at: string
+  branch_id?: string
+  position?: string
+  salary?: number
+  commission_rate?: number
+  status: string
+  hire_date?: Date
+  profile_image_url?: string
+  created_at: Date
+  updated_at: Date
+  pin?: string
+  pin_attempts?: number
+  pin_locked_until?: Date
+  avatar?: string
+  rating?: number
+  attendanceRate?: number
+  currentMonthCustomers?: number
+  totalCustomers?: number
+  presentDays?: number
+  totalWorkDays?: number
+  lateDays?: number
+  overtimeHours?: number
+  overtimeRate?: number
+  bonusPoints?: number
+  penaltyPoints?: number
+  kasbonBalance?: number
+  kasbonLimit?: number
+  monthlyRevenue?: number
+  joinDate?: Date
+  max_absent_days?: number
+  current_absent_days?: number
+  branches?: Branch
 }
 
 export interface Branch {
@@ -243,7 +271,7 @@ export interface Attendance {
 }
 
 export interface AttendanceWithDetails extends Attendance {
-  users?: Employee
+  users?: User
   branches?: Branch
 }
 
@@ -958,40 +986,8 @@ export async function updateKasbonStatus(
 }
 
 // =============================
-// Employee Management Interfaces
+// User Management
 // =============================
-export interface Employee {
-  totalBonus: number
-  totalPenalty: number
-  id: string
-  name: string
-  email: string
-  phone?: string
-  position?: string
-  role: string
-  status?: string
-  avatar?: string
-  rating?: number
-  baseSalary?: number
-  attendanceRate?: number
-  currentMonthCustomers?: number
-  totalCustomers?: number
-  presentDays?: number
-  totalWorkDays?: number
-  lateDays?: number
-  overtimeHours?: number
-  overtimeRate?: number
-  bonusPoints?: number
-  penaltyPoints?: number
-  commissionRate?: number
-  joinDate?: string
-  kasbonBalance?: number
-  kasbonLimit?: number
-  monthlyRevenue?: string
-  pin?: string
-  max_absent_days?: number
-  current_absent_days?: number
-}
 
 // =============================
 // FUNGSI SEDERHANA: HITUNG HARI TIDAK HADIR
@@ -1177,7 +1173,7 @@ export async function getEmployees() {  // ✅ HAPUS parameter branchId
   return { data: employees, error: null };
 }
 
-export async function addEmployee(employee: Partial<Employee>) {
+export async function addEmployee(employee: Partial<User>) {
   console.log("[v11] addEmployee called with:", employee)
 
   const userData = {
@@ -1188,8 +1184,8 @@ export async function addEmployee(employee: Partial<Employee>) {
     status: employee.status || "active",
     pin: employee.pin,
     position: employee.position,
-    salary: employee.baseSalary,
-    commission_rate: employee.commissionRate,
+    salary: employee.salary,
+    commission_rate: employee.commission_rate,
   }
 
   const { data, error } = await supabase.from("users").insert([userData]).select().single()
@@ -1198,7 +1194,7 @@ export async function addEmployee(employee: Partial<Employee>) {
   return { data, error }
 }
 
-export async function updateEmployee(id: string, employee: Partial<Employee>) {
+export async function updateEmployee(id: string, employee: Partial<User>) {
   console.log("[v11] updateEmployee called with:", id)
 
   const userData = {
@@ -1209,8 +1205,8 @@ export async function updateEmployee(id: string, employee: Partial<Employee>) {
     status: employee.status,
     pin: employee.pin,
     position: employee.position,
-    salary: employee.baseSalary,
-    commission_rate: employee.commissionRate,
+    salary: employee.salary,
+    commission_rate: employee.commission_rate,
   }
 
   const { data, error } = await supabase.from("users").update(userData).eq("id", id).select().single()
@@ -2000,7 +1996,7 @@ export async function getExpensesByStatus(status: string, branchId?: string) {
 // Additional Functions
 // =============================
 
-export async function getAbsentEmployeesToday(): Promise<Employee[]> {
+export async function getAbsentEmployeesToday(): Promise<User[]> {
   console.log("[v0] getAbsentEmployeesToday called")
 
   const today = new Date().toISOString().split("T")[0]
@@ -2030,37 +2026,15 @@ export async function getAbsentEmployeesToday(): Promise<Employee[]> {
     const presentEmployeeIds = new Set(todayAttendance?.map((a) => a.user_id) || [])
     const absentEmployees = activeEmployees?.filter((employee) => !presentEmployeeIds.has(employee.id)) || []
 
-    const transformedAbsentEmployees: Employee[] = absentEmployees.map((user: any) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email || "",
-      phone: user.phone || "",
-      role: user.role || "employee",
-      position: user.role || "employee",
-      status: user.status || "active",
-      avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(user.name)}`,
-      rating: 4.5,
-      baseSalary: 5000000,
-      attendanceRate: 95,
-      currentMonthCustomers: 0,
-      totalCustomers: 0,
-      presentDays: 0,
-      totalWorkDays: 0,
-      lateDays: 0,
-      overtimeHours: 0,
-      overtimeRate: 25000,
-      bonusPoints: 0,
-      penaltyPoints: 0,
-      commissionRate: 0.05,
-      joinDate: user.created_at,
-      kasbonBalance: 0,
-      kasbonLimit: 2000000,
-      monthlyRevenue: "0",
-      pin: user.pin || "",
+    return absentEmployees.map((user) => ({
+      ...user,
+      created_at: new Date(user.created_at),
+      updated_at: new Date(user.updated_at),
+      avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(user.name)}`
     }))
 
-    console.log("[v0] Found absent employees:", transformedAbsentEmployees.length)
-    return transformedAbsentEmployees
+    console.log("[v0] Found absent employees:", absentEmployees.length)
+    return absentEmployees
   } catch (error) {
     console.error("[v0] Error in getAbsentEmployeesToday:", error)
     return []
