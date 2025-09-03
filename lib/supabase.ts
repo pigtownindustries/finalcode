@@ -57,6 +57,34 @@ export const getUserProfile = async (userId: string) => {
         branches (
           id,
           name,
+          address,
+          status
+        )
+      `)
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching user profile:', error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in getUserProfile:', error)
+    return null
+  }
+}
+
+export const getUserProfile = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        branches (
+          id,
+          name,
           address
         )
       `)
