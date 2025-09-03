@@ -1,3 +1,5 @@
+import { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: 'PIGTOWN BARBERSHOP',
   description: 'Sistem manajemen modern untuk Pigtown Barbershop',
