@@ -1,15 +1,12 @@
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import './globals.css'
-
 export const metadata: Metadata = {
   title: 'PIGTOWN BARBERSHOP',
   description: 'Sistem manajemen modern untuk Pigtown Barbershop',
-  // 🔑 Tambahkan meta verifikasi GSC di sini
-  other: {
-    "google-site-verification": "kode-verifikasi-unik", // ganti dengan kode dari GSC
+  
+  // 🔑 Kode verifikasi Google Search Console ditambahkan di sini
+  verification: {
+    google: '4oRTIgQQMaRiefHG76icRvGzdI1bZVCJNCzEhPayLdc',
   },
+
   icons: {
     icon: [
       {
@@ -24,17 +21,4 @@ export const metadata: Metadata = {
       },
     ],
   },
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  return (
-    <html lang="id" className={`${GeistSans.className} ${GeistMono.className}`}>
-      <head />
-      <body>{children}</body>
-    </html>
-  )
 }
