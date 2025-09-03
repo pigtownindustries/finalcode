@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   
   // 🔑 Kode verifikasi Google Search Console ditambahkan di sini
   verification: {
-    google: 'kode-verifikasi-unik',
+    google: '4oRTIgQQMaRiefHG76icRvGzdI1bZVCJNCzEhPayLdc',
   },
 
   icons: {
