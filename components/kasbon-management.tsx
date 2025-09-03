@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,9 +20,9 @@ import {
 } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Edit, Trash2, Check, X, Clock, DollarSign, TrendingUp } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "@/components/ui/use-toast"
+import { Plus, Edit, Trash2, Check, X, Clock, DollarSign, TrendingUp } from "lucide-react"
 
 interface KasbonRequest {
   id: string
@@ -109,53 +108,64 @@ export default function KasbonManagement() {
 
   const handleStatusUpdate = async (id: string, status: "approved" | "rejected" | "paid", notes?: string) => {
     try {
-      let currentUserId = null;
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        currentUserId = user?.id;
-      } catch (authError) {
-        console.log("[v0] Auth error, using fallback owner ID");
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error("Silakan login untuk melakukan tindakan ini");
       }
 
-      // Fallback to owner user from database if auth fails
-      if (!currentUserId) {
-        const { data: ownerData } = await supabase.from("users").select("id").eq("role", "owner").single();
-        currentUserId = ownerData?.id;
+      // Get user data from users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', user.email)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error("User tidak ditemukan di sistem");
       }
 
-      if (!currentUserId) {
-        throw new Error("Tidak dapat mengidentifikasi pengguna saat ini untuk approval.");
-      }
+      // Update kasbon status
+      const updateData = {
+        status,
+        approved_by: userData.id, // Menggunakan ID dari tabel users
+        approved_at: new Date().toISOString(),
+        notes: notes || null,
+        updated_at: new Date().toISOString()
+      };
 
-      // ======================================================
-      // DEBUGGING: Lihat ID siapa yang digunakan untuk approval
-      console.log("Mencoba update dengan ID approver:", currentUserId);
-      // ======================================================
-
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("kasbon")
-        .update({
-          status,
-          approved_by: currentUserId,
-          approved_at: new Date().toISOString(),
-          notes: notes || undefined, // Gunakan undefined agar tidak menimpa dengan string kosong
-        })
-        .eq("id", id);
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Update error:", error);
+        throw error;
+      }
 
-      if (error) throw error;
+      if (!data) {
+        throw new Error("Kasbon tidak ditemukan");
+      }
 
       const statusText = status === "approved" ? "disetujui" : status === "rejected" ? "ditolak" : "dibayar";
       toast({ title: "Berhasil", description: `Kasbon berhasil ${statusText}` });
-      fetchData();
-    } catch (error) {
-      let errorMessage = "Gagal mengupdate status kasbon.";
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String(error.message);
-      }
       
-      // Tampilkan error yang sebenarnya di console
-      console.error("Error updating status:", JSON.stringify(error, null, 2)); 
+      // Refresh data
+      await fetchData();
+
+    } catch (error: any) {
+      console.error("Error detail:", error);
+      
+      let errorMessage = "Gagal mengupdate status kasbon.";
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.error?.message) {
+        errorMessage = error.error.message;
+      }
       
       toast({
         title: "Error",
@@ -169,19 +179,25 @@ export default function KasbonManagement() {
     e.preventDefault();
 
     try {
-      let currentUserId = null;
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        currentUserId = user?.id;
-      } catch (authError) {
-        console.log("[v0] Auth error, using fallback owner ID");
+      // Get current user from auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error("Silakan login untuk melakukan tindakan ini");
       }
 
-      if (!currentUserId) {
-        const { data: ownerData } = await supabase.from("users").select("id").eq("role", "owner").single();
-        currentUserId = ownerData?.id;
+      // Get user data from users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', user.email)
+        .single();
+
+      if (userError || !userData) {
+        throw new Error("User tidak ditemukan di sistem");
       }
+
+      const currentUserId = userData.id; // Menggunakan ID dari tabel users
 
       const kasbonData = {
         user_id: formData.user_id,
@@ -197,16 +213,29 @@ export default function KasbonManagement() {
       };
 
       if (editingKasbon) {
-        const { error } = await supabase.from("kasbon").update(kasbonData).eq("id", editingKasbon.id);
-        if (error) throw error;
+        const { data: updateData, error: updateError } = await supabase
+          .from("kasbon")
+          .update(kasbonData)
+          .eq("id", editingKasbon.id)
+          .select();
+
+        if (updateError) {
+          console.error("Update error:", updateError);
+          throw updateError;
+        }
+        
         toast({ title: "Berhasil", description: "Kasbon berhasil diperbarui" });
       } else {
-        const { error } = await supabase.from("kasbon").insert([
-          {
-            ...kasbonData,
-          },
-        ]);
-        if (error) throw error;
+        const { data: insertData, error: insertError } = await supabase
+          .from("kasbon")
+          .insert([kasbonData])
+          .select();
+
+        if (insertError) {
+          console.error("Insert error:", insertError);
+          throw insertError;
+        }
+        
         toast({ title: "Berhasil", description: "Kasbon berhasil ditambahkan" });
       }
 
@@ -215,13 +244,21 @@ export default function KasbonManagement() {
       setFormData({ user_id: "", amount: "", reason: "", status: "pending", notes: "" });
       fetchData();
     } catch (error) {
+      console.error("Error in handleSubmit:", error);
+      
       let errorMessage = "Gagal menyimpan kasbon.";
-      if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = String(error.message);
+      
+      // Handle specific database errors
+      if (error instanceof Error) {
+        if (error.message.includes('foreign key constraint')) {
+          errorMessage = "Data tidak valid: Pastikan semua referensi data sudah benar";
+        } else {
+          errorMessage = error.message;
+        }
       }
       
-      // Tampilkan error yang sebenarnya di console
-      console.error("Error saving kasbon:", JSON.stringify(error, null, 2)); 
+      // Log detailed error for debugging
+      console.error("Detailed error:", JSON.stringify(error, null, 2));
       
       toast({
         title: "Error",

@@ -1,4 +1,10 @@
 import { Metadata } from "next";
+import { Inter } from "next/font/google"
+import { ThemeProvider } from "@/components/theme-provider"
+import type { ReactNode } from "react"
+import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: 'PIGTOWN BARBERSHOP',
@@ -23,4 +29,25 @@ export const metadata: Metadata = {
       },
     ],
   },
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: ReactNode
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} bg-white`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
 }

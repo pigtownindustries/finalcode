@@ -60,7 +60,7 @@ const menuItems = [
   },
 ]
 
-export function Sidebar({ user }: SidebarProps) {
+export default  function Sidebar({ user }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [logoHovered, setLogoHovered] = useState(false)

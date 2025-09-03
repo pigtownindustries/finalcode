@@ -770,7 +770,7 @@ function EmployeeManagement() {
                                             <div className="flex items-start justify-between">
                                                 <div className="flex items-center gap-3">
                                                     <Avatar className="h-12 w-12">
-                                                        <AvatarImage src={employee.avatar_url || "/placeholder.svg"} />
+                                                        <AvatarImage src={employee.avatar_url || "/images/pigtown-logo.png"} />
                                                         <AvatarFallback className="bg-primary/10 text-primary">
                                                             {employee.name
                                                                 .split(" ")

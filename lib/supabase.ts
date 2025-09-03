@@ -47,48 +47,6 @@ export const testSupabaseConnection = async () => {
     return false
   }
 }
-
-export const getCurrentUser = async () => {
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error) {
-      console.error('Error getting current user:', error)
-      return null
-    }
-    return user
-  } catch (error) {
-    console.error('Error in getCurrentUser:', error)
-    return null
-  }
-}
-
-export async function getUserProfile(userId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        *,
-        branches (
-          id,
-          name,
-          address,
-          status
-        )
-      `)
-      .eq('id', userId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching user profile:', error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error in getUserProfile:', error)
-    return null
-  }
-}
 // =============================
 // 🔥 FUNGSI BARU: Hitung Hari Kerja
 // =============================
@@ -116,42 +74,14 @@ function getBusinessDaysCount(startDate: Date, endDate: Date): number {
 // --- User & Branch ---
 export interface User {
   id: string
-  email: string
+  email?: string
   name: string
-  role: string
+  role?: string
+  branch_id?: string
   phone?: string
   address?: string
-  branch_id?: string
-  position?: string
-  salary?: number
-  commission_rate?: number
-  status: string
-  hire_date?: Date
-  profile_image_url?: string
-  created_at: Date
-  updated_at: Date
-  pin?: string
-  pin_attempts?: number
-  pin_locked_until?: Date
-  avatar?: string
-  rating?: number
-  attendanceRate?: number
-  currentMonthCustomers?: number
-  totalCustomers?: number
-  presentDays?: number
-  totalWorkDays?: number
-  lateDays?: number
-  overtimeHours?: number
-  overtimeRate?: number
-  bonusPoints?: number
-  penaltyPoints?: number
-  kasbonBalance?: number
-  kasbonLimit?: number
-  monthlyRevenue?: number
-  joinDate?: Date
-  max_absent_days?: number
-  current_absent_days?: number
-  branches?: Branch
+  status?: string
+  created_at: string
 }
 
 export interface Branch {
@@ -271,7 +201,7 @@ export interface Attendance {
 }
 
 export interface AttendanceWithDetails extends Attendance {
-  users?: User
+  users?: Employee
   branches?: Branch
 }
 
@@ -986,8 +916,40 @@ export async function updateKasbonStatus(
 }
 
 // =============================
-// User Management
+// Employee Management Interfaces
 // =============================
+export interface Employee {
+  totalBonus: number
+  totalPenalty: number
+  id: string
+  name: string
+  email: string
+  phone?: string
+  position?: string
+  role: string
+  status?: string
+  avatar?: string
+  rating?: number
+  baseSalary?: number
+  attendanceRate?: number
+  currentMonthCustomers?: number
+  totalCustomers?: number
+  presentDays?: number
+  totalWorkDays?: number
+  lateDays?: number
+  overtimeHours?: number
+  overtimeRate?: number
+  bonusPoints?: number
+  penaltyPoints?: number
+  commissionRate?: number
+  joinDate?: string
+  kasbonBalance?: number
+  kasbonLimit?: number
+  monthlyRevenue?: string
+  pin?: string
+  max_absent_days?: number
+  current_absent_days?: number
+}
 
 // =============================
 // FUNGSI SEDERHANA: HITUNG HARI TIDAK HADIR
@@ -1173,7 +1135,7 @@ export async function getEmployees() {  // ✅ HAPUS parameter branchId
   return { data: employees, error: null };
 }
 
-export async function addEmployee(employee: Partial<User>) {
+export async function addEmployee(employee: Partial<Employee>) {
   console.log("[v11] addEmployee called with:", employee)
 
   const userData = {
@@ -1184,8 +1146,8 @@ export async function addEmployee(employee: Partial<User>) {
     status: employee.status || "active",
     pin: employee.pin,
     position: employee.position,
-    salary: employee.salary,
-    commission_rate: employee.commission_rate,
+    salary: employee.baseSalary,
+    commission_rate: employee.commissionRate,
   }
 
   const { data, error } = await supabase.from("users").insert([userData]).select().single()
@@ -1194,7 +1156,7 @@ export async function addEmployee(employee: Partial<User>) {
   return { data, error }
 }
 
-export async function updateEmployee(id: string, employee: Partial<User>) {
+export async function updateEmployee(id: string, employee: Partial<Employee>) {
   console.log("[v11] updateEmployee called with:", id)
 
   const userData = {
@@ -1205,8 +1167,8 @@ export async function updateEmployee(id: string, employee: Partial<User>) {
     status: employee.status,
     pin: employee.pin,
     position: employee.position,
-    salary: employee.salary,
-    commission_rate: employee.commission_rate,
+    salary: employee.baseSalary,
+    commission_rate: employee.commissionRate,
   }
 
   const { data, error } = await supabase.from("users").update(userData).eq("id", id).select().single()
@@ -1996,7 +1958,7 @@ export async function getExpensesByStatus(status: string, branchId?: string) {
 // Additional Functions
 // =============================
 
-export async function getAbsentEmployeesToday(): Promise<User[]> {
+export async function getAbsentEmployeesToday(): Promise<Employee[]> {
   console.log("[v0] getAbsentEmployeesToday called")
 
   const today = new Date().toISOString().split("T")[0]
@@ -2026,15 +1988,37 @@ export async function getAbsentEmployeesToday(): Promise<User[]> {
     const presentEmployeeIds = new Set(todayAttendance?.map((a) => a.user_id) || [])
     const absentEmployees = activeEmployees?.filter((employee) => !presentEmployeeIds.has(employee.id)) || []
 
-    return absentEmployees.map((user) => ({
-      ...user,
-      created_at: new Date(user.created_at),
-      updated_at: new Date(user.updated_at),
-      avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(user.name)}`
+    const transformedAbsentEmployees: Employee[] = absentEmployees.map((user: any) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email || "",
+      phone: user.phone || "",
+      role: user.role || "employee",
+      position: user.role || "employee",
+      status: user.status || "active",
+      avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(user.name)}`,
+      rating: 4.5,
+      baseSalary: 5000000,
+      attendanceRate: 95,
+      currentMonthCustomers: 0,
+      totalCustomers: 0,
+      presentDays: 0,
+      totalWorkDays: 0,
+      lateDays: 0,
+      overtimeHours: 0,
+      overtimeRate: 25000,
+      bonusPoints: 0,
+      penaltyPoints: 0,
+      commissionRate: 0.05,
+      joinDate: user.created_at,
+      kasbonBalance: 0,
+      kasbonLimit: 2000000,
+      monthlyRevenue: "0",
+      pin: user.pin || "",
     }))
 
-    console.log("[v0] Found absent employees:", absentEmployees.length)
-    return absentEmployees
+    console.log("[v0] Found absent employees:", transformedAbsentEmployees.length)
+    return transformedAbsentEmployees
   } catch (error) {
     console.error("[v0] Error in getAbsentEmployeesToday:", error)
     return []
@@ -2478,3 +2462,48 @@ export async function getApprovedExpenses() {
     return { data: [], error };
   }
 }
+// 🔥 TAMBAHKAN fungsi ini di supabase.ts
+export const getOwnerPin = async (): Promise<string> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('pin')
+      .eq('role', 'owner')
+      .single();
+
+    if (error || !data) {
+      console.error('Error fetching owner PIN:', error);
+      return ''; // Return empty string if not found
+    }
+
+    return data.pin || '';
+  } catch (error) {
+    console.error('Unexpected error in getOwnerPin:', error);
+    return '';
+  }
+};
+// 🔥 TAMBAHKAN fungsi ini di supabase.ts
+export const updateUserPin = async (userId: string, newPin: string): Promise<boolean> => {
+  try {
+    // Validasi PIN 6 digit
+    if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
+      console.error('Invalid PIN format');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({ pin: newPin })
+      .eq('id', userId);
+
+    if (error) {
+      console.error('Error updating PIN:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Unexpected error in updateUserPin:', error);
+    return false;
+  }
+};

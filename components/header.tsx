@@ -12,7 +12,7 @@ interface HeaderProps {
   user: User
 }
 
-export function Header({ user }: HeaderProps) {
+export default function Header({ user }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState("")
   const [isScrolled, setIsScrolled] = useState(false)
 

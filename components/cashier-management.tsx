@@ -1700,7 +1700,7 @@ export function CashierManagement() {
                       {template.show_logo && template.logo_url && (
                         <div className="text-center mb-2">
                           <img
-                            src={template.logo_url || "/placeholder.svg"}
+                            src={template.logo_url || "/images/pigtown-logo.png"}
                             alt="Logo"
                             className="h-12 w-auto mx-auto"
                             onError={(e) => {

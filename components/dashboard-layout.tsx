@@ -3,19 +3,23 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
+import Sidebar from "@/components/sidebar"
+import Header from "@/components/header" 
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface User {
   email: string
   role: string
   loginTime: string
+  name?: string
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     const userData = localStorage.getItem("user")
@@ -37,13 +41,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-red-50 to-white transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-red-50 to-white transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'} pb-16 md:pb-0`}>
       <div className="flex">
-        <Sidebar user={user} />
-        <div className="flex-1 flex flex-col min-h-screen">
+        <Sidebar user={user} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col min-h-screen w-full">
           <Header user={user} />
-          <main className="flex-1 p-6 transition-all duration-300">
-            <div className="bg-white rounded-xl shadow-lg border border-red-100 p-6 transition-all duration-300 hover:shadow-xl hover:border-red-200">
+          <main className="flex-1 p-4 md:p-6 transition-all duration-300">
+            <div className="bg-white rounded-xl shadow-lg border border-red-100 p-4 md:p-6 transition-all duration-300 hover:shadow-xl hover:border-red-200">
               {children}
             </div>
           </main>

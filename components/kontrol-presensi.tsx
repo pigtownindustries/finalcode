@@ -443,7 +443,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                           <div className="flex items-center gap-6">
                             <div className="relative">
                               <Avatar className="h-20 w-20 ring-4 ring-purple-200 group-hover:ring-purple-400 transition-all duration-300">
-                                <AvatarImage src={employee.avatar || "/placeholder.svg"} className="object-cover" />
+                                <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover" />
                                 <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-xl font-bold">
                                   {employee.name
                                     .split(" ")
