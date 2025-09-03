@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function NotFound() {
   return (
     <div className="h-screen w-full flex flex-col items-center justify-center">
@@ -5,9 +7,9 @@ export default function NotFound() {
       <p className="text-muted-foreground mb-4">
         Maaf, halaman yang Anda cari tidak dapat ditemukan.
       </p>
-      <a href="/" className="text-primary hover:underline">
+      <Link href="/" className="text-primary hover:underline">
         Kembali ke Beranda
-      </a>
+      </Link>
     </div>
   )
 }
