@@ -62,7 +62,7 @@ export const getCurrentUser = async () => {
   }
 }
 
-export const getUserProfile = async (userId: string) => {
+export async function getUserProfile(userId: string) {
   try {
     const { data, error } = await supabase
       .from('users')
