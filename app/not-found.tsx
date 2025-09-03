@@ -1,15 +1,11 @@
-import Link from 'next/link'
+'use client'
 
 export default function NotFound() {
   return (
-    <div className="h-screen w-full flex flex-col items-center justify-center">
-      <h2 className="text-2xl font-bold mb-4">Halaman Tidak Ditemukan</h2>
-      <p className="text-muted-foreground mb-4">
-        Maaf, halaman yang Anda cari tidak dapat ditemukan.
-      </p>
-      <Link href="/" className="text-primary hover:underline">
-        Kembali ke Beranda
-      </Link>
+    <div>
+      <h2>404 - Halaman Tidak Ditemukan</h2>
+      <p>Maaf, halaman yang Anda cari tidak dapat ditemukan.</p>
+      <a href="/">Kembali ke Beranda</a>
     </div>
   )
 }
