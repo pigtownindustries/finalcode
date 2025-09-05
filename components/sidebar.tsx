@@ -78,7 +78,7 @@ export default  function Sidebar({ user }: SidebarProps) {
 
   return (
     <div
-      className={`bg-gradient-to-b from-red-900 via-red-800 to-black transition-all duration-300 relative ${
+      className={`fixed top-0 left-0 bg-gradient-to-b from-red-900 via-red-800 to-black transition-all duration-300 relative ${
         collapsed ? "w-20" : "w-64"
       }`}
       onMouseEnter={() => setIsHovered(true)}

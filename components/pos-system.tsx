@@ -548,26 +548,41 @@ export function POSSystem() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-x-hidden max-w-[100vw]">
       {/* Header */}
-      <div className="bg-white border-b p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Point of Sale</h1>
-            <p className="text-muted-foreground">Pigtown Barbershop</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Pilih Cabang" /></SelectTrigger>
-              <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>)}</SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" className={`gap-2 ${bluetoothConnected ? "text-blue-600 border-blue-600" : ""}`} onClick={() => {
-              setIsBluetoothOpen(true)
-              setBluetoothError(null)
-            }}>
-              <Bluetooth className="h-4 w-4" />
-              {bluetoothConnected ? "Terhubung" : "Printer"}
-            </Button>
+      <div className="bg-white border-b p-4 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold">Point of Sale</h1>
+              <p className="text-muted-foreground text-sm md:text-base">Pigtown Barbershop</p>
+            </div>
+            <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-32 md:w-48 text-xs md:text-sm">
+                  <SelectValue placeholder="Pilih Cabang" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.name} className="text-xs md:text-sm">
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className={`gap-1 md:gap-2 text-xs md:text-sm ${bluetoothConnected ? "text-blue-600 border-blue-600" : ""}`}
+                onClick={() => {
+                  setIsBluetoothOpen(true)
+                  setBluetoothError(null)
+                }}
+              >
+                <Bluetooth className="h-3 w-3 md:h-4 md:w-4" />
+                {bluetoothConnected ? "Terhubung" : "Printer"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -575,109 +590,111 @@ export function POSSystem() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Services Grid */}
-        <div className="flex-1 overflow-auto p-4">
-          <div className="flex gap-2 overflow-x-auto pb-4">
-            <Button
-              variant={selectedCategory === "semua" ? "default" : "outline"}
-              className={`flex items-center gap-2 whitespace-nowrap ${selectedCategory === "semua" ? "" : "bg-transparent"}`}
-              onClick={() => setSelectedCategory("semua")}
-            >
-              <ShoppingCart className="h-4 w-4" />
-              Semua
-            </Button>
-            {categories.map((category) => {
-              const IconComponent = categoryIcons[category.name as keyof typeof categoryIcons] || Scissors
-              return (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.name ? "default" : "outline"}
-                  className={`flex items-center gap-2 whitespace-nowrap ${selectedCategory === category.name ? "" : "bg-transparent"}`}
-                  onClick={() => setSelectedCategory(category.name)}
-                >
-                  <IconComponent className="h-4 w-4" />
-                  {category.name}
-                </Button>
-              )
-            })}
-          </div>
+        <div className="flex-1 overflow-auto p-2 md:p-4">
+          <div className="max-w-7xl mx-auto w-full">
+            <div className="flex gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-4">
+              <Button
+                variant={selectedCategory === "semua" ? "default" : "outline"}
+                className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === "semua" ? "" : "bg-transparent"}`}
+                onClick={() => setSelectedCategory("semua")}
+              >
+                <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
+                Semua
+              </Button>
+              {categories.map((category) => {
+                const IconComponent = categoryIcons[category.name as keyof typeof categoryIcons] || Scissors
+                return (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.name ? "default" : "outline"}
+                    className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === category.name ? "" : "bg-transparent"}`}
+                    onClick={() => setSelectedCategory(category.name)}
+                  >
+                    <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
+                    {category.name}
+                  </Button>
+                )
+              })}
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-            {filteredServices.map((service) => {
-              const categoryName = service.service_categories?.name || "Lainnya"
-              const IconComponent = categoryIcons[categoryName as keyof typeof categoryIcons] || Scissors
-              const branch = branches.find(b => b.name === selectedBranch);
-              const stockItem = branch ? outletStock.find(os => os.service_id === service.id && os.outlet_id === branch.id) : null;
-              const availableStock = stockItem?.stock_quantity || 0;
-              const minStock = stockItem?.min_stock_threshold || 5;
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4 mt-2 md:mt-4">
+              {filteredServices.map((service) => {
+                const categoryName = service.service_categories?.name || "Lainnya"
+                const IconComponent = categoryIcons[categoryName as keyof typeof categoryIcons] || Scissors
+                const branch = branches.find(b => b.name === selectedBranch);
+                const stockItem = branch ? outletStock.find(os => os.service_id === service.id && os.outlet_id === branch.id) : null;
+                const availableStock = stockItem?.stock_quantity || 0;
+                const minStock = stockItem?.min_stock_threshold || 5;
 
-              return (
-                <Card
-                  key={service.id}
-                  className={`hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-                  onClick={() => {
-                    if (service.type === "product" && availableStock <= 0) return
-                    addToCart(service)
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <IconComponent className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{service.name}</CardTitle>
-                          <CardDescription className="text-sm">{service.description}</CardDescription>
+                return (
+                  <Card
+                    key={service.id}
+                    className={`hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                    onClick={() => {
+                      if (service.type === "product" && availableStock <= 0) return
+                      addToCart(service)
+                    }}
+                  >
+                    <CardHeader className="pb-2 md:pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <IconComponent className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-sm md:text-lg">{service.name}</CardTitle>
+                            <CardDescription className="text-xs md:text-sm">{service.description}</CardDescription>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-2xl font-bold text-primary">{formatPrice(service.price)}</p>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          {service.duration && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{service.duration} menit</span>
-                            </div>
-                          )}
-                          {service.type === "product" && (
-                            <div className={`flex items-center gap-1 ${availableStock <= 0 ? "text-red-500" : availableStock <= minStock ? "text-orange-500" : "text-green-600"}`}>
-                              <Package className="h-3 w-3" />
-                              <span>{availableStock <= 0 ? "Habis" : `Stok: ${availableStock}`}</span>
-                              {availableStock <= minStock && availableStock > 0 && (
-                                <AlertTriangle className="h-3 w-3 text-orange-500" />
-                              )}
-                            </div>
-                          )}
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-lg md:text-2xl font-bold text-primary">{formatPrice(service.price)}</p>
+                          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
+                            {service.duration && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{service.duration} menit</span>
+                              </div>
+                            )}
+                            {service.type === "product" && (
+                              <div className={`flex items-center gap-1 ${availableStock <= 0 ? "text-red-500" : availableStock <= minStock ? "text-orange-500" : "text-green-600"}`}>
+                                <Package className="h-3 w-3" />
+                                <span>{availableStock <= 0 ? "Habis" : `Stok: ${availableStock}`}</span>
+                                {availableStock <= minStock && availableStock > 0 && (
+                                  <AlertTriangle className="h-3 w-3 text-orange-500" />
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        <Button size="sm" className="gap-1 text-xs md:text-sm" disabled={service.type === "product" && availableStock <= 0}>
+                          <Plus className="h-3 w-3" />
+                          {service.type === "product" && availableStock <= 0 ? "Habis" : "Tambah"}
+                        </Button>
                       </div>
-                      <Button size="sm" className="gap-1" disabled={service.type === "product" && availableStock <= 0}>
-                        <Plus className="h-3 w-3" />
-                        {service.type === "product" && availableStock <= 0 ? "Habis" : "Tambah"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Floating Cart Button */}
       {cart.length > 0 && (
-        <div className="fixed bottom-6 right-6">
+        <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6">
           <Button
             onClick={() => setIsCartOpen(true)}
-            className="h-14 w-14 rounded-full shadow-lg relative"
+            className="h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg relative"
             size="icon"
           >
-            <ShoppingCart className="h-6 w-6" />
+            <ShoppingCart className="h-5 w-5 md:h-6 md:w-6" />
             {cart.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">
+              <span className="absolute -top-1 -right-1 md:-top-2 md:-right-2 bg-red-500 text-white rounded-full h-5 w-5 md:h-6 md:w-6 flex items-center justify-center text-xs">
                 {cart.reduce((total, item) => total + item.quantity, 0)}
               </span>
             )}
@@ -687,7 +704,7 @@ export function POSSystem() {
 
       {/* Cart Dialog */}
       <Dialog open={isCartOpen} onOpenChange={setIsCartOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-md md:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5" /> Keranjang

@@ -123,3 +123,44 @@
     @apply bg-background text-foreground;
   }
 }
+/* Tambahkan di paling bawah */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+:root {
+  --header-height: 64px;
+}
+
+.sticky-header {
+  height: var(--header-height);
+}
+
+.main-content {
+  margin-top: var(--header-height);
+}
+/* Pastikan semua element stretch full height */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Background default untuk seluruh page */
+body {
+  background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+}
+/* Pastikan tidak ada overflow */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Improve card responsiveness */
+@media (max-width: 640px) {
+  .service-card {
+    min-height: 140px;
+  }
+}

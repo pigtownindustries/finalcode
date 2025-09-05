@@ -54,7 +54,7 @@ export default function Header({ user }: HeaderProps) {
         {/* Welcome Message dengan efek interaktif */}
         <div className="group cursor-pointer">
           <h1 className="text-2xl font-bold text-white transition-all duration-300 group-hover:scale-105">
-            Selamat datang,{" "}
+           {" "}
             <span className="text-white"> {/* Diubah jadi putih solid */}
               {user.name || user.email}!
             </span>
