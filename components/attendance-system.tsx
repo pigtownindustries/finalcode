@@ -60,7 +60,7 @@ interface DailyAttendanceSummary {
   totalDailyHours: number
   totalDailyBreaks: number
   currentStatus: "present" | "absent" | "on-break" | "checked-out"
-  canCheckIn: boolean // Can check in to new branch/shift
+  canCheckIn: boolean
 }
 
 interface Employee {
@@ -101,13 +101,11 @@ async function getBranchShifts(branchId: string): Promise<{ data: BranchShift[] 
       return { data: null, error }
     }
 
-    // Parse shifts from JSON column
     let shifts: BranchShift[] = []
 
     if (branchData?.shifts && Array.isArray(branchData.shifts) && branchData.shifts.length > 0) {
       shifts = branchData.shifts
     } else if (branchData?.operating_hours) {
-      // Create default shifts based on operating hours if no specific shifts defined
       const { open, close } = branchData.operating_hours
       shifts = [
         {
@@ -120,7 +118,6 @@ async function getBranchShifts(branchId: string): Promise<{ data: BranchShift[] 
       ]
     }
 
-    console.log("[v0] Loaded shifts from database:", shifts)
     return { data: shifts, error: null }
   } catch (error) {
     console.error("Error in getBranchShifts:", error)
@@ -132,13 +129,11 @@ export function AttendanceSystem() {
   const [selectedBranch, setSelectedBranch] = useState("all")
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [isCameraOpen, setIsCameraOpen] = useState(false)
-  const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false) // Renamed from isShiftDialogOpen
+  const [isCheckInDialogOpen, setIsCheckInDialogOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [selectedShift, setSelectedShift] = useState<"pagi" | "siang" | "malam">("pagi")
-  const [selectedCheckInBranch, setSelectedCheckInBranch] = useState("") // Added for check-in branch selection
-  const [attendanceAction, setAttendanceAction] = useState<"check-in" | "check-out" | "break-start" | "break-end">(
-    "check-in",
-  )
+  const [selectedCheckInBranch, setSelectedCheckInBranch] = useState("")
+  const [attendanceAction, setAttendanceAction] = useState<"check-in" | "check-out" | "break-start" | "break-end">("check-in")
   const [isProcessing, setIsProcessing] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -152,9 +147,9 @@ export function AttendanceSystem() {
   const [isCameraReady, setIsCameraReady] = useState(false)
   const [branchIdMap, setBranchIdMap] = useState<Map<string, string>>(new Map())
   const [isBranchWarningOpen, setIsBranchWarningOpen] = useState(false)
-
   const [cameraPermission, setCameraPermission] = useState<"granted" | "denied" | "prompt" | "checking">("checking")
   const [showCameraPermissionDialog, setShowCameraPermissionDialog] = useState(false)
+  const [activeTab, setActiveTab] = useState("quick-action")
 
   const loadEmployeesAndBranches = useCallback(async () => {
     try {
@@ -202,7 +197,7 @@ export function AttendanceSystem() {
       if (!branchesError && branchesData && branchesData.length > 0) {
         branchesData.forEach((branch: any) => {
           branchNameMap.set(branch.id, branch.name)
-          branchIdMap.set(branch.name, branch.id) // Map name to ID for reverse lookup
+          branchIdMap.set(branch.name, branch.id)
         })
         const branchList = branchesData.map((b: any) => ({ id: b.id, name: b.name }))
         setBranches(branchList)
@@ -229,7 +224,7 @@ export function AttendanceSystem() {
           name: user.name,
           position: user.role || "Employee",
           branch: branchNameMap.get(user.branch_id) || "Unknown Branch",
-          branchId: user.branch_id, // Store the actual branch UUID
+          branchId: user.branch_id,
           avatar: user.avatar,
         }))
         setEmployees(employeeList)
@@ -303,7 +298,6 @@ export function AttendanceSystem() {
 
       const employeeAttendanceMap = new Map()
 
-      // Group attendance records by employee
       data?.forEach((record: any) => {
         const empId = record.user_id
         if (!employeeAttendanceMap.has(empId)) {
@@ -318,7 +312,6 @@ export function AttendanceSystem() {
         const shifts: AttendanceRecord[] = employeeAttendance.map((attendanceData: any) => {
           let status: "present" | "absent" | "late" | "on-break" | "checked-out" = "absent"
 
-          // Determine status based on current state
           if (attendanceData.status === "checked_in" && !attendanceData.check_out_time) {
             status = "present"
           } else if (attendanceData.status === "on_break") {
@@ -337,7 +330,6 @@ export function AttendanceSystem() {
             const breakMinutes = attendanceData.total_break_minutes || 0
             totalWorkingHours = Math.max(0, (workMinutes - breakMinutes) / 60)
           } else if (attendanceData.check_in_time && !attendanceData.check_out_time) {
-            // Calculate current working hours for active shifts
             const checkIn = new Date(attendanceData.check_in_time)
             const now = new Date()
             const workMinutes = (now.getTime() - checkIn.getTime()) / (1000 * 60)
@@ -363,18 +355,6 @@ export function AttendanceSystem() {
             }
           }
 
-          console.log("[v0] Employee status mapping:", {
-            employeeName: emp.name,
-            dbStatus: attendanceData.status,
-            hasCheckOut: !!attendanceData.check_out_time,
-            mappedStatus: status,
-            totalWorkingHours: totalWorkingHours.toFixed(2),
-            shiftName: shiftName,
-            breakStartTime: attendanceData.break_start_time,
-            breakEndTime: attendanceData.break_end_time,
-            calculatedBreakMinutes: totalBreakMinutes,
-          })
-
           return {
             id: attendanceData.id,
             employeeId: emp.id,
@@ -398,7 +378,6 @@ export function AttendanceSystem() {
         const totalDailyHours = shifts.reduce((sum, shift) => sum + shift.totalWorkingHours, 0)
         const totalDailyBreaks = shifts.reduce((sum, shift) => sum + shift.totalBreakTime, 0)
 
-        // Find the most recent active shift (without check_out_time)
         const activeShifts = shifts.filter((s) => s.status === "present" || s.status === "on-break")
         const mostRecentActiveShift = activeShifts.sort(
           (a, b) => new Date(b.checkIn || "").getTime() - new Date(a.checkIn || "").getTime(),
@@ -429,7 +408,7 @@ export function AttendanceSystem() {
         variant: "destructive",
       })
     }
-  }, [selectedDate, employees, supabase, toast])
+  }, [selectedDate, employees])
 
   const getAvailableShifts = useMemo(() => {
     if (!selectedCheckInBranch || branchShifts.length === 0) {
@@ -449,11 +428,10 @@ export function AttendanceSystem() {
       return
     }
 
-    console.log("[v0] Loading real shifts for branch:", branchId)
     const { data: shifts, error } = await getBranchShifts(branchId)
 
     if (error) {
-      console.error("[v0] Error loading branch shifts:", error)
+      console.error("Error loading branch shifts:", error)
       toast({
         title: "Error",
         description: "Gagal memuat data shift cabang dari database",
@@ -462,9 +440,7 @@ export function AttendanceSystem() {
       return
     }
 
-    console.log("[v0] Successfully loaded real branch shifts:", shifts)
     setBranchShifts(shifts || [])
-
     if (shifts && shifts.length > 0) {
       setSelectedShift(shifts[0].type || shifts[0].id || "pagi")
     }
@@ -472,9 +448,6 @@ export function AttendanceSystem() {
 
   const checkCameraPermission = useCallback(async () => {
     try {
-      console.log("[v0] Checking camera permission...")
-
-      // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         toast({
           title: "Kamera Tidak Didukung",
@@ -485,11 +458,8 @@ export function AttendanceSystem() {
         return false
       }
 
-      // Check current permission status
       if (navigator.permissions) {
         const permission = await navigator.permissions.query({ name: "camera" as PermissionName })
-        console.log("[v0] Camera permission status:", permission.state)
-
         if (permission.state === "denied") {
           setCameraPermission("denied")
           setShowCameraPermissionDialog(true)
@@ -503,7 +473,7 @@ export function AttendanceSystem() {
       setCameraPermission("prompt")
       return true
     } catch (error) {
-      console.error("[v0] Error checking camera permission:", error)
+      console.error("Error checking camera permission:", error)
       setCameraPermission("prompt")
       return true
     }
@@ -519,15 +489,6 @@ export function AttendanceSystem() {
     }
 
     try {
-      console.log("[v0] Requesting camera access...")
-
-      // Show notification to user about camera permission
-      toast({
-        title: "Meminta Izin Kamera",
-        description: "Silakan klik 'Allow' atau 'Izinkan' untuk menggunakan kamera.",
-        duration: 5000,
-      })
-
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 640 },
@@ -536,57 +497,24 @@ export function AttendanceSystem() {
         },
       })
 
-      console.log("[v0] Camera access granted, stream:", stream)
-      console.log("[v0] Stream tracks:", stream.getTracks())
       setCameraPermission("granted")
 
       if (videoRef.current && !cameraStoppedRef.current) {
-        console.log("[v0] Assigning stream to video element")
         videoRef.current.srcObject = stream
 
         videoRef.current.onloadedmetadata = async () => {
-          console.log("[v0] Video metadata loaded")
           if (videoRef.current && !cameraStoppedRef.current) {
             try {
               await videoRef.current.play()
-              console.log("[v0] Video playing successfully")
               setIsCameraReady(true)
-              toast({
-                title: "Kamera Siap",
-                description: "Kamera berhasil diaktifkan dan siap digunakan.",
-                duration: 3000,
-              })
             } catch (playError) {
-              console.error("[v0] Error playing video:", playError)
+              console.error("Error playing video:", playError)
             }
-          }
-        }
-
-        videoRef.current.oncanplay = () => {
-          console.log("[v0] Video can start playing")
-        }
-
-        videoRef.current.onplaying = () => {
-          console.log("[v0] Video is playing")
-          setIsCameraReady(true)
-        }
-
-        videoRef.current.onerror = (error) => {
-          console.error("[v0] Video element error:", error)
-        }
-
-        if (videoRef.current.readyState >= 1) {
-          try {
-            await videoRef.current.play()
-            console.log("[v0] Video started playing immediately")
-            setIsCameraReady(true)
-          } catch (playError) {
-            console.error("[v0] Error playing video immediately:", playError)
           }
         }
       }
     } catch (error) {
-      console.error("[v0] Error accessing camera:", error)
+      console.error("Error accessing camera:", error)
       setCameraPermission("denied")
       setIsCameraReady(false)
 
@@ -596,7 +524,6 @@ export function AttendanceSystem() {
           title: "Izin Kamera Ditolak",
           description: "Anda perlu mengizinkan akses kamera untuk menggunakan fitur presensi.",
           variant: "destructive",
-          duration: 8000,
         })
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         toast({
@@ -637,7 +564,7 @@ export function AttendanceSystem() {
         videoRef.current.srcObject = null
       }
     } catch (e) {
-      console.log("[v0] Error stopping camera:", e)
+      console.log("Error stopping camera:", e)
     }
   }, [])
 
@@ -650,9 +577,6 @@ export function AttendanceSystem() {
     }
   }, [isCameraOpen, stopCamera])
 
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return
 
@@ -662,47 +586,25 @@ export function AttendanceSystem() {
 
     if (!context) return
 
-    console.log("[v0] Capturing photo for:", selectedEmployee?.name)
-
-    // Set canvas size to match video
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
 
-    // Draw the video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
     let quality = 0.7
     let photoData = canvas.toDataURL("image/jpeg", quality)
 
-    // Calculate approximate file size (base64 is ~33% larger than binary)
     let fileSizeKB = (photoData.length * 0.75) / 1024
-
-    // Reduce quality until file size is under 50KB
     while (fileSizeKB > 50 && quality > 0.1) {
       quality -= 0.1
       photoData = canvas.toDataURL("image/jpeg", quality)
       fileSizeKB = (photoData.length * 0.75) / 1024
     }
 
-    console.log("[v0] Photo compressed to:", Math.round(fileSizeKB), "KB with quality:", quality)
-
-    setCapturedPhoto(photoData)
+    handleAttendanceAction(photoData)
     setIsCameraOpen(false)
-
-    // Stop camera stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-  }, [selectedEmployee])
-
-  useEffect(() => {
-    if (capturedPhoto && selectedEmployee) {
-      console.log("[v0] Photo captured, processing attendance action:", attendanceAction)
-      handleAttendanceAction(capturedPhoto)
-      setCapturedPhoto(null) // Reset after processing
-    }
-  }, [capturedPhoto, selectedEmployee, attendanceAction])
+    stopCamera()
+  }, [selectedEmployee, stopCamera])
 
   const handleAttendanceAction = async (photoUrl: string) => {
     if (!selectedEmployee) return
@@ -712,8 +614,6 @@ export function AttendanceSystem() {
 
       if (attendanceAction === "check-in") {
         const branchToUse = selectedCheckInBranch || selectedEmployee.selectedBranch || ""
-        console.log("[v0] Using branch for attendance:", branchToUse)
-        console.log("[v0] Available branches:", Array.from(branchIdMap.keys()))
 
         if (!branchToUse) {
           throw new Error("Branch ID not found for selected branch: " + branchToUse + ". Please select a valid branch.")
@@ -721,11 +621,9 @@ export function AttendanceSystem() {
 
         let branchId = branchToUse
 
-        // Check if branchToUse is already a valid branch ID (UUID format)
         const isValidBranchId = branches.some((branch) => branch.id === branchToUse)
 
         if (!isValidBranchId) {
-          // If not a valid ID, try to get ID from branch name
           branchId = branchIdMap.get(branchToUse) || ""
         }
 
@@ -754,36 +652,23 @@ export function AttendanceSystem() {
           description: `${selectedEmployee.name} berhasil check-in di ${branchToUse}`,
         })
       } else if (attendanceAction === "check-out") {
-        console.log("[v0] Looking for check-out record for employee:", selectedEmployee.id)
-        console.log("[v0] Selected date:", selectedDate)
-        console.log(
-          "[v0] Available attendance records:",
-          attendanceRecords.map((r) => ({ user_id: r.user_id, date: r.date, id: r.id })),
-        )
-
-        // Find the most recent record WITHOUT check_out_time (active shift)
         const activeRecords = attendanceRecords.filter(
-          (record) => record.user_id === selectedEmployee.id && record.date === selectedDate && !record.check_out_time,
+          (record) => record.employeeId === selectedEmployee.id && record.date === selectedDate && !record.checkOut,
         )
 
-        console.log("[v0] Active records (without check_out_time):", activeRecords)
-
-        // Get the most recent active record
         const existingRecord = activeRecords.sort(
-          (a, b) => new Date(b.check_in_time).getTime() - new Date(a.check_in_time).getTime(),
+          (a, b) => new Date(b.checkIn || "").getTime() - new Date(a.checkIn || "").getTime(),
         )[0]
 
         if (!existingRecord?.id) {
           throw new Error("Tidak ada record check-in aktif untuk hari ini. Silakan check-in terlebih dahulu.")
         }
 
-        console.log("[v0] Found active record for check-out:", existingRecord)
-
         const checkOutTime = new Date().toISOString()
-        const checkInTime = new Date(existingRecord.check_in_time)
-        const workDuration = (new Date(checkOutTime).getTime() - checkInTime.getTime()) / (1000 * 60 * 60) // hours
-        const breakDuration = existingRecord.break_duration || 0
-        const totalHours = Math.max(0, workDuration - breakDuration / 60) // Convert break minutes to hours
+        const checkInTime = new Date(existingRecord.checkIn || "")
+        const workDuration = (new Date(checkOutTime).getTime() - checkInTime.getTime()) / (1000 * 60 * 60)
+        const breakDuration = existingRecord.totalBreakTime || 0
+        const totalHours = Math.max(0, workDuration - breakDuration / 60)
 
         const { error } = await supabase
           .from("attendance")
@@ -805,12 +690,11 @@ export function AttendanceSystem() {
 
       await fetchAttendanceRecords()
 
-      // Reset all states to allow new actions
       setSelectedEmployee(null)
       setSelectedCheckInBranch("")
       setAttendanceAction("check-in")
     } catch (error) {
-      console.error("[v0] Attendance action error:", error)
+      console.error("Attendance action error:", error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Terjadi kesalahan saat memproses presensi",
@@ -869,7 +753,7 @@ export function AttendanceSystem() {
       console.error("Break action error:", error)
       toast({
         title: "Gagal menyimpan",
-        description: error.message || "Terjadi kesalahan",
+        description: error instanceof Error ? error.message : "Terjadi kesalahan",
         variant: "destructive",
       })
     } finally {
@@ -922,7 +806,6 @@ export function AttendanceSystem() {
       })
     }
 
-    console.log("[v0] Confirming check-in with branch:", selectedCheckInBranch)
     setAttendanceAction("check-in")
     setIsCheckInDialogOpen(false)
     setIsCameraOpen(true)
@@ -967,7 +850,6 @@ export function AttendanceSystem() {
 
   useEffect(() => {
     if (isCameraOpen && !isCameraReady) {
-      console.log("[v0] Camera dialog opened, starting camera...")
       startCamera()
     }
   }, [isCameraOpen, isCameraReady, startCamera])
@@ -986,36 +868,6 @@ export function AttendanceSystem() {
         return "bg-gray-100 text-gray-800 hover:bg-gray-100"
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-100"
-    }
-  }
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "present":
-        return "Hadir"
-      case "absent":
-        return "Tidak Hadir"
-      case "late":
-        return "Terlambat"
-      case "on-break":
-        return "Istirahat"
-      case "checked-out":
-        return "Pulang"
-      default:
-        return "Unknown"
-    }
-  }
-
-  const getShiftText = (shift: string) => {
-    switch (shift) {
-      case "pagi":
-        return "Pagi (08:00-16:00)"
-      case "siang":
-        return "Siang (12:00-20:00)"
-      case "malam":
-        return "Malam (20:00-04:00)"
-      default:
-        return "Unknown"
     }
   }
 
@@ -1044,41 +896,29 @@ export function AttendanceSystem() {
 
   const allShifts = dailySummaries.flatMap((summary) => summary.shifts)
   const filteredShifts =
-    selectedBranch === "all" ? allShifts : allShifts.filter((shift) => shift.branch === selectedBranch)
-
-  console.log("[v0] Dashboard count calculation:", {
-    selectedBranch,
-    totalShifts: allShifts.length,
-    filteredShifts: filteredShifts.length,
-    shiftStatuses: filteredShifts.map((s) => ({ name: s.employeeName, status: s.status })),
-  })
+    selectedBranch === "all" ? allShifts : allShifts.filter((shift) => shift.branchId === selectedBranch)
 
   const presentCount = filteredShifts.filter((r) => r.status === "present").length
-  const absentCount = employees.length - filteredShifts.length // Employees with no attendance records
+  const absentCount = employees.length - filteredShifts.length
   const onBreakCount = filteredShifts.filter((r) => r.status === "on-break").length
   const checkedOutCount = filteredShifts.filter((r) => r.status === "checked-out").length
 
-  console.log("[v0] Final counts:", { presentCount, absentCount, onBreakCount, checkedOutCount })
-
   const filteredSummaries = dailySummaries.filter((summary) => {
     if (selectedBranch === "all") return true
-    // Show employee if they have ANY shift in the selected branch
-    return summary.shifts.some((shift) => shift.branch === selectedBranch)
+    return summary.shifts.some((shift) => shift.branchId === selectedBranch)
   })
 
-  const [activeTab, setActiveTab] = useState("quick-action")
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      {/* Header with Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Sistem Presensi Karyawan</h1>
-          <p className="text-muted-foreground">Kelola presensi karyawan dengan foto dan tracking waktu</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-3 sm:p-4">
+      {/* Header dengan Controls - Responsif untuk mobile */}
+      <div className="flex flex-col gap-3 sm:gap-4 items-start sm:items-center justify-between mb-4">
+        <div className="w-full">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Sistem Presensi Karyawan</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Kelola presensi karyawan dengan foto dan tracking waktu</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48 text-sm">
               <SelectValue placeholder="Filter cabang" />
             </SelectTrigger>
             <SelectContent>
@@ -1094,53 +934,53 @@ export function AttendanceSystem() {
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-2 border rounded-md"
+            className="w-full sm:w-auto px-3 py-2 border rounded-md text-sm"
           />
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+      {/* Statistics Cards - Responsif untuk mobile */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <Card className="sm:h-28">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
               <div>
-                <p className="text-2xl font-bold text-green-600">{presentCount}</p>
-                <p className="text-sm text-muted-foreground">Hadir</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{presentCount}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Hadir</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="sm:h-28">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-600" />
+              <XCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
               <div>
-                <p className="text-2xl font-bold text-red-600">{absentCount}</p>
-                <p className="text-sm text-muted-foreground">Tidak Hadir</p>
+                <p className="text-xl sm:text-2xl font-bold text-red-600">{absentCount}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Tidak Hadir</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="sm:h-28">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <Coffee className="h-5 w-5 text-blue-600" />
+              <Coffee className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               <div>
-                <p className="text-2xl font-bold text-blue-600">{onBreakCount}</p>
-                <p className="text-sm text-muted-foreground">Istirahat</p>
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{onBreakCount}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Istirahat</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
+        <Card className="sm:h-28">
+          <CardContent className="p-3 sm:p-4">
             <div className="flex items-center gap-2">
-              <LogOut className="h-5 w-5 text-gray-600" />
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
               <div>
-                <p className="text-2xl font-bold text-gray-600">{checkedOutCount}</p>
-                <p className="text-sm text-muted-foreground">Sudah Pulang</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-600">{checkedOutCount}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Sudah Pulang</p>
               </div>
             </div>
           </CardContent>
@@ -1148,27 +988,27 @@ export function AttendanceSystem() {
       </div>
 
       <Tabs defaultValue="quick-action" className="space-y-4" onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="quick-action">Aksi Cepat</TabsTrigger>
-          <TabsTrigger value="history">Riwayat</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto">
+          <TabsTrigger value="quick-action" className="flex-1 text-xs sm:text-sm">Aksi Cepat</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 text-xs sm:text-sm">Riwayat</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="quick-action" className="space-y-6">
-          <div className="grid gap-4">
+        <TabsContent value="quick-action" className="space-y-4 sm:space-y-6">
+          <div className="grid gap-3 sm:gap-4">
             {filteredSummaries.length === 0 ? (
-              <Card className="p-8 text-center">
-                <div className="flex flex-col items-center gap-4">
-                  <Users className="h-12 w-12 text-muted-foreground" />
+              <Card className="p-6 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
                   <div>
-                    <h3 className="text-lg font-semibold text-muted-foreground">
+                    <h3 className="text-base sm:text-lg font-semibold text-muted-foreground">
                       {selectedBranch === "all"
                         ? "Belum Ada Data Presensi"
-                        : `Belum Ada yang Bekerja di ${selectedBranch}`}
+                        : `Belum Ada yang Bekerja di ${branches.find(b => b.id === selectedBranch)?.name || selectedBranch}`}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                       {selectedBranch === "all"
                         ? "Belum ada karyawan yang melakukan presensi hari ini"
-                        : `Belum ada karyawan yang bekerja di cabang ${selectedBranch} hari ini`}
+                        : `Belum ada karyawan yang bekerja di cabang ini hari ini`}
                     </p>
                   </div>
                 </div>
@@ -1180,21 +1020,22 @@ export function AttendanceSystem() {
 
                 return (
                   <Card key={summary.employeeId} className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-4 gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold text-base sm:text-lg">
                             {employee.name.charAt(0).toUpperCase()}
                           </div>
 
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{summary.employeeName}</h3>
+                            <h3 className="font-semibold text-base sm:text-lg">{summary.employeeName}</h3>
+                            <p className="text-xs sm:text-sm text-muted-foreground">{employee.position}</p>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <div className="text-sm text-gray-600">Total Hari Ini</div>
-                          <div className="font-semibold text-lg text-blue-600">
+                          <div className="text-xs sm:text-sm text-gray-600">Total Hari Ini</div>
+                          <div className="font-semibold text-base sm:text-lg text-blue-600">
                             {formatDetailedTime(summary.totalDailyHours)}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -1211,81 +1052,36 @@ export function AttendanceSystem() {
                         </div>
                       </div>
 
-                      {/* Enhanced break information display with more details */}
                       {summary.shifts.length > 0 && (
                         <div className="mb-4 space-y-2">
-                          <h4 className="text-sm font-medium text-gray-700">Shift Hari Ini:</h4>
+                          <h4 className="text-xs sm:text-sm font-medium text-gray-700">Shift Hari Ini:</h4>
                           {summary.shifts
                             .sort((a, b) => new Date(a.checkIn || "").getTime() - new Date(b.checkIn || "").getTime())
                             .map((shift, index) => (
-                              <div key={shift.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                                <div className="flex justify-between items-center">
-                                  <div>
+                              <div key={shift.id} className="bg-gray-50 rounded-lg p-3 text-xs sm:text-sm">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                                  <div className="flex-1">
                                     <span className="font-medium">
                                       Shift {index + 1} - {shift.branch}
                                     </span>
-                                    <div className="text-gray-600">
+                                    <div className="text-gray-600 mt-1">
                                       {shift.checkIn &&
                                         `Masuk: ${new Date(shift.checkIn).toLocaleTimeString("id-ID", {
                                           hour: "2-digit",
                                           minute: "2-digit",
-                                          second: "2-digit",
                                         })}`}
                                       {shift.checkOut &&
                                         ` • Pulang: ${new Date(shift.checkOut).toLocaleTimeString("id-ID", {
                                           hour: "2-digit",
                                           minute: "2-digit",
-                                          second: "2-digit",
                                         })}`}
-                                    </div>
-                                    <div className="mt-2 p-2 bg-blue-50 rounded border-l-2 border-blue-200">
-                                      <div className="text-xs font-medium text-blue-800 mb-1">Detail Istirahat:</div>
-                                      {shift.breakStart ? (
-                                        <>
-                                          <div className="text-xs text-blue-700">
-                                            Mulai:{" "}
-                                            {new Date(shift.breakStart).toLocaleTimeString("id-ID", {
-                                              hour: "2-digit",
-                                              minute: "2-digit",
-                                              second: "2-digit",
-                                            })}
-                                          </div>
-                                          {shift.breakEnd ? (
-                                            <div className="text-xs text-blue-700">
-                                              Selesai:{" "}
-                                              {new Date(shift.breakEnd).toLocaleTimeString("id-ID", {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                                second: "2-digit",
-                                              })}
-                                            </div>
-                                          ) : shift.status === "on-break" ? (
-                                            <div className="text-xs text-orange-600 font-medium">
-                                              🟡 Sedang istirahat sejak{" "}
-                                              {new Date(shift.breakStart).toLocaleTimeString("id-ID", {
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                              })}
-                                            </div>
-                                          ) : (
-                                            <div className="text-xs text-gray-500">Istirahat belum selesai</div>
-                                          )}
-                                          {shift.totalBreakTime > 0 && (
-                                            <div className="text-xs text-blue-700 font-medium">
-                                              Total: {formatBreakTime(shift.totalBreakTime)}
-                                            </div>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <div className="text-xs text-gray-500">Tidak ada istirahat</div>
-                                      )}
                                     </div>
                                   </div>
                                   <div className="text-right">
-                                    <div className="font-medium text-blue-600">
+                                    <div className="font-medium text-blue-600 text-sm sm:text-base">
                                       {formatDetailedTime(shift.totalWorkingHours)}
                                     </div>
-                                    <Badge className={getStatusColor(shift.status)}>
+                                    <Badge className={`text-xs ${getStatusColor(shift.status)}`}>
                                       {shift.status === "present" && "Sedang Bekerja"}
                                       {shift.status === "on-break" && "Istirahat"}
                                       {shift.status === "checked-out" && "Sudah Pulang"}
@@ -1298,14 +1094,15 @@ export function AttendanceSystem() {
                         </div>
                       )}
 
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex flex-wrap gap-2">
                         {summary.canCheckIn && (
                           <Button
                             onClick={() => openCheckInDialog(employee)}
                             disabled={isProcessing}
-                            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium px-3 py-2 text-xs sm:text-sm rounded-lg"
+                            size="sm"
                           >
-                            <Clock className="w-4 h-4 mr-2" />
+                            <Clock className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                             Check In
                           </Button>
                         )}
@@ -1316,17 +1113,19 @@ export function AttendanceSystem() {
                               onClick={() => handleBreakStart(employee)}
                               disabled={isProcessing}
                               variant="outline"
-                              className="border-orange-300 text-orange-700 hover:bg-orange-50 font-medium px-4 py-2 rounded-lg"
+                              className="border-orange-300 text-orange-700 hover:bg-orange-50 font-medium px-3 py-2 text-xs sm:text-sm rounded-lg"
+                              size="sm"
                             >
-                              <Coffee className="w-4 h-4 mr-2" />
+                              <Coffee className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                               Istirahat
                             </Button>
                             <Button
                               onClick={() => openCheckOutCamera(employee)}
                               disabled={isProcessing}
-                              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                              className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-medium px-3 py-2 text-xs sm:text-sm rounded-lg"
+                              size="sm"
                             >
-                              <LogOut className="w-4 h-4 mr-2" />
+                              <LogOut className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                               Check Out
                             </Button>
                           </>
@@ -1336,9 +1135,10 @@ export function AttendanceSystem() {
                           <Button
                             onClick={() => handleBreakEnd(employee)}
                             disabled={isProcessing}
-                            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium px-3 py-2 text-xs sm:text-sm rounded-lg"
+                            size="sm"
                           >
-                            <Play className="w-4 h-4 mr-2" />
+                            <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                             Lanjut Kerja
                           </Button>
                         )}
@@ -1351,23 +1151,25 @@ export function AttendanceSystem() {
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6">
+        <TabsContent value="history" className="space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                 Riwayat Presensi
               </CardTitle>
-              <CardDescription>Riwayat presensi karyawan dengan detail jam kerja</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
+                Riwayat presensi karyawan dengan detail jam kerja
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {dailySummaries.map((summary) => (
                   <Card key={`${summary.employeeId}-${summary.date}`} className="hover:shadow-lg transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback className="bg-primary/10 text-primary">
+                    <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                             {summary.employeeName
                               ? summary.employeeName
                                   .split(" ")
@@ -1377,7 +1179,7 @@ export function AttendanceSystem() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{summary.employeeName}</h3>
+                          <h3 className="font-semibold text-sm sm:text-base">{summary.employeeName}</h3>
                         </div>
                         <span
                           className={`text-xs px-2 py-1 rounded-full font-medium ${
@@ -1400,111 +1202,67 @@ export function AttendanceSystem() {
                         </span>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {/* Date and Shifts */}
+                    <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-muted-foreground">Tanggal:</span>
-                          <span className="text-sm font-semibold">{summary.date}</span>
+                          <span className="text-xs sm:text-sm font-medium text-muted-foreground">Tanggal:</span>
+                          <span className="text-xs sm:text-sm font-semibold">{summary.date}</span>
                         </div>
                       </div>
 
-                      {/* Time Details */}
-                      <div className="space-y-3 pt-3 border-t">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="space-y-2 sm:space-y-3 pt-2 sm:pt-3 border-t">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                          <div className="text-center p-2 sm:p-3 bg-green-50 rounded-lg">
                             <p className="text-xs text-green-600 font-medium mb-1">Check In</p>
-                            <p className="text-sm font-bold text-green-800">
+                            <p className="text-xs sm:text-sm font-bold text-green-800">
                               {summary.shifts.length > 0 && summary.shifts[0].checkIn
                                 ? new Date(summary.shifts[0].checkIn).toLocaleTimeString("id-ID", {
                                     hour: "2-digit",
                                     minute: "2-digit",
-                                    second: "2-digit",
                                   })
-                                : "--:--:--"}
+                                : "--:--"}
                             </p>
                           </div>
-                          <div className="text-center p-3 bg-red-50 rounded-lg">
+                          <div className="text-center p-2 sm:p-3 bg-red-50 rounded-lg">
                             <p className="text-xs text-red-600 font-medium mb-1">Check Out</p>
-                            <p className="text-sm font-bold text-red-800">
+                            <p className="text-xs sm:text-sm font-bold text-red-800">
                               {summary.shifts.length > 0 && summary.shifts[summary.shifts.length - 1].checkOut
                                 ? new Date(summary.shifts[summary.shifts.length - 1].checkOut).toLocaleTimeString(
                                     "id-ID",
                                     {
                                       hour: "2-digit",
                                       minute: "2-digit",
-                                      second: "2-digit",
                                     },
                                   )
-                                : "--:--:--"}
+                                : "--:--"}
                             </p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                          <div className="text-center p-2 sm:p-3 bg-blue-50 rounded-lg">
                             <p className="text-xs text-blue-600 font-medium mb-1">Total Kerja</p>
-                            <p className="text-sm font-bold text-blue-800">
+                            <p className="text-xs sm:text-sm font-bold text-blue-800">
                               {summary.totalDailyHours > 0 ? formatDetailedTime(summary.totalDailyHours) : "00:00:00"}
                             </p>
                           </div>
-                          <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                          <div className="text-center p-2 sm:p-3 bg-yellow-50 rounded-lg">
                             <p className="text-xs text-yellow-600 font-medium mb-1">Total Istirahat</p>
-                            <p className="text-sm font-bold text-yellow-800">
+                            <p className="text-xs sm:text-sm font-bold text-yellow-800">
                               {formatBreakTime(summary.totalDailyBreaks)}
                             </p>
                           </div>
                         </div>
                       </div>
-
-                      {/* Multiple Shifts Details */}
-                      {summary.shifts.length > 1 && (
-                        <div className="pt-3 border-t">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Detail Multiple Shifts:</p>
-                          <div className="space-y-2">
-                            {summary.shifts.map((shift, index) => {
-                              return (
-                                <div key={index} className="bg-gray-50 p-3 rounded-lg space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-semibold text-sm text-gray-800">{shift.branch}</span>
-                                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full font-medium">
-                                        {shift.shift}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex justify-between items-center text-xs">
-                                    <span className="text-gray-600">
-                                      {shift.checkIn
-                                        ? new Date(shift.checkIn).toLocaleTimeString("id-ID", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          })
-                                        : "--:--"}{" "}
-                                      -{" "}
-                                      {shift.checkOut
-                                        ? new Date(shift.checkOut).toLocaleTimeString("id-ID", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                          })
-                                        : "--:--"}
-                                    </span>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
               </div>
 
               {dailySummaries.length === 0 && (
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Belum ada data presensi</p>
+                <div className="text-center py-6 sm:py-8">
+                  <Calendar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+                  <p className="text-muted-foreground text-sm sm:text-base">Belum ada data presensi</p>
                 </div>
               )}
             </CardContent>
@@ -1514,31 +1272,31 @@ export function AttendanceSystem() {
 
       {/* Check-in Dialog */}
       <Dialog open={isCheckInDialogOpen} onOpenChange={setIsCheckInDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               Check-in Karyawan
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               Selamat datang, {selectedEmployee?.name}!
               <br />
               Pilih cabang dan shift kerja untuk memulai hari kerja Anda
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
                 Cabang Kerja
               </Label>
               <Select value={selectedCheckInBranch} onValueChange={setSelectedCheckInBranch}>
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue placeholder="🏢 Pilih cabang tempat kerja" />
                 </SelectTrigger>
                 <SelectContent>
                   {branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id}>
+                    <SelectItem key={branch.id} value={branch.id} className="text-sm">
                       {branch.name}
                     </SelectItem>
                   ))}
@@ -1547,7 +1305,7 @@ export function AttendanceSystem() {
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
+              <Label className="flex items-center gap-2 text-sm">
                 <Clock className="h-4 w-4" />
                 Shift Kerja
               </Label>
@@ -1556,17 +1314,17 @@ export function AttendanceSystem() {
                 onValueChange={(value) => setSelectedShift(value)}
                 disabled={!selectedCheckInBranch || branchShifts.length === 0}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Pilih shift kerja" />
                 </SelectTrigger>
                 <SelectContent>
                   {getAvailableShifts.map((shift) => (
-                    <SelectItem key={shift.value} value={shift.value} disabled={shift.value === "default"}>
+                    <SelectItem key={shift.value} value={shift.value} disabled={shift.value === "default"} className="text-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-yellow-400 rounded-full" />
                         <div>
                           <div className="font-medium">{shift.label.split(" (")[0]}</div>
-                          <div className="text-sm text-muted-foreground">{shift.time}</div>
+                          <div className="text-xs text-muted-foreground">{shift.time}</div>
                         </div>
                       </div>
                     </SelectItem>
@@ -1590,7 +1348,7 @@ export function AttendanceSystem() {
                 <Camera className="h-5 w-5 text-blue-600 mt-0.5" />
                 <div className="text-sm">
                   <p className="font-medium text-blue-900">Langkah Selanjutnya</p>
-                  <p className="text-blue-700">
+                  <p className="text-blue-700 text-xs">
                     Setelah memilih cabang dan shift, Anda akan diminta mengambil foto sebagai bukti kehadiran. Pastikan
                     kamera berfungsi dengan baik dan pencahayaan cukup.
                   </p>
@@ -1599,10 +1357,10 @@ export function AttendanceSystem() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCheckInDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsCheckInDialogOpen(false)} className="text-sm">
               Batal
             </Button>
-            <Button onClick={confirmCheckIn} disabled={!selectedCheckInBranch || !selectedShift} className="gap-2">
+            <Button onClick={confirmCheckIn} disabled={!selectedCheckInBranch || !selectedShift} className="gap-2 text-sm">
               <Camera className="h-4 w-4" />
               Lanjut Ambil Foto
             </Button>
@@ -1611,20 +1369,20 @@ export function AttendanceSystem() {
       </Dialog>
 
       <Dialog open={showCameraPermissionDialog} onOpenChange={setShowCameraPermissionDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5 text-red-500" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
               Izin Kamera Diperlukan
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              <p className="mb-3">
+              <p className="mb-3 text-sm">
                 Aplikasi presensi memerlukan akses kamera untuk mengambil foto sebagai bukti kehadiran.
               </p>
               <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="font-medium text-blue-900 mb-2">Cara mengizinkan akses kamera:</p>
+                <p className="font-medium text-blue-900 mb-2 text-sm">Cara mengizinkan akses kamera:</p>
                 <ol className="list-decimal list-inside space-y-1 text-blue-800 text-xs">
                   <li>Klik ikon kamera di address bar browser</li>
                   <li>Pilih "Allow" atau "Izinkan"</li>
@@ -1637,14 +1395,13 @@ export function AttendanceSystem() {
               <Button
                 onClick={() => {
                   setShowCameraPermissionDialog(false)
-                  // Try to start camera again
                   startCamera()
                 }}
-                className="flex-1"
+                className="flex-1 text-sm"
               >
                 Coba Lagi
               </Button>
-              <Button variant="outline" onClick={() => setShowCameraPermissionDialog(false)}>
+              <Button variant="outline" onClick={() => setShowCameraPermissionDialog(false)} className="text-sm">
                 Tutup
               </Button>
             </div>
@@ -1654,13 +1411,13 @@ export function AttendanceSystem() {
 
       {/* Camera Dialog */}
       <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Camera className="h-4 w-4 sm:h-5 sm:w-5" />
               Ambil Foto Presensi
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               {selectedEmployee && (
                 <>
                   {attendanceAction === "check-in" && `Check-in untuk ${selectedEmployee.name}`}
@@ -1688,19 +1445,14 @@ export function AttendanceSystem() {
                 muted
                 className="w-full h-64 object-cover"
                 onLoadedMetadata={async () => {
-                  console.log("[v0] Video onLoadedMetadata triggered")
                   if (videoRef.current && !cameraStoppedRef.current) {
                     try {
                       await videoRef.current.play()
-                      console.log("[v0] Video play from onLoadedMetadata successful")
                     } catch (error) {
-                      console.error("[v0] Video play from onLoadedMetadata failed:", error)
+                      console.error("Video play failed:", error)
                     }
                   }
                 }}
-                onCanPlay={() => console.log("[v0] Video onCanPlay triggered")}
-                onPlaying={() => console.log("[v0] Video onPlaying triggered")}
-                onError={(e) => console.error("[v0] Video onError:", e)}
               />
               <canvas ref={canvasRef} className="hidden" />
 
@@ -1725,7 +1477,7 @@ export function AttendanceSystem() {
             <div className="flex gap-2">
               <Button
                 onClick={capturePhoto}
-                className="flex-1 gap-2"
+                className="flex-1 gap-2 text-sm"
                 disabled={isProcessing || !isCameraReady || cameraPermission !== "granted"}
               >
                 <Camera className="h-4 w-4" />
@@ -1743,7 +1495,7 @@ export function AttendanceSystem() {
                   stopCamera()
                   setIsCameraOpen(false)
                 }}
-                className="bg-transparent"
+                className="bg-transparent text-sm"
               >
                 Batal
               </Button>
@@ -1754,15 +1506,15 @@ export function AttendanceSystem() {
 
       {/* Branch Warning Dialog */}
       <Dialog open={isBranchWarningOpen} onOpenChange={setIsBranchWarningOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Peringatan</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Peringatan</DialogTitle>
+            <DialogDescription className="text-sm">
               Anda memilih untuk melihat semua cabang. Ini akan menampilkan semua data presensi dari semua cabang.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button onClick={() => setIsBranchWarningOpen(false)}>OK</Button>
+            <Button onClick={() => setIsBranchWarningOpen(false)} className="text-sm">OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

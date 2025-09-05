@@ -103,40 +103,44 @@ export function PengeluaranCabang() {
     { id: "maintenance", name: "Maintenance", icon: Wrench, color: "bg-gray-100 text-gray-800" },
   ]
 
+  // Gunakan useEffect untuk menghindari hydration mismatch
   useEffect(() => {
     loadData()
-    setupRealtimeSubscription()
     
-    const globalChannel = setupGlobalEventsListener((event, payload) => {
-      if (event === 'expense_deleted' || event === 'expense_updated') {
-        console.log('Expense event received:', event, payload)
-        loadData()
-      }
-    })
-
+    // Setup realtime subscription hanya di client side
+    const cleanup = setupRealtimeSubscription()
+    
     return () => {
-      supabase.removeChannel(globalChannel)
+      if (cleanup) cleanup()
     }
   }, [selectedBranch])
 
   const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel('expenses-realtime')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'expenses' 
-        }, 
-        (payload) => {
-          console.log('🔄 Real-time update received:', payload)
-          loadData()
-        }
-      )
-      .subscribe()
+    // Pastikan kita di client side sebelum setup realtime
+    if (typeof window === 'undefined') return () => {}
+    
+    try {
+      const channel = supabase
+        .channel('expenses-realtime')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'expenses' 
+          }, 
+          (payload) => {
+            console.log('🔄 Real-time update received:', payload)
+            loadData()
+          }
+        )
+        .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
+      return () => {
+        supabase.removeChannel(channel)
+      }
+    } catch (error) {
+      console.error('Error setting up realtime subscription:', error)
+      return () => {}
     }
   }
 
@@ -195,7 +199,7 @@ export function PengeluaranCabang() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "approved": return "Disetujui"
-      case "pending": return "Menunggu Persetujuan"
+      case "pending": return "Menunggu"
       case "rejected": return "Ditolak"
       case "paid": return "Lunas"
       default: return "Unknown"
@@ -315,54 +319,55 @@ export function PengeluaranCabang() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Pengajuan Pengeluaran Outlet</h1>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4">
+      {/* Header Section - Responsif untuk mobile */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Pengajuan Pengeluaran Outlet</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Ajukan pengeluaran harian outlet - untuk pengeluaran besar &gt;Rp 1.000.000 hubungi owner
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="gap-2"
+            className="gap-2 text-xs sm:text-sm"
           >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-red-600 hover:bg-red-700">
-                <Plus className="h-4 w-4" />
+              <Button className="gap-2 bg-red-600 hover:bg-red-700 text-xs sm:text-sm">
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                 Ajukan Pengeluaran
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-[95vw] sm:max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Ajukan Pengeluaran Outlet</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-lg sm:text-xl">Ajukan Pengeluaran Outlet</DialogTitle>
+                <DialogDescription className="text-sm">
                   Ajukan pengeluaran harian outlet - untuk pengeluaran besar &gt;Rp 1.000.000 hubungi owner
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
-                  <Label>Kategori</Label>
+                  <Label className="text-xs sm:text-sm">Kategori</Label>
                   <Select
                     value={newExpense.category}
                     onValueChange={(value) => setNewExpense({ ...newExpense, category: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-xs sm:text-sm">
                       <SelectValue placeholder="Pilih kategori" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
+                        <SelectItem key={category.id} value={category.id} className="text-xs sm:text-sm">
                           <div className="flex items-center gap-2">
-                            <category.icon className="h-4 w-4" />
+                            <category.icon className="h-3 w-3 sm:h-4 sm:w-4" />
                             {category.name}
                           </div>
                         </SelectItem>
@@ -371,17 +376,17 @@ export function PengeluaranCabang() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Cabang</Label>
+                  <Label className="text-xs sm:text-sm">Cabang</Label>
                   <Select
                     value={newExpense.branch_id}
                     onValueChange={(value) => setNewExpense({ ...newExpense, branch_id: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-xs sm:text-sm">
                       <SelectValue placeholder="Pilih cabang" />
                     </SelectTrigger>
                     <SelectContent>
                       {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
+                        <SelectItem key={branch.id} value={branch.id} className="text-xs sm:text-sm">
                           {branch.name}
                         </SelectItem>
                       ))}
@@ -389,7 +394,7 @@ export function PengeluaranCabang() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Jumlah</Label>
+                  <Label htmlFor="amount" className="text-xs sm:text-sm">Jumlah</Label>
                   <Input
                     id="amount"
                     value={newExpense.amount}
@@ -398,107 +403,117 @@ export function PengeluaranCabang() {
                       setNewExpense({ ...newExpense, amount: formatted })
                     }}
                     placeholder="500.000"
+                    className="text-xs sm:text-sm"
                   />
                 </div>
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="description">Deskripsi</Label>
+                <div className="col-span-1 sm:col-span-2 space-y-2">
+                  <Label htmlFor="description" className="text-xs sm:text-sm">Deskripsi</Label>
                   <Textarea
                     id="description"
                     value={newExpense.description}
                     onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
                     placeholder="Deskripsi detail pengeluaran..."
+                    className="text-xs sm:text-sm min-h-[80px]"
                   />
                 </div>
-                <div className="col-span-2 space-y-2">
-                  <Label htmlFor="notes">Catatan (Opsional)</Label>
+                <div className="col-span-1 sm:col-span-2 space-y-2">
+                  <Label htmlFor="notes" className="text-xs sm:text-sm">Catatan (Opsional)</Label>
                   <Textarea
                     id="notes"
                     value={newExpense.notes}
                     onChange={(e) => setNewExpense({ ...newExpense, notes: e.target.value })}
                     placeholder="Catatan tambahan..."
+                    className="text-xs sm:text-sm min-h-[60px]"
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2 mt-6">
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <div className="flex justify-end gap-2 mt-4 sm:mt-6">
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} className="text-xs sm:text-sm">
                   Batal
                 </Button>
-                <Button onClick={handleAddExpense}>Ajukan Pengeluaran</Button>
+                <Button onClick={handleAddExpense} className="text-xs sm:text-sm">Ajukan Pengeluaran</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Statistics Cards - Responsif untuk mobile */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pengeluaran Diajukan</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Pengeluaran Diajukan</CardTitle>
+            <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatPrice(totalExpenses)}</div>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-red-600">{formatPrice(totalExpenses)}</div>
             <p className="text-xs text-muted-foreground">Bulan ini</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rata-rata per Pengajuan</CardTitle>
-            <Building2 className="h-4 w-4 text-blue-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-4">
+            <CardTitle className="text-xs sm:text-sm font-medium">Rata-rata per Pengajuan</CardTitle>
+            <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{formatPrice(statistics.averagePerTransaction)}</div>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{formatPrice(statistics.averagePerTransaction)}</div>
             <p className="text-xs text-muted-foreground">Per transaksi</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex items-center gap-4 flex-wrap p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border">
-        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-          <SelectTrigger className="w-48 bg-white">
-            <SelectValue placeholder="Filter cabang" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Cabang</SelectItem>
-            {branches.map((branch) => (
-              <SelectItem key={branch.id} value={branch.id}>
-                {branch.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-48 bg-white">
-            <SelectValue placeholder="Filter kategori" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Kategori</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Filter Section - Responsif untuk mobile */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 sm:p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border">
+        <div className="w-full sm:w-auto">
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-full sm:w-48 bg-white text-xs sm:text-sm">
+              <SelectValue placeholder="Filter cabang" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs sm:text-sm">Semua Cabang</SelectItem>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.id} className="text-xs sm:text-sm">
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full sm:w-auto">
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full sm:w-48 bg-white text-xs sm:text-sm">
+              <SelectValue placeholder="Filter kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs sm:text-sm">Semua Kategori</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id} className="text-xs sm:text-sm">
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <Tabs defaultValue="list" className="space-y-6">
-        <TabsList className="bg-red-50">
-          <TabsTrigger value="list" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
+      {/* Tabs Section - Responsif untuk mobile */}
+      <Tabs defaultValue="list" className="space-y-4 sm:space-y-6">
+        <TabsList className="bg-red-50 w-full flex overflow-x-auto">
+          <TabsTrigger value="list" className="flex-1 text-xs sm:text-sm data-[state=active]:bg-red-600 data-[state=active]:text-white">
             Daftar Pengajuan
           </TabsTrigger>
-          <TabsTrigger value="categories" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
+          <TabsTrigger value="categories" className="flex-1 text-xs sm:text-sm data-[state=active]:bg-red-600 data-[state=active]:text-white">
             Per Kategori
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="list" className="space-y-4">
+        <TabsContent value="list" className="space-y-3 sm:space-y-4">
           {filteredExpenses.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900">Belum ada pengajuan</h3>
-                <p className="text-gray-500">Mulai dengan mengajukan pengeluaran pertama Anda</p>
+            <Card className="text-center py-8 sm:py-12">
+              <CardContent className="p-4 sm:p-6">
+                <FileText className="h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900">Belum ada pengajuan</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Mulai dengan mengajukan pengeluaran pertama Anda</p>
               </CardContent>
             </Card>
           ) : (
@@ -510,67 +525,71 @@ export function PengeluaranCabang() {
               
               return (
                 <Card key={expense.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-red-500">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                          <categoryInfo.icon className="h-6 w-6 text-primary" />
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <categoryInfo.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                         </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-2">
+                            <div className="flex-1 min-w-0">
                               <h3 
-                                className="font-semibold text-lg cursor-pointer hover:text-red-600 transition-colors"
+                                className="font-semibold text-base sm:text-lg cursor-pointer hover:text-red-600 transition-colors truncate"
                                 onClick={() => openViewDialog(expense)}
+                                title={expense.description}
                               >
                                 {expense.description}
                               </h3>
-                              <p className="text-sm text-muted-foreground">{expense.notes}</p>
+                              {expense.notes && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{expense.notes}</p>
+                              )}
                             </div>
                             <div className="text-right">
-                              <p className="text-2xl font-bold text-red-600">{formatPrice(expense.amount)}</p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="text-xl sm:text-2xl font-bold text-red-600">{formatPrice(expense.amount)}</p>
+                              <p className="text-xs text-muted-foreground">
                                 {formatDate(expense.expense_date)}
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4 text-sm flex-wrap">
+                          <div className="flex flex-wrap items-center gap-2 text-xs mt-2">
                             <div className="flex items-center gap-1 bg-red-50 px-2 py-1 rounded-full">
                               <Building2 className="h-3 w-3 text-red-600" />
-                              <span className="text-red-700">{branchName}</span>
+                              <span className="text-red-700 truncate max-w-[100px] sm:max-w-none">{branchName}</span>
                             </div>
-                            <Badge className={categoryInfo.color}>{categoryInfo.name}</Badge>
-                            <Badge className={`${getStatusColor(expense.status)} flex items-center gap-1`}>
+                            <Badge className={`${categoryInfo.color} text-xs`}>{categoryInfo.name}</Badge>
+                            <Badge className={`${getStatusColor(expense.status)} flex items-center gap-1 text-xs`}>
                               {getStatusIcon(expense.status)}
                               {getStatusText(expense.status)}
                             </Badge>
                           </div>
                           {expense.status === "rejected" && expense.rejection_reason && (
                             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                              <p className="text-sm text-red-700">
+                              <p className="text-xs text-red-700">
                                 <strong>Alasan Penolakan:</strong> {expense.rejection_reason}
                               </p>
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 ml-4">
+                      <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-auto">
                         {expense.status === "pending" && (
                           <>
                             <Button 
                               variant="ghost" 
                               size="sm"
                               onClick={() => openEditDialog(expense)}
+                              className="h-8 w-8 p-0"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-red-600 hover:text-red-700"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
                               onClick={() => handleDeleteExpense(expense.id)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           </>
                         )}
@@ -579,8 +598,9 @@ export function PengeluaranCabang() {
                             variant="ghost" 
                             size="sm"
                             onClick={() => openViewDialog(expense)}
+                            className="h-8 w-8 p-0"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         )}
                       </div>
@@ -592,31 +612,31 @@ export function PengeluaranCabang() {
           )}
         </TabsContent>
 
-        <TabsContent value="categories" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <TabsContent value="categories" className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {categories.map((category) => {
               const categoryExpenses = filteredExpenses.filter((e) => e.category === category.id)
               const categoryTotal = categoryExpenses.reduce((sum, e) => sum + e.amount, 0)
               return (
                 <Card key={category.id} className="border-l-4 border-l-red-500">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <category.icon className="h-5 w-5" />
+                  <CardHeader className="p-3 sm:p-4 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                      <category.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                       {category.name}
                     </CardTitle>
-                    <CardDescription>{categoryExpenses.length} pengajuan</CardDescription>
+                    <CardDescription className="text-xs sm:text-sm">{categoryExpenses.length} pengajuan</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-600 mb-4">{formatPrice(categoryTotal)}</div>
-                    <div className="space-y-2">
+                  <CardContent className="p-3 sm:p-4 pt-0">
+                    <div className="text-xl sm:text-2xl font-bold text-red-600 mb-3 sm:mb-4">{formatPrice(categoryTotal)}</div>
+                    <div className="space-y-1 sm:space-y-2">
                       {categoryExpenses.slice(0, 3).map((expense) => (
-                        <div key={expense.id} className="flex justify-between text-sm">
-                          <span className="truncate">{expense.description}</span>
+                        <div key={expense.id} className="flex justify-between text-xs sm:text-sm">
+                          <span className="truncate max-w-[120px] sm:max-w-[150px]">{expense.description}</span>
                           <span className="font-medium">{formatPrice(expense.amount)}</span>
                         </div>
                       ))}
                       {categoryExpenses.length > 3 && (
-                        <p className="text-xs text-muted-foreground">+{categoryExpenses.length - 3} lainnya</p>
+                        <p className="text-xs text-muted-foreground mt-1">+{categoryExpenses.length - 3} lainnya</p>
                       )}
                     </div>
                   </CardContent>
@@ -627,153 +647,158 @@ export function PengeluaranCabang() {
         </TabsContent>
       </Tabs>
 
+      {/* Edit Dialog - Responsif untuk mobile */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Pengajuan Pengeluaran</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Edit Pengajuan Pengeluaran</DialogTitle>
+            <DialogDescription className="text-sm">
               Edit detail pengajuan pengeluaran
             </DialogDescription>
           </DialogHeader>
           {currentExpense && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Kategori</Label>
+                <Label className="text-xs sm:text-sm">Kategori</Label>
                 <Select
                   value={currentExpense.category}
                   onValueChange={(value) => setCurrentExpense({ ...currentExpense, category: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="text-xs sm:text-sm">
                     <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-2">
-                          <category.icon className="h-4 w-4" />
-                          {category.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id} className="text-xs sm:text-sm">
+                          <div className="flex items-center gap-2">
+                            <category.icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs sm:text-sm">Cabang</Label>
+                  <Select
+                    value={currentExpense.branch_id || ""}
+                    onValueChange={(value) => setCurrentExpense({ ...currentExpense, branch_id: value })}
+                  >
+                    <SelectTrigger className="text-xs sm:text-sm">
+                      <SelectValue placeholder="Pilih cabang" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id} className="text-xs sm:text-sm">
+                          {branch.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-amount" className="text-xs sm:text-sm">Jumlah</Label>
+                  <Input
+                    id="edit-amount"
+                    value={formatInputNumber(currentExpense.amount.toString())}
+                    onChange={(e) => {
+                      const formatted = formatInputNumber(e.target.value)
+                      setCurrentExpense({ ...currentExpense, amount: Number(unformatInputNumber(formatted)) })
+                    }}
+                    placeholder="500.000"
+                    className="text-xs sm:text-sm"
+                  />
+                </div>
+                <div className="col-span-1 sm:col-span-2 space-y-2">
+                  <Label htmlFor="edit-description" className="text-xs sm:text-sm">Deskripsi</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={currentExpense.description}
+                    onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })}
+                    placeholder="Deskripsi detail pengeluaran..."
+                    className="text-xs sm:text-sm min-h-[80px]"
+                  />
+                </div>
+                <div className="col-span-1 sm:col-span-2 space-y-2">
+                  <Label htmlFor="edit-notes" className="text-xs sm:text-sm">Catatan (Opsional)</Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={currentExpense.notes || ""}
+                    onChange={(e) => setCurrentExpense({ ...currentExpense, notes: e.target.value })}
+                    placeholder="Catatan tambahan..."
+                    className="text-xs sm:text-sm min-h-[60px]"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Cabang</Label>
-                <Select
-                  value={currentExpense.branch_id || ""}
-                  onValueChange={(value) => setCurrentExpense({ ...currentExpense, branch_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih cabang" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-amount">Jumlah</Label>
-                <Input
-                  id="edit-amount"
-                  value={formatInputNumber(currentExpense.amount.toString())}
-                  onChange={(e) => {
-                    const formatted = formatInputNumber(e.target.value)
-                    setCurrentExpense({ ...currentExpense, amount: Number(unformatInputNumber(formatted)) })
-                  }}
-                  placeholder="500.000"
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-description">Deskripsi</Label>
-                <Textarea
-                  id="edit-description"
-                  value={currentExpense.description}
-                  onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })}
-                  placeholder="Deskripsi detail pengeluaran..."
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label htmlFor="edit-notes">Catatan (Opsional)</Label>
-                <Textarea
-                  id="edit-notes"
-                  value={currentExpense.notes || ""}
-                  onChange={(e) => setCurrentExpense({ ...currentExpense, notes: e.target.value })}
-                  placeholder="Catatan tambahan..."
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Batal
-            </Button>
-            <Button onClick={handleEditExpense}>Simpan Perubahan</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="text-xs sm:text-sm">
+                Batal
+              </Button>
+              <Button onClick={handleEditExpense} className="text-xs sm:text-sm">Simpan Perubahan</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detail Pengajuan Pengeluaran</DialogTitle>
-          </DialogHeader>
-          {currentExpense && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Kategori</Label>
-                  <p className="font-medium">
-                    {getCategoryInfo(currentExpense.category).name}
-                  </p>
+        {/* View Dialog - Responsif untuk mobile */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg sm:text-xl">Detail Pengajuan Pengeluaran</DialogTitle>
+            </DialogHeader>
+            {currentExpense && (
+              <div className="space-y-3 sm:space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Kategori</Label>
+                    <p className="font-medium text-sm sm:text-base">
+                      {getCategoryInfo(currentExpense.category).name}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Cabang</Label>
+                    <p className="font-medium text-sm sm:text-base">
+                      {currentExpense.branch_id 
+                        ? branches.find(b => b.id === currentExpense.branch_id)?.name 
+                        : "Semua Cabang"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Jumlah</Label>
+                    <p className="font-medium text-red-600 text-sm sm:text-base">{formatPrice(currentExpense.amount)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Status</Label>
+                    <Badge className={`${getStatusColor(currentExpense.status)} text-xs`}>
+                      {getStatusText(currentExpense.status)}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Tanggal Pengajuan</Label>
+                    <p className="font-medium text-sm sm:text-base">{formatDate(currentExpense.expense_date)}</p>
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Cabang</Label>
-                  <p className="font-medium">
-                    {currentExpense.branch_id 
-                      ? branches.find(b => b.id === currentExpense.branch_id)?.name 
-                      : "Semua Cabang"}
-                  </p>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Deskripsi</Label>
+                  <p className="font-medium text-sm sm:text-base">{currentExpense.description}</p>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Jumlah</Label>
-                  <p className="font-medium text-red-600">{formatPrice(currentExpense.amount)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <Badge className={getStatusColor(currentExpense.status)}>
-                    {getStatusText(currentExpense.status)}
-                  </Badge>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">Tanggal Pengajuan</Label>
-                  <p className="font-medium">{formatDate(currentExpense.expense_date)}</p>
-                </div>
+                {currentExpense.status === "rejected" && currentExpense.rejection_reason && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Alasan Penolakan</Label>
+                    <p className="font-medium text-red-700 text-sm sm:text-base">{currentExpense.rejection_reason}</p>
+                  </div>
+                )}
+                {currentExpense.notes && (
+                  <div>
+                    <Label className="text-xs sm:text-sm text-muted-foreground">Catatan</Label>
+                    <p className="font-medium text-sm sm:text-base">{currentExpense.notes}</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <Label className="text-muted-foreground">Deskripsi</Label>
-                <p className="font-medium">{currentExpense.description}</p>
-              </div>
-              {currentExpense.status === "rejected" && currentExpense.rejection_reason && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                  <Label className="text-muted-foreground">Alasan Penolakan</Label>
-                  <p className="font-medium text-red-700">{currentExpense.rejection_reason}</p>
-                </div>
-              )}
-              {currentExpense.notes && (
-                <div>
-                  <Label className="text-muted-foreground">Catatan</Label>
-                  <p className="font-medium">{currentExpense.notes}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    )
+  }

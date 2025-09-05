@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Star, TrendingUp, Award, Users, Calendar, Trophy, Target, Loader2 } from 'lucide-react'
+import { Star, TrendingUp, Award, Users, Calendar, Trophy, Target, Loader2, Search } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -28,7 +28,7 @@ interface PointTransaction extends Point {
       id: string;
       name: string;
     } | null;
-  } | null; // Tambahkan | null di sini
+  } | null;
 }
 
 export function PointsSystem() {
@@ -88,13 +88,13 @@ export function PointsSystem() {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Trophy className="h-5 w-5 text-yellow-500" />
+        return <Trophy className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" />
       case 2:
-        return <Award className="h-5 w-5 text-gray-400" />
+        return <Award className="h-4 w-4 md:h-5 md:w-5 text-gray-400" />
       case 3:
-        return <Award className="h-5 w-5 text-amber-600" />
+        return <Award className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
       default:
-        return <Target className="h-5 w-5 text-muted-foreground" />
+        return <Target className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" />
     }
   }
 
@@ -117,23 +117,23 @@ export function PointsSystem() {
 
   const getPointTypeText = (type: string | null | undefined) => {
     if (!type) {
-    return "Tanpa Kategori"; // Berikan teks default jika tipe kosong
+      return "Tanpa Kategori";
+    }
+    switch (type) {
+      case "reward":
+        return "Hadiah"
+      case "penalty":
+        return "Penalti"
+      case "earned":
+        return "Diperoleh"
+      case "bonus":
+        return "Bonus"
+      case "deducted":
+        return "Dikurangi"
+      default:
+        return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); 
+    }
   }
-  switch (type) {
-    case "reward":
-      return "Hadiah"
-    case "penalty":
-      return "Penalti"
-    case "earned":
-      return "Diperoleh"
-    case "bonus":
-      return "Bonus"
-    case "deducted":
-      return "Dikurangi"
-    default:
-      return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); 
-  }
-}
 
   if (loading) {
     return (
@@ -155,16 +155,16 @@ export function PointsSystem() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Sistem Poin</h1>
-          <p className="text-muted-foreground">Leaderboard dan pencapaian semua karyawan</p>
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
+      {/* Header - Responsif untuk semua perangkat */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Sistem Poin</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Leaderboard dan pencapaian semua karyawan</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full md:w-48 text-sm">
               <SelectValue placeholder="Semua Cabang" />
             </SelectTrigger>
             <SelectContent>
@@ -179,119 +179,126 @@ export function PointsSystem() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Karyawan</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
+      {/* Summary Cards - Responsif untuk semua perangkat */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="h-full">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+            <CardTitle className="text-sm md:text-base font-medium">Total Karyawan</CardTitle>
+            <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{statistics.totalEmployees}</div>
-            <p className="text-xs text-muted-foreground">Karyawan aktif</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl md:text-2xl font-bold text-blue-600">{statistics.totalEmployees}</div>
+            <p className="text-xs md:text-sm text-muted-foreground">Karyawan aktif</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performer</CardTitle>
-            <Trophy className="h-4 w-4 text-yellow-500" />
+        <Card className="h-full">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+            <CardTitle className="text-sm md:text-base font-medium">Top Performer</CardTitle>
+            <Trophy className="h-4 w-4 md:h-5 md:w-5 text-yellow-500" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{statistics.topPerformer?.name || "-"}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl md:text-2xl font-bold text-yellow-600 truncate">
+              {statistics.topPerformer?.name?.split(' ')[0] || "-"}
+            </div>
+            <p className="text-xs md:text-sm text-muted-foreground truncate">
               {statistics.topPerformer?.total_points?.toLocaleString() || 0} poin
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rata-rata Poin</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+        <Card className="h-full">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+            <CardTitle className="text-sm md:text-base font-medium">Rata-rata Poin</CardTitle>
+            <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{statistics.averagePoints.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Poin per karyawan</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl md:text-2xl font-bold text-green-600">{statistics.averagePoints.toLocaleString()}</div>
+            <p className="text-xs md:text-sm text-muted-foreground">Poin per karyawan</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Poin</CardTitle>
-            <Star className="h-4 w-4 text-purple-600" />
+        <Card className="h-full">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+            <CardTitle className="text-sm md:text-base font-medium">Total Poin</CardTitle>
+            <Star className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{statistics.totalPoints.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Semua karyawan</p>
+          <CardContent className="p-4 pt-0">
+            <div className="text-xl md:text-2xl font-bold text-purple-600">{statistics.totalPoints.toLocaleString()}</div>
+            <p className="text-xs md:text-sm text-muted-foreground">Semua karyawan</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="leaderboard" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
-          <TabsTrigger value="achievements">Pencapaian</TabsTrigger>
-          <TabsTrigger value="history">Riwayat Poin</TabsTrigger>
+      <Tabs defaultValue="leaderboard" className="space-y-4 md:space-y-6">
+        <TabsList className="w-full flex overflow-x-auto">
+          <TabsTrigger value="leaderboard" className="flex-1 text-sm">Leaderboard</TabsTrigger>
+          <TabsTrigger value="achievements" className="flex-1 text-sm">Pencapaian</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 text-sm">Riwayat Poin</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="leaderboard" className="space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
+        <TabsContent value="leaderboard" className="space-y-4 md:space-y-6">
+          <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+            <div className="relative flex-1">
               <Input
                 placeholder="Cari karyawan..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-9 text-sm md:text-base"
               />
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {filteredEmployees.map((employee) => (
               <Card
                 key={employee.id}
-                className={`${(employee.rank || 0) <= 3 ? "border-2 border-yellow-200 bg-yellow-50/50" : ""}`}
+                className={`h-full ${(employee.rank || 0) <= 3 ? "border-2 border-yellow-200 bg-yellow-50/50" : ""}`}
               >
-                <CardHeader>
-                  <div className="flex items-center gap-4">
+                <CardHeader className="p-4 md:p-5">
+                  <div className="flex items-center gap-3">
                     <div className="relative">
-                      <Avatar className="h-16 w-16">
-                        <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                      <Avatar className="h-12 w-12 md:h-14 md:w-14">
+                        <AvatarFallback className="bg-primary/10 text-primary text-base md:text-lg">
                           {employee.name
                             .split(" ")
                             .map((n) => n[0])
-                            .join("")}
+                            .join("")
+                            .slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -top-2 -right-2">{getRankIcon(employee.rank || 0)}</div>
+                      <div className="absolute -top-1 -right-1">{getRankIcon(employee.rank || 0)}</div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg">{employee.name}</h3>
-                      <p className="text-muted-foreground text-sm">{employee.role || "Karyawan"}</p>
-                     <p className="text-xs text-muted-foreground">{employee.branches?.name || "Tanpa Cabang"}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base md:text-lg truncate">{employee.name}</h3>
+                      <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.role || "Karyawan"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{employee.branches?.name || "Tanpa Cabang"}</p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="p-4 md:p-5 pt-0">
+                  <div className="space-y-2 md:space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total Poin:</span>
-                      <span className="font-bold text-primary text-lg">
+                      <span className="text-sm md:text-base font-medium">Total Poin:</span>
+                      <span className="font-bold text-primary text-base md:text-lg">
                         {(employee.total_points || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Bulan Ini:</span>
-                      <span className="font-bold text-green-600">
+                      <span className="text-sm md:text-base font-medium">Bulan Ini:</span>
+                      <span className="font-bold text-green-600 text-sm md:text-base">
                         +{(employee.monthly_points || 0).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Peringkat:</span>
+                      <span className="text-sm md:text-base font-medium">Peringkat:</span>
                       <div className="flex items-center gap-1">
-                        <span className="font-bold">#{employee.rank || 0}</span>
+                        <span className="font-bold text-sm md:text-base">#{employee.rank || 0}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">Email: {employee.email || "Tidak tersedia"}</div>
+                    {employee.email && (
+                      <div className="text-xs text-muted-foreground truncate" title={employee.email}>
+                        Email: {employee.email}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -299,36 +306,37 @@ export function PointsSystem() {
           </div>
         </TabsContent>
 
-        <TabsContent value="achievements" className="space-y-6">
+        <TabsContent value="achievements" className="space-y-4 md:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <Award className="h-5 w-5 md:h-6 md:w-6" />
                 Pencapaian Terbaru
               </CardTitle>
-              <CardDescription>Daftar karyawan berdasarkan performa poin</CardDescription>
+              <CardDescription className="text-sm md:text-base">Daftar karyawan berdasarkan performa poin</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="p-4 md:p-6">
+              <div className="space-y-3 md:space-y-4">
                 {filteredEmployees.slice(0, 10).map((employee) => (
-                  <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback className="bg-primary/10 text-primary">
+                  <div key={employee.id} className="flex items-center justify-between p-3 md:p-4 border rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar className="h-10 w-10 md:h-12 md:w-12">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm md:text-base">
                           {employee.name
                             .split(" ")
                             .map((n) => n[0])
-                            .join("")}
+                            .join("")
+                            .slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="font-medium">{employee.name}</p>
-                        <p className="text-sm text-muted-foreground">{employee.role || "Karyawan"}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-base md:text-lg truncate">{employee.name}</p>
+                        <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.role || "Karyawan"}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{(employee.total_points || 0).toLocaleString()} poin</p>
-                      <p className="text-sm text-muted-foreground">Peringkat #{employee.rank}</p>
+                    <div className="text-right ml-3">
+                      <p className="font-bold text-primary text-base md:text-lg">{(employee.total_points || 0).toLocaleString()} poin</p>
+                      <p className="text-muted-foreground text-xs md:text-sm">Peringkat #{employee.rank}</p>
                     </div>
                   </div>
                 ))}
@@ -337,33 +345,33 @@ export function PointsSystem() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="history" className="space-y-6">
+        <TabsContent value="history" className="space-y-4 md:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                <Calendar className="h-5 w-5 md:h-6 md:w-6" />
                 Riwayat Poin Semua Karyawan
               </CardTitle>
-              <CardDescription>Aktivitas poin terbaru dari semua karyawan</CardDescription>
+              <CardDescription className="text-sm md:text-base">Aktivitas poin terbaru dari semua karyawan</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+            <CardContent className="p-4 md:p-6">
+              <div className="space-y-3 md:space-y-4">
                 {pointTransactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{transaction.users?.name || "Unknown"}</p>
-                      <p className="text-sm text-muted-foreground">{transaction.description}</p>
-                      <p className="text-xs text-muted-foreground">
+                  <div key={transaction.id} className="flex items-center justify-between p-3 md:p-4 border rounded-lg">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="font-medium text-base md:text-lg truncate">{transaction.users?.name || "Unknown"}</p>
+                      <p className="text-muted-foreground text-sm md:text-base truncate">{transaction.description}</p>
+                      <p className="text-xs md:text-sm text-muted-foreground">
                         {new Date(transaction.created_at).toLocaleDateString("id-ID")} •{" "}
                         {transaction.users?.branches?.name || "Unknown Branch"}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <Badge className={getPointTypeText(transaction.type)}>
+                    <div className="text-right shrink-0">
+                      <Badge className={`text-xs md:text-sm ${getPointTypeColor(transaction.type || '')}`}>
                         {getPointTypeText(transaction.type)}
                       </Badge>
                       <p
-                        className={`font-bold ${transaction.type === "penalty" || transaction.type === "deducted" ? "text-red-600" : "text-green-600"}`}
+                        className={`font-bold text-base md:text-lg ${transaction.type === "penalty" || transaction.type === "deducted" ? "text-red-600" : "text-green-600"}`}
                       >
                         {transaction.type === "penalty" || transaction.type === "deducted" ? "-" : "+"}
                         {transaction.points_earned} poin
@@ -372,7 +380,7 @@ export function PointsSystem() {
                   </div>
                 ))}
                 {pointTransactions.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">Belum ada transaksi poin</div>
+                  <div className="text-center py-8 text-muted-foreground text-sm md:text-base">Belum ada transaksi poin</div>
                 )}
               </div>
             </CardContent>
