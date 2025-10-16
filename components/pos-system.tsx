@@ -943,6 +943,14 @@ export function POSSystem() {
       {/* Receipt Dialog */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="max-w-2xl">
+          {/* Print-only CSS: hanya #receipt yang dicetak */}
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #receipt, #receipt * { visibility: visible !important; }
+              #receipt { position: absolute !important; left: 0; top: 0; width: 100vw !important; background: white !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+            }
+          `}</style>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" /> Struk Pembayaran
