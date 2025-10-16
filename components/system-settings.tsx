@@ -133,71 +133,79 @@ export function SystemSettings() {
       </div>
 
       {/* Settings Tabs */}
-      <Tabs defaultValue="business" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="business">Bisnis</TabsTrigger>
-          <TabsTrigger value="services">Layanan</TabsTrigger>
-          <TabsTrigger value="notifications">Notifikasi</TabsTrigger>
-          <TabsTrigger value="security">Keamanan</TabsTrigger>
-          <TabsTrigger value="system">Sistem</TabsTrigger>
-          <TabsTrigger value="integrations">Integrasi</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="business" className="space-y-4 md:space-y-6">
+        {/* Mobile: Scrollable horizontal tabs */}
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-6 gap-1 bg-muted/50 p-1">
+            <TabsTrigger value="business" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Bisnis</TabsTrigger>
+            <TabsTrigger value="services" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Layanan</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Notifikasi</TabsTrigger>
+            <TabsTrigger value="security" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Keamanan</TabsTrigger>
+            <TabsTrigger value="system" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Sistem</TabsTrigger>
+            <TabsTrigger value="integrations" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Integrasi</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Business Settings */}
-        <TabsContent value="business" className="space-y-6">
+        <TabsContent value="business" className="space-y-4 md:space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                <Building className="h-4 w-4 md:h-5 md:w-5" />
                 Informasi Bisnis
               </CardTitle>
-              <CardDescription>Pengaturan informasi dasar bisnis barbershop</CardDescription>
+              <CardDescription className="text-xs md:text-sm">Pengaturan informasi dasar bisnis barbershop</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-3 md:space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
-                  <Label htmlFor="businessName">Nama Bisnis</Label>
+                  <Label htmlFor="businessName" className="text-xs md:text-sm">Nama Bisnis</Label>
                   <Input
                     id="businessName"
                     value={businessSettings.name}
                     onChange={(e) => setBusinessSettings({ ...businessSettings, name: e.target.value })}
+                    className="text-sm h-9 md:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Nomor Telepon</Label>
+                  <Label htmlFor="phone" className="text-xs md:text-sm">Nomor Telepon</Label>
                   <Input
                     id="phone"
                     value={businessSettings.phone}
                     onChange={(e) => setBusinessSettings({ ...businessSettings, phone: e.target.value })}
+                    className="text-sm h-9 md:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email Bisnis</Label>
+                  <Label htmlFor="email" className="text-xs md:text-sm">Email Bisnis</Label>
                   <Input
                     id="email"
                     type="email"
                     value={businessSettings.email}
                     onChange={(e) => setBusinessSettings({ ...businessSettings, email: e.target.value })}
+                    className="text-sm h-9 md:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="website">Website</Label>
+                  <Label htmlFor="website" className="text-xs md:text-sm">Website</Label>
                   <Input
                     id="website"
                     value={businessSettings.website}
                     onChange={(e) => setBusinessSettings({ ...businessSettings, website: e.target.value })}
+                    className="text-sm h-9 md:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="taxId">NPWP</Label>
+                  <Label htmlFor="taxId" className="text-xs md:text-sm">NPWP</Label>
                   <Input
                     id="taxId"
                     value={businessSettings.taxId}
                     onChange={(e) => setBusinessSettings({ ...businessSettings, taxId: e.target.value })}
+                    className="text-sm h-9 md:h-10"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="currency">Mata Uang</Label>
+                  <Label htmlFor="currency" className="text-xs md:text-sm">Mata Uang</Label>
                   <Select
                     value={businessSettings.currency}
                     onValueChange={(value) => setBusinessSettings({ ...businessSettings, currency: value })}

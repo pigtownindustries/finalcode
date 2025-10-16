@@ -348,27 +348,27 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-cyan-50">
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-3xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white">
-            <CardTitle className="flex items-center gap-3 text-2xl font-bold">
-              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                <Clock className="h-8 w-8" />
+        <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-bold">
+              <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
+                <Clock className="h-5 w-5 md:h-8 md:w-8" />
               </div>
               Kontrol Presensi Karyawan
             </CardTitle>
-            <CardDescription className="text-purple-100 text-lg">Memuat data presensi...</CardDescription>
+            <CardDescription className="text-purple-100 text-sm md:text-lg">Memuat data presensi...</CardDescription>
           </CardHeader>
-          <CardContent className="p-12">
-            <div className="flex flex-col items-center justify-center space-y-6">
+          <CardContent className="p-6 md:p-12">
+            <div className="flex flex-col items-center justify-center space-y-4 md:space-y-6">
               <div className="relative">
-                <div className="w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
+                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 w-16 h-16 md:w-20 md:h-20 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
               </div>
               <div className="text-center space-y-2">
-                <div className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                <div className="text-base md:text-xl font-semibold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
                   Sedang memuat data...
                 </div>
-                <div className="text-gray-500">Mohon tunggu sebentar</div>
+                <div className="text-sm md:text-base text-gray-500">Mohon tunggu sebentar</div>
               </div>
             </div>
           </CardContent>
@@ -378,39 +378,39 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-cyan-50 p-6">
-      <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-cyan-50 p-3 md:p-6">
+      <div className="space-y-4 md:space-y-8 max-w-7xl mx-auto">
         {/* Main Attendance Card */}
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-all duration-500">
-          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white relative overflow-hidden">
+        <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-all duration-500">
+          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white relative overflow-hidden p-4 md:p-6">
             <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-blue-600/20 to-cyan-600/20 animate-pulse"></div>
             <div className="relative z-10">
-              <CardTitle className="flex items-center gap-4 text-3xl font-bold mb-2">
-                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                  <Sparkles className="h-10 w-10" />
+              <CardTitle className="flex items-center gap-2 md:gap-4 text-lg md:text-2xl lg:text-3xl font-bold mb-2">
+                <div className="p-2 md:p-3 bg-white/20 rounded-xl md:rounded-2xl backdrop-blur-sm">
+                  <Sparkles className="h-6 w-6 md:h-8 lg:h-10 md:w-8 lg:w-10" />
                 </div>
                 <span className="bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
                   Kontrol Presensi Karyawan
                 </span>
               </CardTitle>
-              <CardDescription className="text-purple-100 text-lg flex items-center gap-2">
-                <Zap className="h-5 w-5" />
-                Pantau presensi dan foto karyawan secara real-time dengan fitur hapus foto yang fleksibel
+              <CardDescription className="text-purple-100 text-xs md:text-sm lg:text-lg flex items-center gap-1 md:gap-2">
+                <Zap className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="line-clamp-2">Pantau presensi dan foto karyawan secara real-time dengan fitur hapus foto yang fleksibel</span>
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="space-y-8">
+          <CardContent className="p-3 md:p-6 lg:p-8">
+            <div className="space-y-4 md:space-y-8">
               {employees.length === 0 ? (
-                <div className="text-center py-20">
-                  <div className="relative mb-8">
-                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
-                      <Users className="h-16 w-16 text-white" />
+                <div className="text-center py-12 md:py-20">
+                  <div className="relative mb-6 md:mb-8">
+                    <div className="w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
+                      <Users className="h-10 w-10 md:h-16 md:w-16 text-white" />
                     </div>
-                    <div className="absolute inset-0 w-32 h-32 mx-auto bg-gradient-to-br from-purple-400 to-cyan-400 rounded-full animate-ping opacity-20"></div>
+                    <div className="absolute inset-0 w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-purple-400 to-cyan-400 rounded-full animate-ping opacity-20"></div>
                   </div>
-                  <p className="text-2xl font-bold text-gray-800 mb-4">Belum ada data karyawan</p>
-                  <p className="text-gray-600 text-lg">Silakan tambahkan data karyawan ke database untuk mulai menggunakan fitur ini</p>
+                  <p className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4">Belum ada data karyawan</p>
+                  <p className="text-sm md:text-base lg:text-lg text-gray-600">Silakan tambahkan data karyawan ke database untuk mulai menggunakan fitur ini</p>
                 </div>
               ) : (
                 employees.map((employee, index) => {
@@ -428,45 +428,45 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   return (
                     <div 
                       key={employee.id} 
-                      className="group relative p-8 border-0 rounded-3xl bg-gradient-to-br from-white to-gray-50 hover:from-purple-50 hover:to-cyan-50 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-500"
+                      className="group relative p-4 md:p-6 lg:p-8 border-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white to-gray-50 hover:from-purple-50 hover:to-cyan-50 shadow-md md:shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-500"
                       style={{
                         animationDelay: `${index * 100}ms`,
                         animation: 'slideInUp 0.6s ease-out forwards'
                       }}
                     >
                       {/* Gradient Border Effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                      <div className="absolute inset-[1px] bg-gradient-to-br from-white to-gray-50 group-hover:from-purple-50 group-hover:to-cyan-50 rounded-3xl"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                      <div className="absolute inset-[1px] bg-gradient-to-br from-white to-gray-50 group-hover:from-purple-50 group-hover:to-cyan-50 rounded-2xl md:rounded-3xl"></div>
                       
                       <div className="relative z-10">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-8">
-                          <div className="flex items-center gap-6">
-                            <div className="relative">
-                              <Avatar className="h-20 w-20 ring-4 ring-purple-200 group-hover:ring-purple-400 transition-all duration-300">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-8 mb-4 md:mb-8">
+                          <div className="flex items-center gap-3 md:gap-6">
+                            <div className="relative flex-shrink-0">
+                              <Avatar className="h-14 w-14 md:h-16 lg:h-20 md:w-16 lg:w-20 ring-2 md:ring-4 ring-purple-200 group-hover:ring-purple-400 transition-all duration-300">
                                 <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover" />
-                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-xl font-bold">
+                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-base md:text-xl font-bold">
                                   {employee.name
                                     .split(" ")
                                     .map((n) => n[0])
                                     .join("")}
                                 </AvatarFallback>
                               </Avatar>
-                              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                                <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                              <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                                <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-pulse"></div>
                               </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-2xl text-gray-800 mb-1">{employee.name}</p>
-                              <p className="text-gray-600 text-lg mb-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-base md:text-xl lg:text-2xl text-gray-800 mb-1 truncate">{employee.name}</p>
+                              <p className="text-xs md:text-sm lg:text-base text-gray-600 mb-2 md:mb-3 truncate">
                                 {employee.role === "cashier" ? "💰 Kasir" : "👤 Karyawan"} • {employee.email}
                               </p>
                               {latestAttendance && (
-                                <div className="flex items-center gap-4">
+                                <div className="flex flex-wrap items-center gap-2 md:gap-4">
                                   {getStatusBadge(latestAttendance.status)}
                                   {latestAttendance.branches && (
-                                    <div className="flex items-center gap-2 text-gray-600 bg-white/70 px-3 py-1 rounded-xl backdrop-blur-sm">
-                                      <MapPin className="h-4 w-4" />
-                                      <span className="font-medium">{latestAttendance.branches.name}</span>
+                                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-600 bg-white/70 px-2 md:px-3 py-1 rounded-lg md:rounded-xl backdrop-blur-sm">
+                                      <MapPin className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                                      <span className="font-medium truncate max-w-[100px] md:max-w-none">{latestAttendance.branches.name}</span>
                                     </div>
                                   )}
                                 </div>
@@ -474,22 +474,23 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                             </div>
                           </div>
                           
-                          <div className="text-center lg:text-right bg-gradient-to-br from-green-100 to-emerald-100 p-6 rounded-2xl">
-                            <p className="text-green-700 font-medium mb-2 flex items-center justify-center lg:justify-end gap-2">
-                              <TrendingUp className="h-4 w-4" />
-                              Tingkat Kehadiran
+                          <div className="text-center lg:text-right bg-gradient-to-br from-green-100 to-emerald-100 p-3 md:p-4 lg:p-6 rounded-xl md:rounded-2xl flex-shrink-0">
+                            <p className="text-xs md:text-sm text-green-700 font-medium mb-1 md:mb-2 flex items-center justify-center lg:justify-end gap-1 md:gap-2">
+                              <TrendingUp className="h-3 w-3 md:h-4 md:w-4" />
+                              <span className="hidden md:inline">Tingkat Kehadiran</span>
+                              <span className="md:hidden">Kehadiran</span>
                             </p>
-                            <div className="flex items-center justify-center lg:justify-end gap-3">
-                              <div className="text-4xl font-black bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                            <div className="flex items-center justify-center lg:justify-end gap-2 md:gap-3">
+                              <div className="text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
                                 {attendance.attendanceRate}%
                               </div>
-                              <CheckCircle className="h-8 w-8 text-green-500" />
+                              <CheckCircle className="h-5 w-5 md:h-6 lg:h-8 md:w-6 lg:w-8 text-green-500" />
                             </div>
                           </div>
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
                           {[
                             { icon: CheckCircle, label: "Hadir", value: attendance.presentDays, suffix: "hari", color: "from-green-500 to-emerald-500", bg: "from-green-50 to-emerald-50" },
                             { icon: XCircle, label: "Terlambat", value: attendance.lateDays, suffix: "hari", color: "from-red-500 to-rose-500", bg: "from-red-50 to-rose-50" },
@@ -498,53 +499,53 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                           ].map((stat, statIndex) => (
                             <div 
                               key={statIndex}
-                              className={`relative text-center p-6 bg-gradient-to-br ${stat.bg} rounded-2xl border-0 hover:shadow-lg transform hover:scale-105 transition-all duration-300 group/stat overflow-hidden`}
+                              className={`relative text-center p-3 md:p-4 lg:p-6 bg-gradient-to-br ${stat.bg} rounded-xl md:rounded-2xl border-0 hover:shadow-lg transform hover:scale-105 transition-all duration-300 group/stat overflow-hidden`}
                             >
                               <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover/stat:opacity-10 transition-opacity duration-300" style={{backgroundImage: `linear-gradient(135deg, ${stat.color})`}}></div>
                               <div className="relative z-10">
-                                <div className="flex items-center justify-center gap-2 mb-4">
-                                  <div className={`p-2 rounded-xl bg-gradient-to-r ${stat.color} shadow-lg`}>
-                                    <stat.icon className="h-5 w-5 text-white" />
+                                <div className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 mb-2 md:mb-4">
+                                  <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-r ${stat.color} shadow-lg`}>
+                                    <stat.icon className="h-3 w-3 md:h-4 lg:h-5 md:w-4 lg:w-5 text-white" />
                                   </div>
-                                  <span className="text-sm font-semibold text-gray-700">{stat.label}</span>
+                                  <span className="text-[10px] md:text-xs lg:text-sm font-semibold text-gray-700">{stat.label}</span>
                                 </div>
-                                <p className="text-3xl font-black text-gray-800 mb-1">{stat.value}</p>
-                                <p className="text-xs text-gray-500 font-medium">{stat.suffix} bulan ini</p>
+                                <p className="text-xl md:text-2xl lg:text-3xl font-black text-gray-800 mb-0.5 md:mb-1">{stat.value}</p>
+                                <p className="text-[9px] md:text-[10px] lg:text-xs text-gray-500 font-medium">{stat.suffix} bulan ini</p>
                               </div>
                             </div>
                           ))}
                         </div>
 
                         {/* Photos Section */}
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-8 border-0">
-                          <div className="flex items-center justify-between mb-6">
-                            <p className="font-bold text-xl text-gray-800 flex items-center gap-3">
-                              <Camera className="h-6 w-6 text-purple-600" />
-                              Foto Presensi Terbaru
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl md:rounded-2xl p-4 md:p-6 lg:p-8 border-0">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-6 mb-4 md:mb-6">
+                            <p className="font-bold text-sm md:text-base lg:text-xl text-gray-800 flex items-center gap-2 md:gap-3">
+                              <Camera className="h-4 w-4 md:h-5 lg:h-6 md:w-5 lg:w-6 text-purple-600" />
+                              <span className="line-clamp-1">Foto Presensi Terbaru</span>
                             </p>
-                            <div className="flex gap-4">
+                            <div className="flex gap-2 md:gap-4 w-full sm:w-auto">
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button
-                                    size="lg"
+                                    size="sm"
                                     variant="outline"
-                                    className="gap-3 bg-white/80 backdrop-blur-sm border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-all duration-300 rounded-xl shadow-lg"
+                                    className="flex-1 sm:flex-none gap-2 bg-white/80 backdrop-blur-sm border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-all duration-300 rounded-lg md:rounded-xl shadow-md text-xs md:text-sm h-9 md:h-10"
                                     onClick={() => {
                                       setSelectedEmployee(employee)
                                       loadEmployeePhotos(employee.id)
                                     }}
                                   >
-                                    <Eye className="h-5 w-5" />
-                                    Lihat Semua
+                                    <Eye className="h-3 w-3 md:h-4 md:w-4" />
+                                    <span>Lihat Semua</span>
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto rounded-3xl border-0 bg-white/95 backdrop-blur-xl">
-                                  <DialogHeader className="pb-6">
-                                    <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                                <DialogContent className="max-w-[95vw] md:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl md:rounded-3xl border-0 bg-white/95 backdrop-blur-xl">
+                                  <DialogHeader className="pb-4 md:pb-6">
+                                    <DialogTitle className="text-lg md:text-2xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
                                       📸 Foto Presensi - {employee.name}
                                     </DialogTitle>
                                   </DialogHeader>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
                                     {employeePhotos.map((record, photoIndex) => (
                                       <div 
                                         key={record.id} 
@@ -663,53 +664,53 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
         {/* Photo Manager Modal */}
         <Dialog open={isPhotoManagerOpen} onOpenChange={handleClosePhotoManager}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-y-auto rounded-3xl border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
-            <DialogHeader className="pb-8 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-t-3xl -mt-6 -mx-6 px-8 py-6">
-              <DialogTitle className="text-3xl font-bold flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-                  <Settings className="h-8 w-8" />
+          <DialogContent className="max-w-[95vw] md:max-w-6xl lg:max-w-7xl max-h-[95vh] overflow-y-auto rounded-2xl md:rounded-3xl border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
+            <DialogHeader className="pb-4 md:pb-8 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-t-2xl md:rounded-t-3xl -mt-6 -mx-6 px-4 md:px-8 py-4 md:py-6">
+              <DialogTitle className="text-lg md:text-2xl lg:text-3xl font-bold flex items-center gap-2 md:gap-3">
+                <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
+                  <Settings className="h-5 w-5 md:h-6 lg:h-8 md:w-6 lg:w-8" />
                 </div>
-                Manajemen Foto Presensi - {selectedEmployeeName}
+                <span className="truncate">Manajemen Foto - {selectedEmployeeName}</span>
               </DialogTitle>
-              <DialogDescription className="text-purple-100 text-lg">
-                🎯 Kelola foto presensi karyawan - hapus foto individual atau dalam jumlah banyak dengan antarmuka yang modern
+              <DialogDescription className="text-purple-100 text-xs md:text-sm lg:text-lg line-clamp-2">
+                🎯 Kelola foto presensi karyawan - hapus foto individual atau dalam jumlah banyak
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-8 p-6">
+            <div className="space-y-4 md:space-y-8 p-3 md:p-6">
               {/* Enhanced Controls */}
-              <div className="bg-gradient-to-r from-purple-50 to-cyan-50 rounded-2xl p-6 border border-purple-200/50">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-xl">
+              <div className="bg-gradient-to-r from-purple-50 to-cyan-50 rounded-xl md:rounded-2xl p-3 md:p-6 border border-purple-200/50">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 md:gap-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-6 w-full lg:w-auto">
+                    <div className="flex items-center gap-2 md:gap-3 bg-white/70 backdrop-blur-sm px-3 md:px-4 py-2 rounded-lg md:rounded-xl w-full sm:w-auto">
                       <Checkbox 
                         checked={photos.length > 0 && selectedPhotos.size === photos.length}
                         onCheckedChange={handleSelectAll}
-                        className="w-5 h-5"
+                        className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0"
                       />
-                      <span className="font-bold text-gray-800">
+                      <span className="font-bold text-xs md:text-sm lg:text-base text-gray-800 truncate">
                         Pilih Semua ({selectedPhotos.size}/{photos.length})
                       </span>
                     </div>
                     
                     {selectedPhotos.size > 0 && (
-                      <Badge className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-4 py-2 text-sm font-bold shadow-lg animate-bounce">
+                      <Badge className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold shadow-lg animate-bounce w-full sm:w-auto justify-center">
                         ✨ {selectedPhotos.size} foto dipilih
                       </Badge>
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 md:gap-4 w-full lg:w-auto">
                     {selectedPhotos.size > 0 && (
                       <Button
                         variant="destructive"
-                        size="lg"
+                        size="sm"
                         onClick={handleDeleteSelected}
                         disabled={deleting}
-                        className="gap-3 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+                        className="flex-1 lg:flex-none gap-2 md:gap-3 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-lg md:rounded-xl h-9 md:h-10 text-xs md:text-sm"
                       >
-                        <Trash2 className="w-5 h-5" />
-                        {deleting ? "🔄 Menghapus..." : `🗑️ Hapus ${selectedPhotos.size} Foto`}
+                        <Trash2 className="w-3.5 h-3.5 md:w-5 md:h-5" />
+                        <span className="truncate">{deleting ? "Menghapus..." : `Hapus ${selectedPhotos.size} Foto`}</span>
                       </Button>
                     )}
                   </div>
@@ -718,22 +719,22 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
               {/* Enhanced Photo Grid */}
               {photos.length === 0 ? (
-                <div className="text-center py-24">
-                  <div className="relative mb-8">
-                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center">
-                      <Camera className="h-16 w-16 text-white" />
+                <div className="text-center py-12 md:py-24">
+                  <div className="relative mb-6 md:mb-8">
+                    <div className="w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center">
+                      <Camera className="h-10 w-10 md:h-16 md:w-16 text-white" />
                     </div>
-                    <div className="absolute inset-0 w-32 h-32 mx-auto bg-gradient-to-br from-gray-200 to-gray-300 rounded-full animate-ping opacity-30"></div>
+                    <div className="absolute inset-0 w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-gray-200 to-gray-300 rounded-full animate-ping opacity-30"></div>
                   </div>
-                  <p className="text-2xl font-bold text-gray-800 mb-4">
+                  <p className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4">
                     📷 Belum ada foto presensi
                   </p>
-                  <p className="text-gray-600 text-lg">
+                  <p className="text-sm md:text-base lg:text-lg text-gray-600">
                     Belum ada foto presensi untuk karyawan ini
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-6">
                   {photos.map((photo, photoIndex) => (
                     <div 
                       key={photo.id} 
@@ -744,8 +745,8 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                       }}
                     >
                       {/* Enhanced Selection Checkbox */}
-                      <div className="absolute top-3 left-3 z-20">
-                        <div className="bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-lg">
+                      <div className="absolute top-2 md:top-3 left-2 md:left-3 z-20">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
                           <Checkbox
                             checked={selectedPhotos.has(photo.id)}
                             onCheckedChange={() => handleSelectPhoto(photo.id)}

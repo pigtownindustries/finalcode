@@ -396,52 +396,54 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* Header Section - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
             📊 3D Analytics Dashboard
           </h2>
-          <p className="text-muted-foreground">Data real-time dengan visualisasi 3D modern</p>
+          <p className="text-xs md:text-sm text-muted-foreground">Data real-time dengan visualisasi 3D modern</p>
         </div>
         <Button 
           variant="outline" 
           size="sm" 
           onClick={() => { fetchDashboardData(); onRefreshData(); }} 
-          className="gap-2 bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20"
+          className="gap-2 bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 w-full sm:w-auto text-xs md:text-sm"
         >
-          <RefreshCw className="h-4 w-4" />
+          <RefreshCw className="h-3.5 w-3.5 md:h-4 md:w-4" />
           Refresh Data
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Grid Layout - Mobile Responsive */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         
-        {/* Revenue & Expense Chart 3D */}
-        <Card className="col-span-2 bg-gradient-to-br from-slate-900/20 to-blue-900/20 border-white/10 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-white">
-                <BarChart3 className="h-5 w-5 text-blue-400" />
+        {/* Revenue & Expense Chart 3D - Mobile Responsive */}
+        <Card className="lg:col-span-2 bg-gradient-to-br from-slate-900/20 to-blue-900/20 border-white/10 backdrop-blur-sm">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 md:p-6">
+            <div className="w-full sm:w-auto">
+              <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
+                <BarChart3 className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
                 Revenue vs Expenses 3D
               </CardTitle>
-              <CardDescription>Data real-time dengan efek 3D dan animasi</CardDescription>
+              <CardDescription className="text-xs md:text-sm">Data real-time dengan efek 3D dan animasi</CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 md:p-6">
             <RevenueExpenseChart3D />
           </CardContent>
         </Card>
 
-        {/* Performance Metrics */}
+        {/* Performance Metrics - Mobile Responsive */}
         <Card className="bg-gradient-to-br from-slate-900/20 to-purple-900/20 border-white/10 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <Activity className="h-5 w-5 text-purple-400" />
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
+              <Activity className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
               Statistik Utama
             </CardTitle>
-            <CardDescription>Ringkasan performa bisnis</CardDescription>
+            <CardDescription className="text-xs md:text-sm">Ringkasan performa bisnis</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6 pt-0">
             {dashboardStats && [
               {
                 title: "Total Revenue",

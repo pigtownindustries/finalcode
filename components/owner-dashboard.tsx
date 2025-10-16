@@ -56,10 +56,9 @@ import PointsManagement from "./points-management"
 import KasbonManagement from "./kasbon-management"
 import { KelolaPengeluaranCabang } from "./kelolapengeluarancabang"
 import { OverviewAndAnalytics } from "./overviewdananalytic"
-import { PinAuthentication } from "./pin-authentication"
 
 // Komponen Utama
-export function OwnerDashboard(): JSX.Element {
+export function OwnerDashboard() {
   const router = useRouter()
   const { toast } = useToast()
 
@@ -81,7 +80,6 @@ export function OwnerDashboard(): JSX.Element {
   })
   const [realTimeEnabled, setRealTimeEnabled] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "error">("disconnected")
-  const [pinAuthOpen, setPinAuthOpen] = useState(false)
   const [currentUserData, setCurrentUserData] = useState<any>(null)
 
   // Tab configuration untuk mobile responsive
@@ -98,44 +96,30 @@ export function OwnerDashboard(): JSX.Element {
     { value: "reports", label: "Laporan", icon: BarChart3, shortLabel: "Report" }
   ]
 
-  // Initialize dashboard dengan PIN authentication
+  // Initialize dashboard - PIN handled by page.tsx
   useEffect(() => {
     const initializeDashboard = async () => {
-      // Cek apakah user sudah login di auth
       const user = await getCurrentUser()
       if (!user) {
         router.push("/login")
         return
       }
 
-      // Langsung set loading false, biar PIN modal yang handle
-      setLoading(false)
+      setCurrentUserData(user)
+      setAccountSettings((prev) => ({
+        ...prev,
+        email: user.email || "",
+        pin: (user as any).pin || "",
+        currentPin: (user as any).pin || "",
+        currentPassword: "",
+      }))
       
-      // Buka PIN authentication
-      setPinAuthOpen(true)
+      setLoading(false)
+      testDatabaseConnection()
     }
 
     initializeDashboard()
   }, [])
-
-  // Handle PIN authentication success
-  const handlePinSuccess = (userData: any) => {
-    console.log("✅ PIN authentication successful", userData)
-    
-    // Langsung set data dari userData yang sudah didapat
-    setCurrentUserData(userData)
-    setAccountSettings((prev) => ({
-      ...prev,
-      email: userData.email || "",
-      pin: userData.pin || "",
-      currentPin: userData.pin || "",
-      currentPassword: "",
-    }))
-    
-    setPinAuthOpen(false)
-    setLoading(false)
-    testDatabaseConnection()
-  }
 
   // Fungsi Test Koneksi Database
   const testDatabaseConnection = async () => {
@@ -267,18 +251,6 @@ export function OwnerDashboard(): JSX.Element {
 
   return (
     <>
-      {/* PIN Authentication Modal */}
-      <PinAuthentication 
-        isOpen={pinAuthOpen}
-        onSuccess={handlePinSuccess}
-        onCancel={() => {
-          setPinAuthOpen(false)
-          router.push("/dashboard")
-        }}
-        title="Akses Owner Dashboard"
-        description="Masukkan PIN untuk mengakses dashboard owner"
-      />
-
       {/* Main Dashboard Content */}
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 relative overflow-hidden">
         {/* Enhanced Background Effects */}
@@ -307,63 +279,55 @@ export function OwnerDashboard(): JSX.Element {
         </div>
 
         <div className="relative z-10 space-y-8 p-4 lg:p-6">
-          {/* Enhanced Header */}
+          {/* Enhanced Header - Mobile Optimized */}
           <div className="backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 rounded-3xl border border-white/20 dark:border-slate-700/50 shadow-2xl hover:shadow-3xl transition-all duration-500">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-6 lg:p-8">
-              <div className="flex items-start gap-4 lg:gap-6 mb-4 lg:mb-0">
+            {/* Mobile: Compact Single Row Layout */}
+            <div className="lg:hidden flex items-center justify-between p-4 gap-3">
+              {/* Left: Back Button + Logo + Title (Horizontal) */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={() => router.push("/dashboard")} 
-                  className="group gap-2 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm mt-3"
+                  className="flex-shrink-0 h-10 w-10 p-0 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-lg"
                 >
-                  <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
-                  Kembali
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
                 
-                <div className="flex items-center gap-4">
-                  {/* Logo dengan animasi bounce terus menerus + hover effect */}
-                  <div className="relative flex-shrink-0 group">
-                    <div>
-                      <img 
-                        src="/images/pigtown-logo.png" 
-                        alt="Pigtown Logo" 
-                        className="h-20 w-20 object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12" 
-                      />
-                    </div>
-                    <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl transition-all duration-300 group-hover:bg-blue-400/30 group-hover:blur-2xl" />
-                  </div>
-                  
-                  {/* Text yang sejajar vertikal tengah dengan logo */}
-                  <div className="flex flex-col justify-center">
-                    <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 bg-clip-text text-transparent leading-none">
-                      Owner Dashboard
-                    </h1>
-                    <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 font-medium mt-1 leading-none">
-                      Kelola seluruh operasional dengan data real-time dan analytics mendalam
-                    </p>
-                  </div>
+                <img 
+                  src="/images/pigtown-logo.png" 
+                  alt="Pigtown Logo" 
+                  className="h-12 w-12 object-contain flex-shrink-0" 
+                />
+                
+                <div className="flex flex-col min-w-0 flex-1">
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 bg-clip-text text-transparent leading-tight truncate">
+                    Owner Dashboard
+                  </h1>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight truncate">
+                    Kontrol penuh operasional
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 w-full lg:w-auto">
+              
+              {/* Right: Action Buttons (Icon Only) */}
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setRealTimeEnabled(!realTimeEnabled)}
-                  className={`gap-2 backdrop-blur-md transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 ${realTimeEnabled
-                      ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/30'
-                      : 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 hover:bg-gray-500/30'
+                  className={`h-10 w-10 p-0 backdrop-blur-md transition-all ${realTimeEnabled
+                      ? 'bg-green-500/20 text-green-700 border-green-500/30'
+                      : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
                     }`}
                 >
                   <RefreshCw className={`h-4 w-4 ${realTimeEnabled ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Realtime: {realTimeEnabled ? 'ON' : 'OFF'}</span>
                 </Button>
 
                 <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
                   <DialogTrigger asChild>
-                    <Button className="group gap-2 bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white border-0 hover:from-indigo-600/90 hover:to-purple-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm">
-                      <Settings className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
-                      <span className="hidden sm:inline">Settings</span>
+                    <Button className="h-10 w-10 p-0 bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white border-0 shadow-lg">
+                      <Settings className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-700/50 shadow-2xl">
@@ -507,6 +471,67 @@ export function OwnerDashboard(): JSX.Element {
                 </Dialog>
               </div>
             </div>
+            
+            {/* Desktop: Original Layout */}
+            <div className="hidden lg:flex items-center justify-between p-6 lg:p-8">
+              <div className="flex items-start gap-4 lg:gap-6">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => router.push("/dashboard")} 
+                  className="group gap-2 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm mt-3"
+                >
+                  <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
+                  Kembali
+                </Button>
+                
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-shrink-0 group">
+                    <div>
+                      <img 
+                        src="/images/pigtown-logo.png" 
+                        alt="Pigtown Logo" 
+                        className="h-20 w-20 object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12" 
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl transition-all duration-300 group-hover:bg-blue-400/30 group-hover:blur-2xl" />
+                  </div>
+                  
+                  <div className="flex flex-col justify-center">
+                    <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 bg-clip-text text-transparent leading-none">
+                      Owner Dashboard
+                    </h1>
+                    <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 font-medium mt-1 leading-none">
+                      Kelola seluruh operasional dengan data real-time dan analytics mendalam
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRealTimeEnabled(!realTimeEnabled)}
+                  className={`gap-2 backdrop-blur-md transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 ${realTimeEnabled
+                      ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/30'
+                      : 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 hover:bg-gray-500/30'
+                    }`}
+                >
+                  <RefreshCw className={`h-4 w-4 ${realTimeEnabled ? 'animate-spin' : ''}`} />
+                  <span>Realtime: {realTimeEnabled ? 'ON' : 'OFF'}</span>
+                </Button>
+
+                <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="group gap-2 bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white border-0 hover:from-indigo-600/90 hover:to-purple-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm">
+                      <Settings className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
+                      <span>Settings</span>
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
+            </div>
           </div>
 
           {/* Enhanced Main Content */}
@@ -529,7 +554,7 @@ export function OwnerDashboard(): JSX.Element {
                     </SheetTrigger>
                     <SheetContent
                       side="left"
-                      className="w-80 bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl border-r border-white/10"
+                      className="w-80 bg-gradient-to-br from-slate-900/95 via-red-900/95 to-slate-900/95 backdrop-blur-xl border-r border-white/10"
                     >
                       <SheetHeader className="mb-6">
                         <SheetTitle className="text-white flex items-center gap-2">
@@ -546,7 +571,7 @@ export function OwnerDashboard(): JSX.Element {
                             key={tab.value}
                             variant={activeTab === tab.value ? "default" : "ghost"}
                             className={`w-full justify-start group relative overflow-hidden transition-all duration-300 ${activeTab === tab.value
-                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                                ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30'
                                 : 'text-slate-300 hover:text-white hover:bg-white/10'
                               }`}
                             onClick={() => {

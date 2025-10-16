@@ -1088,26 +1088,27 @@ export default function BranchManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      {/* Header - RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Manajemen Cabang</h1>
-          <p className="text-muted-foreground">Kelola semua cabang barbershop Anda</p>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">Manajemen Cabang</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">Kelola semua cabang barbershop Anda</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 w-full sm:w-auto text-sm">
               <Plus className="h-4 w-4" />
-              Tambah Cabang
+              <span className="hidden xs:inline">Tambah Cabang</span>
+              <span className="xs:hidden">Tambah</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Tambah Cabang Baru</DialogTitle>
-              <DialogDescription>Isi informasi cabang baru yang akan ditambahkan</DialogDescription>
+              <DialogTitle className="text-lg md:text-xl">Tambah Cabang Baru</DialogTitle>
+              <DialogDescription className="text-xs md:text-sm">Isi informasi cabang baru yang akan ditambahkan</DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nama Cabang</Label>
                 <Input
@@ -1171,18 +1172,18 @@ export default function BranchManagement() {
         </Dialog>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex items-center gap-4">
+      {/* Search and Filter - RESPONSIVE */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Cari cabang berdasarkan nama, alamat, atau manager..."
+            placeholder="Cari cabang..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
+            className="w-full text-sm"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-40 md:w-48">
             <SelectValue placeholder="Filter status" />
           </SelectTrigger>
           <SelectContent>
@@ -1194,37 +1195,37 @@ export default function BranchManagement() {
         </Select>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Summary Cards - RESPONSIVE */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cabang</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium">Total Cabang</CardTitle>
+            <Building2 className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{branches.length}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-lg md:text-2xl font-bold">{branches.length}</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground truncate">
               {branches.filter((b) => b.status === "active").length} aktif
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Karyawan</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Total Karyawan</CardTitle>
+            <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{branches.reduce((sum, b) => sum + b.employees, 0)}</div>
-            <p className="text-xs text-muted-foreground">Di semua cabang</p>
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-lg md:text-2xl font-bold">{branches.reduce((sum, b) => sum + b.employees, 0)}</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground truncate">Di semua cabang</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pendapatan</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Total Pendapatan</CardTitle>
+            <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-sm md:text-2xl font-bold truncate">
               Rp{" "}
               {branches
                 .reduce((sum, b) => {
@@ -1233,27 +1234,27 @@ export default function BranchManagement() {
                 }, 0)
                 .toLocaleString("id-ID")}
             </div>
-            <p className="text-xs text-muted-foreground">Bulan ini</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">Bulan ini</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rata-rata Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Rata-rata Rating</CardTitle>
+            <Star className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-lg md:text-2xl font-bold">
               {branches.length > 0
                 ? (branches.reduce((sum, b) => sum + b.rating, 0) / branches.length).toFixed(1)
                 : "0"}
             </div>
-            <p className="text-xs text-muted-foreground">Dari semua cabang</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground truncate">Dari semua cabang</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Branches Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Branches Grid - RESPONSIVE */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
         {filteredBranches.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <Building2 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
@@ -1271,84 +1272,92 @@ export default function BranchManagement() {
           </div>
         ) : (
           filteredBranches.map((branch) => (
-            <Card key={branch.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${getStatusColor(branch.status)}`} />
-                    <div>
-                      <CardTitle className="text-lg">{branch.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {branch.address.split(",")[0]}
+            <Card key={branch.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+              <CardHeader className="p-4 pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${getStatusColor(branch.status)}`} />
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-base font-bold truncate leading-tight">{branch.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-1 mt-1 text-xs truncate">
+                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{branch.address.split(",")[0]}</span>
                       </CardDescription>
                     </div>
                   </div>
-                  {getStatusBadge(branch.status)}
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(branch.status)}
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Manager</p>
-                    <p className="font-medium">{branch.manager}</p>
+              <CardContent className="space-y-3 p-4 pt-0">
+                {/* Info Grid - Mobile Optimized */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs mb-0.5">Manager</p>
+                    <p className="font-semibold truncate text-sm">{branch.manager}</p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Karyawan</p>
-                    <p className="font-medium">{branch.employees} orang</p>
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs mb-0.5">Karyawan</p>
+                    <p className="font-semibold text-sm">{branch.employees} orang</p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Pendapatan</p>
-                    <p className="font-medium text-green-600">{branch.revenue}</p>
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs mb-0.5">Pendapatan</p>
+                    <p className="font-semibold text-green-600 truncate text-sm">{branch.revenue}</p>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Pelanggan</p>
-                    <p className="font-medium">{branch.customers}</p>
+                  <div className="min-w-0">
+                    <p className="text-muted-foreground text-xs mb-0.5">Pelanggan</p>
+                    <p className="font-semibold text-sm">{branch.customers}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-muted-foreground">
+                {/* Operating Hours & Rating */}
+                <div className="flex items-center justify-between text-xs border-t pt-2">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span className="font-medium">
                       {branch.openTime} - {branch.closeTime}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Star className="h-3 w-3 text-yellow-500 fill-current" />
-                    <span className="font-medium">{branch.rating}</span>
+                    <Star className="h-3.5 w-3.5 text-yellow-500 fill-current flex-shrink-0" />
+                    <span className="font-semibold">{branch.rating}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2 border-t">
+                {/* Action Buttons - Mobile Responsive */}
+                <div className="flex flex-col sm:flex-row items-stretch gap-2 pt-2 border-t">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 gap-1 bg-transparent hover:bg-primary/10"
+                    className="flex-1 gap-1.5 text-xs h-9 bg-transparent hover:bg-primary/10"
                     onClick={() => handleEditBranch(branch)}
                   >
-                    <Edit className="h-3 w-3" />
-                    Edit Cabang
+                    <Edit className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Edit Cabang</span>
+                    <span className="xs:hidden">Edit</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className={`gap-1 ${branch.status === "active"
-                      ? "text-orange-600 hover:text-orange-700"
-                      : "text-green-600 hover:text-green-700"
+                    className={`flex-1 gap-1.5 text-xs h-9 ${branch.status === "active"
+                      ? "text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      : "text-green-600 hover:text-green-700 hover:bg-green-50"
                       } bg-transparent`}
                     onClick={() => handleToggleStatus(branch.id, branch.status)}
                   >
-                    <Settings className="h-3 w-3" />
-                    {branch.status === "active" ? "Nonaktifkan" : "Aktifkan"}
+                    <Settings className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">{branch.status === "active" ? "Nonaktifkan" : "Aktifkan"}</span>
+                    <span className="xs:hidden">{branch.status === "active" ? "Off" : "On"}</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="gap-1 text-red-600 hover:text-red-700 bg-transparent hover:bg-red-50"
+                    className="sm:flex-none gap-1.5 text-xs h-9 text-red-600 hover:text-red-700 bg-transparent hover:bg-red-50"
                     onClick={() => handleDeleteBranch(branch.id)}
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span className="hidden xs:inline">Hapus</span>
                   </Button>
                 </div>
               </CardContent>
@@ -1398,47 +1407,50 @@ export default function BranchManagement() {
 
       {/* Enhanced Detail Dialog with Comprehensive Management */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] md:max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Manajemen Lengkap: {selectedBranch?.name}
+            <DialogTitle className="flex items-center gap-2 text-base md:text-lg">
+              <Building2 className="h-4 w-4 md:h-5 md:w-5" />
+              <span className="truncate">Manajemen: {selectedBranch?.name}</span>
             </DialogTitle>
-            <DialogDescription>Kontrol penuh untuk semua aspek operasional cabang</DialogDescription>
+            <DialogDescription className="text-xs md:text-sm">Kontrol penuh untuk semua aspek operasional cabang</DialogDescription>
           </DialogHeader>
 
           {selectedBranch && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="overview">Ringkasan</TabsTrigger>
-                <TabsTrigger value="shifts">Shift</TabsTrigger>
-                <TabsTrigger value="services">Layanan</TabsTrigger>
-                <TabsTrigger value="employees">Karyawan</TabsTrigger>
-                <TabsTrigger value="targets">Target</TabsTrigger>
-                <TabsTrigger value="settings">Pengaturan</TabsTrigger>
-                <TabsTrigger value="analytics">Analitik</TabsTrigger>
-              </TabsList>
+              {/* Mobile: Scrollable Tabs */}
+              <div className="overflow-x-auto -mx-6 px-6 md:mx-0 md:px-0">
+                <TabsList className="inline-flex md:grid w-max md:w-full md:grid-cols-7 gap-1 bg-muted/50 p-1">
+                  <TabsTrigger value="overview" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Ringkasan</TabsTrigger>
+                  <TabsTrigger value="shifts" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Shift</TabsTrigger>
+                  <TabsTrigger value="services" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Layanan</TabsTrigger>
+                  <TabsTrigger value="employees" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Karyawan</TabsTrigger>
+                  <TabsTrigger value="targets" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Target</TabsTrigger>
+                  <TabsTrigger value="settings" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Pengaturan</TabsTrigger>
+                  <TabsTrigger value="analytics" className="text-xs md:text-sm whitespace-nowrap px-3 md:px-4">Analitik</TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* Overview Tab */}
               <TabsContent value="overview" className="space-y-4">
                 {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Informasi Dasar</CardTitle>
+                      <CardTitle className="text-base md:text-lg">Informasi Dasar</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{selectedBranch.address}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <span className="text-xs md:text-sm line-clamp-2">{selectedBranch.address}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{selectedBranch.phone || "Tidak ada"}</span>
+                        <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs md:text-sm">{selectedBranch.phone || "Tidak ada"}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs md:text-sm">
                           {selectedBranch.openTime} - {selectedBranch.closeTime}
                         </span>
                       </div>
@@ -1603,43 +1615,45 @@ export default function BranchManagement() {
 
               {/* Employees Management Tab */}
               <TabsContent value="employees" className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Manajemen Karyawan</h3>
-                  <Button onClick={() => setIsEmployeeDialogOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <h3 className="text-base md:text-lg font-semibold">Manajemen Karyawan</h3>
+                  <Button onClick={() => setIsEmployeeDialogOpen(true)} className="gap-2 w-full sm:w-auto text-sm h-9">
+                    <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     Tambah Karyawan
                   </Button>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="grid gap-3 md:gap-4">
                   {(selectedBranch.branchEmployees || []).map((employee) => (
-                    <Card key={employee.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{employee.name}</h4>
-                            <Badge variant="outline">{employee.role}</Badge>
-                            <Badge variant={employee.isActive ? "default" : "secondary"}>
-                              {employee.isActive ? "Aktif" : "Nonaktif"}
-                            </Badge>
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <div>
-                              📞 {employee.phone} | 📧 {employee.email || "Tidak ada"}
+                    <Card key={employee.id} className="p-3 md:p-4">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                              <h4 className="font-medium text-sm md:text-base truncate">{employee.name}</h4>
+                              <Badge variant="outline" className="text-[10px] md:text-xs">{employee.role}</Badge>
+                              <Badge variant={employee.isActive ? "default" : "secondary"} className="text-[10px] md:text-xs">
+                                {employee.isActive ? "Aktif" : "Nonaktif"}
+                              </Badge>
                             </div>
-                            <div>
-                              💰 Gaji: Rp {employee.salary.toLocaleString("id-ID")} | Komisi: {employee.commission}%
+                            <div className="text-xs md:text-sm text-muted-foreground space-y-1">
+                              <div className="truncate">
+                                📞 {employee.phone} {employee.email && `| 📧 ${employee.email}`}
+                              </div>
+                              <div className="truncate">
+                                💰 Gaji: Rp {employee.salary.toLocaleString("id-ID")} | Komisi: {employee.commission}%
+                              </div>
+                              <div className="truncate">📅 Shift: {employee.shifts.join(", ") || "Belum ditentukan"}</div>
                             </div>
-                            <div>📅 Shift: {employee.shifts.join(", ") || "Belum ditentukan"}</div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 bg-transparent">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <div className="flex sm:flex-row flex-col items-center gap-1.5 flex-shrink-0">
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 bg-transparent">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </Card>
@@ -1649,63 +1663,65 @@ export default function BranchManagement() {
 
               {/* Targets Management Tab */}
               <TabsContent value="targets" className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Target & KPI</h3>
-                  <Button onClick={() => setIsTargetDialogOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <h3 className="text-base md:text-lg font-semibold">Target & KPI</h3>
+                  <Button onClick={() => setIsTargetDialogOpen(true)} className="gap-2 w-full sm:w-auto text-sm h-9">
+                    <Plus className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     Tambah Target
                   </Button>
                 </div>
 
-                <div className="grid gap-4">
+                <div className="grid gap-3 md:gap-4">
                   {(selectedBranch.targets || []).map((target) => (
-                    <Card key={target.id} className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <Target className="h-4 w-4" />
-                            <h4 className="font-medium">
-                              Target{" "}
-                              {target.type === "revenue"
-                                ? "Pendapatan"
-                                : target.type === "customers"
-                                  ? "Pelanggan"
-                                  : "Layanan"}
-                              (
-                              {target.period === "daily"
-                                ? "Harian"
-                                : target.period === "weekly"
-                                  ? "Mingguan"
-                                  : "Bulanan"}
-                              )
-                            </h4>
-                            <Badge variant={target.isActive ? "default" : "secondary"}>
-                              {target.isActive ? "Aktif" : "Nonaktif"}
-                            </Badge>
+                    <Card key={target.id} className="p-3 md:p-4">
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                              <Target className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                              <h4 className="font-medium text-xs md:text-sm line-clamp-2">
+                                Target{" "}
+                                {target.type === "revenue"
+                                  ? "Pendapatan"
+                                  : target.type === "customers"
+                                    ? "Pelanggan"
+                                    : "Layanan"}
+                                {" ("}
+                                {target.period === "daily"
+                                  ? "Harian"
+                                  : target.period === "weekly"
+                                    ? "Mingguan"
+                                    : "Bulanan"}
+                                )
+                              </h4>
+                              <Badge variant={target.isActive ? "default" : "secondary"} className="text-[10px] md:text-xs">
+                                {target.isActive ? "Aktif" : "Nonaktif"}
+                              </Badge>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs md:text-sm">
+                                <span>Progress:</span>
+                                <span className="font-medium">{((target.current / target.target) * 100).toFixed(1)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full"
+                                  style={{ width: `${Math.min((target.current / target.target) * 100, 100)}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {target.current.toLocaleString("id-ID")} / {target.target.toLocaleString("id-ID")}
+                              </div>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-sm">
-                              <span>Progress:</span>
-                              <span>{((target.current / target.target) * 100).toFixed(1)}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-primary h-2 rounded-full"
-                                style={{ width: `${Math.min((target.current / target.target) * 100, 100)}%` }}
-                              ></div>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {target.current.toLocaleString("id-ID")} / {target.target.toLocaleString("id-ID")}
-                            </div>
+                          <div className="flex sm:flex-row flex-col items-center gap-1.5 flex-shrink-0">
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-red-600 bg-transparent">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 bg-transparent">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
                         </div>
                       </div>
                     </Card>

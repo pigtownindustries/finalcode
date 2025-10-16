@@ -582,90 +582,99 @@ export function TransactionHistory() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Riwayat Transaksi</h1>
-          <p className="text-gray-600">Kelola dan pantau semua transaksi dengan filter fleksibel</p>
+    <div className="space-y-4 md:space-y-6 p-3 md:p-6">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">Riwayat Transaksi</h1>
+          <p className="text-xs md:text-sm text-gray-600">Kelola dan pantau semua transaksi dengan filter fleksibel</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTransactions} disabled={loading} className="gap-2">
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={fetchTransactions} 
+            disabled={loading} 
+            className="gap-2 flex-1 sm:flex-none text-xs md:text-sm h-9"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 md:h-4 md:w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden xs:inline">Refresh</span>
           </Button>
-          <Button variant="outline" className="gap-2" onClick={() => setShowExportModal(true)}>
-            <Download className="h-4 w-4" />
-            Export PDF
+          <Button 
+            variant="outline" 
+            className="gap-2 flex-1 sm:flex-none text-xs md:text-sm h-9" 
+            onClick={() => setShowExportModal(true)}
+          >
+            <Download className="h-3.5 w-3.5 md:h-4 md:w-4" />
+            <span className="hidden xs:inline">Export</span>
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Stats Cards - Mobile Responsive */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Transaksi</CardTitle>
+          <CardHeader className="pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600 line-clamp-1">Total Transaksi</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{totalTransactions}</div>
-            <p className="text-xs text-gray-600">{getDateFilterLabel()}</p>
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-lg md:text-2xl font-bold text-gray-900">{totalTransactions}</div>
+            <p className="text-[10px] md:text-xs text-gray-600 truncate">{getDateFilterLabel()}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Transaksi Selesai</CardTitle>
+          <CardHeader className="pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600 line-clamp-1">Transaksi Selesai</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{completedTransactions}</div>
-            <p className="text-xs text-gray-600">berhasil diselesaikan</p>
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-lg md:text-2xl font-bold text-green-600">{completedTransactions}</div>
+            <p className="text-[10px] md:text-xs text-gray-600 truncate">berhasil diselesaikan</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Pendapatan</CardTitle>
+          <CardHeader className="pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600 line-clamp-1">Total Pendapatan</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">Rp {totalRevenue.toLocaleString("id-ID")}</div>
-            <p className="text-xs text-gray-600">dari transaksi selesai</p>
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-sm md:text-2xl font-bold text-blue-600 truncate">Rp {totalRevenue.toLocaleString("id-ID")}</div>
+            <p className="text-[10px] md:text-xs text-gray-600 truncate">dari transaksi selesai</p>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Rata-rata Transaksi</CardTitle>
+          <CardHeader className="pb-2 p-3 md:p-4">
+            <CardTitle className="text-xs md:text-sm font-medium text-gray-600 line-clamp-2">Rata-rata Transaksi</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
+          <CardContent className="p-3 md:p-4 pt-0">
+            <div className="text-sm md:text-2xl font-bold text-purple-600 truncate">
               Rp{" "}
               {completedTransactions > 0 ? Math.round(totalRevenue / completedTransactions).toLocaleString("id-ID") : 0}
             </div>
-            <p className="text-xs text-gray-600">per transaksi</p>
+            <p className="text-[10px] md:text-xs text-gray-600 truncate">per transaksi</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters - Mobile Responsive */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="p-3 md:p-4 lg:p-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Filter className="h-4 w-4 md:h-5 md:w-5" />
             Filter & Pencarian
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-            <div className="relative md:col-span-2">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+        <CardContent className="p-3 md:p-4 lg:p-6 pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-4">
+            <div className="relative sm:col-span-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3.5 w-3.5 md:h-4 md:w-4" />
               <Input
-                placeholder="Cari transaksi, customer, karyawan..."
+                placeholder="Cari transaksi, customer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-9 md:pl-10 text-xs md:text-sm h-9 md:h-10"
               />
             </div>
 
             <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder="Pilih Periode" />
               </SelectTrigger>
               <SelectContent>
@@ -677,7 +686,7 @@ export function TransactionHistory() {
             </Select>
 
             <Select value={filterBranch} onValueChange={setFilterBranch} disabled={branchesLoading}>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder={branchesLoading ? "Memuat..." : "Pilih Cabang"} />
               </SelectTrigger>
               <SelectContent>
@@ -691,7 +700,7 @@ export function TransactionHistory() {
             </Select>
 
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger>
+              <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder="Pilih Status" />
               </SelectTrigger>
               <SelectContent>

@@ -98,7 +98,7 @@ export function LoginForm() {
       {/* Login Header */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-2">Masuk Akun</h2>
-        <p className="text-gray-600 text-sm">Silakan masuk dengan akun Anda</p>
+        <p className="text-gray-600 text-sm">Silahkan masuk dengan akun Anda</p>
       </div>
 
       {/* Login Form */}

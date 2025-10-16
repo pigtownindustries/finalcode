@@ -543,26 +543,27 @@ function EmployeeManagement() {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-4 md:space-y-6">
+            {/* Header - RESPONSIVE */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold text-foreground">Manajemen Karyawan</h1>
-                    <p className="text-muted-foreground">Kelola semua karyawan di sistem</p>
+                    <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground">Manajemen Karyawan</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Kelola semua karyawan di sistem</p>
                 </div>
                 <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="gap-2">
+                        <Button className="gap-2 w-full sm:w-auto text-sm">
                             <Plus className="h-4 w-4" />
-                            Tambah Karyawan
+                            <span className="hidden xs:inline">Tambah Karyawan</span>
+                            <span className="xs:hidden">Tambah</span>
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Tambah Karyawan Baru</DialogTitle>
-                            <DialogDescription>Isi informasi karyawan baru yang akan ditambahkan</DialogDescription>
+                            <DialogTitle className="text-lg md:text-xl">Tambah Karyawan Baru</DialogTitle>
+                            <DialogDescription className="text-xs md:text-sm">Isi informasi karyawan baru yang akan ditambahkan</DialogDescription>
                         </DialogHeader>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nama Lengkap *</Label>
                                 <Input
@@ -662,36 +663,36 @@ function EmployeeManagement() {
                 </Dialog>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Summary Cards - RESPONSIVE */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Karyawan</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                        <CardTitle className="text-xs md:text-sm font-medium">Total Karyawan</CardTitle>
+                        <Users className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{employees.length}</div>
-                        <p className="text-xs text-muted-foreground">{activeEmployees} aktif</p>
+                    <CardContent className="p-3 md:p-4 pt-0">
+                        <div className="text-lg md:text-2xl font-bold">{employees.length}</div>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">{activeEmployees} aktif</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Gaji</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                        <CardTitle className="text-xs md:text-sm font-medium">Total Gaji</CardTitle>
+                        <TrendingUp className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatRupiah(totalSalary)}</div>
-                        <p className="text-xs text-muted-foreground">Per bulan</p>
+                    <CardContent className="p-3 md:p-4 pt-0">
+                        <div className="text-sm md:text-2xl font-bold truncate">{formatRupiah(totalSalary)}</div>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">Per bulan</p>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tidak Hadir Hari Ini</CardTitle>
-                        <UserX className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                        <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Tidak Hadir Hari Ini</CardTitle>
+                        <UserX className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{absentEmployees.length}</div>
-                        <p className="text-xs text-muted-foreground">
+                    <CardContent className="p-3 md:p-4 pt-0">
+                        <div className="text-lg md:text-2xl font-bold">{absentEmployees.length}</div>
+                        <p className="text-[10px] md:text-xs text-muted-foreground truncate">
                             {absentEmployees.length > 0
                                 ? absentEmployees
                                     .slice(0, 2)
@@ -702,32 +703,32 @@ function EmployeeManagement() {
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Karyawan Cuti</CardTitle>
-                        <UserX className="h-4 w-4 text-muted-foreground" />
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                        <CardTitle className="text-xs md:text-sm font-medium">Karyawan Cuti</CardTitle>
+                        <UserX className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{employees.filter((e) => e.status === "on-leave").length}</div>
-                        <p className="text-xs text-muted-foreground">Sedang cuti</p>
+                    <CardContent className="p-3 md:p-4 pt-0">
+                        <div className="text-lg md:text-2xl font-bold">{employees.filter((e) => e.status === "on-leave").length}</div>
+                        <p className="text-[10px] md:text-xs text-muted-foreground">Sedang cuti</p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Filters - DISEDERHANAKAN */}
-            <div className="flex items-center gap-4">
+            {/* Filters - RESPONSIVE */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
                 <div className="flex-1">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="Cari karyawan berdasarkan nama, email, atau posisi..."
+                            placeholder="Cari karyawan..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
+                            className="pl-10 text-sm"
                         />
                     </div>
                 </div>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-full sm:w-40 md:w-48">
                         <SelectValue placeholder="Semua Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -739,16 +740,16 @@ function EmployeeManagement() {
                 </Select>
             </div>
 
-            {/* Employee Tabs */}
-            <Tabs defaultValue="grid" className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="grid">Grid View</TabsTrigger>
-                    <TabsTrigger value="transactions">Komisi</TabsTrigger>
-                    <TabsTrigger value="attendance">Presensi</TabsTrigger>
-                    <TabsTrigger value="payroll">Penggajian</TabsTrigger>
+            {/* Employee Tabs - RESPONSIVE */}
+            <Tabs defaultValue="grid" className="space-y-4 md:space-y-6">
+                <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto gap-1">
+                    <TabsTrigger value="grid" className="text-xs md:text-sm py-2">Grid View</TabsTrigger>
+                    <TabsTrigger value="transactions" className="text-xs md:text-sm py-2">Komisi</TabsTrigger>
+                    <TabsTrigger value="attendance" className="text-xs md:text-sm py-2">Presensi</TabsTrigger>
+                    <TabsTrigger value="payroll" className="text-xs md:text-sm py-2">Penggajian</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="grid" className="space-y-6">
+                <TabsContent value="grid" className="space-y-4 md:space-y-6">
                     {loading ? (
                         <div className="text-center py-12">
                             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -759,19 +760,19 @@ function EmployeeManagement() {
                             <p className="text-muted-foreground">Tidak ada karyawan ditemukan</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
                             {filteredEmployees.map((employee) => {
                                 const stats = employeeStats[employee.id] || { totalTransactions: 0, totalCommission: 0 }
                                 const attendance = employeeAttendance[employee.id] || { attendanceRate: 100 }
 
                                 return (
                                     <Card key={employee.id} className="hover:shadow-lg transition-shadow">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-12 w-12">
+                                        <CardHeader className="p-3 md:p-4 lg:p-6">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                                                    <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
                                                         <AvatarImage src={employee.avatar_url || "/images/pigtown-logo.png"} />
-                                                        <AvatarFallback className="bg-primary/10 text-primary">
+                                                        <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
                                                             {employee.name
                                                                 .split(" ")
                                                                 .map((n) => n[0])
@@ -779,56 +780,56 @@ function EmployeeManagement() {
                                                                 .toUpperCase()}
                                                         </AvatarFallback>
                                                     </Avatar>
-                                                    <div>
-                                                        <CardTitle className="text-lg">{employee.name}</CardTitle>
-                                                        <CardDescription>
+                                                    <div className="flex-1 min-w-0">
+                                                        <CardTitle className="text-sm md:text-base lg:text-lg truncate">{employee.name}</CardTitle>
+                                                        <CardDescription className="text-xs md:text-sm truncate">
                                                             {employee.position || "Karyawan"}
                                                         </CardDescription>
                                                     </div>
                                                 </div>
-                                                <Badge className={getStatusColor(employee.status)}>{getStatusText(employee.status)}</Badge>
+                                                <Badge className={`${getStatusColor(employee.status)} text-[10px] md:text-xs flex-shrink-0`}>{getStatusText(employee.status)}</Badge>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2 text-sm">
+                                        <CardContent className="space-y-3 md:space-y-4 p-3 md:p-4 lg:p-6 pt-0">
+                                            <div className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
                                                 <div className="flex items-center gap-2">
-                                                    <Mail className="h-3 w-3 text-muted-foreground" />
+                                                    <Mail className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                                                     <span className="truncate">{employee.email || "N/A"}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Phone className="h-3 w-3 text-muted-foreground" />
-                                                    <span>{employee.phone || "N/A"}</span>
+                                                    <Phone className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                                    <span className="truncate">{employee.phone || "N/A"}</span>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                            <div className="grid grid-cols-2 gap-2 md:gap-3 lg:gap-4 text-xs md:text-sm">
                                                 <div>
-                                                    <p className="text-muted-foreground">Transaksi</p>
+                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Transaksi</p>
                                                     <p className="font-medium">{stats.totalTransactions}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-muted-foreground">Komisi</p>
-                                                    <p className="font-medium">{formatRupiah(stats.totalCommission || 0)}</p>
+                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Komisi</p>
+                                                    <p className="font-medium text-xs md:text-sm truncate">{formatRupiah(stats.totalCommission || 0)}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-muted-foreground">Presensi</p>
+                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Presensi</p>
                                                     <p className="font-medium">{attendance.attendanceRate || 0}%</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-muted-foreground">Gaji Pokok</p>
-                                                    <p className="font-medium">{formatRupiah(employee.salary || 0)}</p>
+                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Gaji Pokok</p>
+                                                    <p className="font-medium text-xs md:text-sm truncate">{formatRupiah(employee.salary || 0)}</p>
                                                 </div>
                                             </div>
 
-                                            {/* 🔥 BAGIAN BARU: INFO HARI LIBUR */}
-                                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <span className="text-sm font-medium text-blue-800">Hari Libur</span>
-                                                    <Badge variant={employee.current_absent_days && employee.current_absent_days > (employee.max_absent_days || 4) ? "destructive" : "outline"}>
+                                            {/* 🔥 INFO HARI LIBUR - RESPONSIVE */}
+                                            <div className="p-2 md:p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                <div className="flex items-center justify-between mb-1 md:mb-2">
+                                                    <span className="text-xs md:text-sm font-medium text-blue-800">Hari Libur</span>
+                                                    <Badge variant={employee.current_absent_days && employee.current_absent_days > (employee.max_absent_days || 4) ? "destructive" : "outline"} className="text-[10px] md:text-xs">
                                                         {employee.current_absent_days || 0}/{employee.max_absent_days || 4}
                                                     </Badge>
                                                 </div>
-                                                <div className="text-xs text-blue-600">
+                                                <div className="text-[10px] md:text-xs text-blue-600">
                                                     {employee.current_absent_days && employee.current_absent_days > (employee.max_absent_days || 4) 
                                                         ? "⚠️ Melebihi batas" 
                                                         : "✅ Masih dalam batas"}
@@ -839,34 +840,34 @@ function EmployeeManagement() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="flex-1 gap-1 bg-transparent"
+                                                    className="flex-1 gap-1 bg-transparent text-xs md:text-sm h-8 md:h-9"
                                                     onClick={() => handleViewDetail(employee)}
                                                 >
                                                     <Eye className="h-3 w-3" />
-                                                    Detail
+                                                    <span className="hidden sm:inline">Detail</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="gap-1 bg-transparent"
+                                                    className="flex-1 gap-1 bg-transparent text-xs md:text-sm h-8 md:h-9"
                                                     onClick={() => handleEditEmployee(employee)}
                                                 >
                                                     <Edit className="h-3 w-3" />
-                                                    Edit
+                                                    <span className="hidden sm:inline">Edit</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="gap-1 text-blue-600 hover:text-blue-700 bg-transparent"
+                                                    className="flex-1 gap-1 text-blue-600 hover:text-blue-700 bg-transparent text-xs md:text-sm h-8 md:h-9"
                                                     onClick={() => handleOpenAbsenceDialog(employee)}
                                                 >
                                                     <Calendar className="h-3 w-3" />
-                                                    Libur
+                                                    <span className="hidden sm:inline">Libur</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="gap-1 text-red-600 hover:text-red-700 bg-transparent"
+                                                    className="gap-1 text-red-600 hover:text-red-700 bg-transparent text-xs md:text-sm h-8 md:h-9 px-2"
                                                     onClick={() => handleDeleteConfirmation(employee)}
                                                 >
                                                     <Trash2 className="h-3 w-3" />

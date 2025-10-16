@@ -564,68 +564,72 @@ export function KontrolGaji() {
             {filteredEmployees.map((employee) => {
               const bonusData = getBonusPenaltyData(employee.id);
               return (
-              <div key={employee.id} className="p-4 sm:p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-                  <div className="flex items-center gap-3 sm:gap-4 flex-1">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-red-100">
-                      <AvatarFallback className="bg-red-100 text-red-600 font-semibold">
+              <div key={employee.id} className="p-3 md:p-4 lg:p-6 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex flex-col gap-3 md:gap-4">
+                  {/* Header Section - Mobile Stacked */}
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <Avatar className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-red-100 flex-shrink-0">
+                      <AvatarFallback className="bg-red-100 text-red-600 font-semibold text-xs md:text-sm">
                         {employee.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1">
-                      <p className="font-semibold text-base sm:text-lg text-gray-800">{employee.name}</p>
-                      <p className="text-sm text-gray-500">{employee.email}</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs border-red-200 text-red-700">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm md:text-base lg:text-lg text-gray-800 truncate">{employee.name}</p>
+                      <p className="text-xs md:text-sm text-gray-500 truncate">{employee.email}</p>
+                      <div className="flex flex-wrap gap-1 md:gap-2 mt-1">
+                        <Badge variant="outline" className="text-[10px] md:text-xs border-red-200 text-red-700">
                           {employee.role}
                         </Badge>
-                        <Badge variant="outline" className="text-xs border-blue-200 text-blue-700">
-                          {employee.branch}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs border-green-200 text-green-700">
+                        {employee.branch && (
+                          <Badge variant="outline" className="text-[10px] md:text-xs border-blue-200 text-blue-700 truncate max-w-[120px]">
+                            {employee.branch}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px] md:text-xs border-green-200 text-green-700">
                           {employee.status}
                         </Badge>
                       </div>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
-                    <div className="text-left sm:text-right">
-                      <p className="text-sm text-gray-500">Gaji Bulan Ini</p>
-                      <p className="font-bold text-xl sm:text-2xl text-red-600">
-                        Rp {calculateTotalSalary(employee).toLocaleString("id-ID")}
-                      </p>
-                      <div className="flex gap-2 mt-2 sm:justify-end">
-                        <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
-                          Pokok: Rp {formatNominal(employee.baseSalary || 0)}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700">
-                          Komisi: Rp {formatNominal(getEarnedCommission(employee.id))}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
-                          Bonus: Rp {formatNominal(bonusData.bonus)}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs bg-red-100 text-red-700">
-                          Penalty: Rp {formatNominal(bonusData.penalty)}
-                        </Badge>
-                      </div>
+                  {/* Salary Section */}
+                  <div className="bg-gray-50 p-2 md:p-3 rounded-lg">
+                    <p className="text-xs md:text-sm text-gray-500 mb-1">Gaji Bulan Ini</p>
+                    <p className="font-bold text-lg md:text-xl lg:text-2xl text-red-600 mb-2">
+                      Rp {calculateTotalSalary(employee).toLocaleString("id-ID")}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2">
+                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-green-100 text-green-700 justify-center truncate">
+                        Pokok: Rp {formatNominal(employee.baseSalary || 0)}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-yellow-100 text-yellow-700 justify-center truncate">
+                        Komisi: Rp {formatNominal(getEarnedCommission(employee.id))}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-blue-100 text-blue-700 justify-center truncate">
+                        Bonus: Rp {formatNominal(bonusData.bonus)}
+                      </Badge>
+                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-red-100 text-red-700 justify-center truncate">
+                        Penalty: Rp {formatNominal(bonusData.penalty)}
+                      </Badge>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                      <Button 
-                        onClick={() => openKelolaGajiModal(employee)}
-                        className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
-                        size="sm"
-                      >
-                        <Settings className="h-4 w-4 mr-2" /> Kelola Gaji
-                      </Button>
-                      <Button 
-                        onClick={() => openSlipGajiModal(employee)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                        size="sm"
-                      >
-                        <Receipt className="h-4 w-4 mr-2" /> Slip Gaji
-                      </Button>
-                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      onClick={() => openKelolaGajiModal(employee)}
+                      className="bg-red-600 hover:bg-red-700 text-white flex-1 h-9 text-xs md:text-sm"
+                      size="sm"
+                    >
+                      <Settings className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Kelola Gaji
+                    </Button>
+                    <Button 
+                      onClick={() => openSlipGajiModal(employee)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white flex-1 h-9 text-xs md:text-sm"
+                      size="sm"
+                    >
+                      <Receipt className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Slip Gaji
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -839,28 +843,28 @@ export function KontrolGaji() {
           </Dialog>
 
           <Dialog open={showSlipModal} onOpenChange={setShowSlipModal}>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader className="border-b border-gray-200 pb-4">
-                <DialogTitle className="text-xl text-gray-800 flex items-center gap-2">
-                  <Receipt className="h-5 w-5 text-red-600" />
-                  Slip Gaji - {selectedEmployee?.name}
+            <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="border-b border-gray-200 pb-3 md:pb-4">
+                <DialogTitle className="text-base md:text-xl text-gray-800 flex items-center gap-2">
+                  <Receipt className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
+                  <span className="truncate">Slip Gaji - {selectedEmployee?.name}</span>
                 </DialogTitle>
               </DialogHeader>
 
               {selectedEmployee && (
-                <div className="space-y-6 py-4">
+                <div className="space-y-4 md:space-y-6 py-3 md:py-4">
                   <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
-                    <div className="p-6 bg-gradient-to-r from-red-50 to-gray-50 border-b border-gray-200 rounded-t-lg">
-                      <h3 className="text-center text-2xl font-bold text-gray-800 mb-2">SLIP GAJI</h3>
-                      <p className="text-center text-sm text-gray-600">PT. Barbershop Indonesia</p>
+                    <div className="p-4 md:p-6 bg-gradient-to-r from-red-50 to-gray-50 border-b border-gray-200 rounded-t-lg">
+                      <h3 className="text-center text-lg md:text-2xl font-bold text-gray-800 mb-1 md:mb-2">SLIP GAJI</h3>
+                      <p className="text-center text-xs md:text-sm text-gray-600">PT. Barbershop Indonesia</p>
                     </div>
-                    <div className="p-6">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-6 pb-4 border-b border-gray-200">
+                    <div className="p-4 md:p-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm mb-4 md:mb-6 pb-3 md:pb-4 border-b border-gray-200">
                           <div className="space-y-1">
-                              <p><span className="text-gray-600">Nama:</span> <span className="font-semibold">{selectedEmployee.name}</span></p>
-                              <p><span className="text-gray-600">Email:</span> <span className="font-semibold">{selectedEmployee.email}</span></p>
-                              <p><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.role}</span></p>
-                              <p><span className="text-gray-600">Cabang:</span> <span className="font-semibold">{selectedEmployee.branch}</span></p>
+                              <p className="truncate"><span className="text-gray-600">Nama:</span> <span className="font-semibold">{selectedEmployee.name}</span></p>
+                              <p className="truncate"><span className="text-gray-600">Email:</span> <span className="font-semibold">{selectedEmployee.email}</span></p>
+                              <p className="truncate"><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.role}</span></p>
+                              <p className="truncate"><span className="text-gray-600">Cabang:</span> <span className="font-semibold">{selectedEmployee.branch}</span></p>
                           </div>
                           <div className="text-left sm:text-right space-y-1">
                               <p><span className="text-gray-600">Tanggal:</span> <span className="font-semibold">{new Date().toLocaleDateString('id-ID')}</span></p>
@@ -868,11 +872,11 @@ export function KontrolGaji() {
                               <p><span className="text-gray-600">Status:</span> <span className="font-semibold">{selectedEmployee.status}</span></p>
                           </div>
                       </div>
-                      <div className="mb-6">
-                          <h4 className="font-semibold text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-green-600" /> PENDAPATAN
+                      <div className="mb-4 md:mb-6">
+                          <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
+                              <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" /> PENDAPATAN
                           </h4>
-                          <div className="space-y-2 text-sm">
+                          <div className="space-y-2 text-xs md:text-sm">
                               <div className="flex justify-between items-center py-1">
                                   <span className="text-gray-600">Gaji Pokok</span>
                                   <span className="font-medium">Rp {formatNominal(selectedEmployee.baseSalary || 0)}</span>
@@ -887,30 +891,31 @@ export function KontrolGaji() {
                               </div>
                           </div>
                       </div>
-                      <div className="mb-6">
-                          <h4 className="font-semibold text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-red-600" /> POTONGAN
+                      <div className="mb-4 md:mb-6">
+                          <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
+                              <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" /> POTONGAN
                           </h4>
-                          <div className="space-y-2 text-sm">
+                          <div className="space-y-2 text-xs md:text-sm">
                               <div className="flex justify-between items-center py-1">
                                   <span className="text-gray-600">Denda/Penalti</span>
                                   <span className="font-medium text-red-600">- Rp {formatNominal(getBonusPenaltyData(selectedEmployee.id).penalty)}</span>
                               </div>
                           </div>
                       </div>
-                      <div className="border-t-2 border-red-200 pt-4">
-                          <div className="flex justify-between items-center font-bold text-lg bg-red-50 p-4 rounded-lg">
-                              <span className="text-gray-800">GAJI BERSIH</span>
-                              <span className="text-red-600 text-xl">Rp {formatNominal(calculateTotalSalary(selectedEmployee))}</span>
+                      <div className="border-t-2 border-red-200 pt-3 md:pt-4">
+                          <div className="flex justify-between items-center font-bold text-base md:text-lg bg-red-50 p-3 md:p-4 rounded-lg">
+                              <span className="text-gray-800 text-sm md:text-base">GAJI BERSIH</span>
+                              <span className="text-red-600 text-lg md:text-xl">Rp {formatNominal(calculateTotalSalary(selectedEmployee))}</span>
                           </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <Button onClick={handlePrintSlip} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
-                        <Printer className="h-4 w-4 mr-2" /> Cetak Slip Gaji
+                  <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+                    <Button onClick={handlePrintSlip} className="flex-1 bg-red-600 hover:bg-red-700 text-white h-10 text-sm">
+                        <Printer className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" /> 
+                        <span className="truncate">Cetak Slip Gaji</span>
                     </Button>
-                    <Button variant="outline" onClick={() => setShowSlipModal(false)} className="border-red-200 text-red-600 hover:bg-red-50">
+                    <Button variant="outline" onClick={() => setShowSlipModal(false)} className="border-red-200 text-red-600 hover:bg-red-50 h-10 text-sm">
                         Tutup
                     </Button>
                   </div>

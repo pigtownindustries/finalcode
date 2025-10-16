@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-import { LayoutDashboard, ShoppingCart, Camera, TrendingDown, LogOut, ChevronLeft, ChevronRight, Users, CreditCard } from "lucide-react"
+import { LayoutDashboard, ShoppingCart, Camera, TrendingDown, LogOut, ChevronLeft, ChevronRight, Users, CreditCard, X } from "lucide-react"
 
 interface User {
   email: string
@@ -13,6 +13,10 @@ interface User {
 
 interface SidebarProps {
   user: User
+  isOpen?: boolean
+  onClose?: () => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }
 
 const menuItems = [
@@ -60,8 +64,14 @@ const menuItems = [
   },
 ]
 
-export default  function Sidebar({ user }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false)
+export default function Sidebar({
+  user,
+  isOpen = false,
+  onClose,
+  collapsed = false,
+  onToggleCollapse
+}: SidebarProps) {
+  // Remove local collapsed state, use prop instead
   const [isHovered, setIsHovered] = useState(false)
   const [logoHovered, setLogoHovered] = useState(false)
   const router = useRouter()
@@ -73,25 +83,29 @@ export default  function Sidebar({ user }: SidebarProps) {
   }
 
   const toggleSidebar = () => {
-    setCollapsed(!collapsed)
+    if (onToggleCollapse) {
+      onToggleCollapse()
+    }
+  }
+
+  const handleMenuClick = (href: string) => {
+    router.push(href)
+    if (onClose) onClose()
   }
 
   return (
     <div
-      className={`fixed top-0 left-0 bg-gradient-to-b from-red-900 via-red-800 to-black transition-all duration-300 relative ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`fixed top-0 left-0 bg-gradient-to-b from-red-900 via-red-800 to-black transition-all duration-300 h-full z-50 ${collapsed ? "w-20" : "w-64"
+        } ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Modern Toggle Button - Floating Circle */}
+      {/* Modern Toggle Button - Floating Circle - ALWAYS VISIBLE */}
       <Button
         variant="ghost"
         size="icon"
         onClick={toggleSidebar}
-        className={`absolute -right-4 top-6 z-50 bg-red-700 text-white hover:bg-red-600 rounded-full p-2 shadow-xl border-2 border-red-600 transition-all duration-300 transform hover:scale-110 ${
-          isHovered ? "opacity-100" : "opacity-90"
-        }`}
+        className="hidden lg:flex absolute -right-4 top-6 z-50 bg-red-700 text-white hover:bg-red-600 rounded-full p-2 shadow-xl border-2 border-red-600 transition-all duration-300 transform hover:scale-110"
       >
         {collapsed ? (
           <ChevronRight className="h-5 w-5" />
@@ -100,18 +114,27 @@ export default  function Sidebar({ user }: SidebarProps) {
         )}
       </Button>
 
+      {/* Close Button for Mobile */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onClose}
+        className="lg:hidden absolute right-4 top-4 z-50 text-white hover:bg-red-800/50"
+      >
+        <X className="h-6 w-6" />
+      </Button>
+
       <div className="flex flex-col h-full bg-gradient-to-b from-red-900 via-red-800 to-black"> {/* Tambahkan gradient di sini juga */}
         {/* Header dengan gradient yang sama */}
-        <div 
+        <div
           className="p-4 transition-all duration-500 shrink-0" // Hapus bg-gradient khusus
           onMouseEnter={() => setLogoHovered(true)}
           onMouseLeave={() => setLogoHovered(false)}
         >
           <div className="flex items-center justify-center gap-3 transition-all duration-500">
             {/* Logo dengan efek interaktif */}
-            <div className={`transition-all duration-500 ${
-              logoHovered ? "scale-125" : "scale-100"
-            }`}>
+            <div className={`transition-all duration-500 ${logoHovered ? "scale-125" : "scale-100"
+              }`}>
               <Image
                 src="/images/pigtown-logo.png"
                 alt="Pigtown Logo"
@@ -120,11 +143,10 @@ export default  function Sidebar({ user }: SidebarProps) {
                 className="object-contain transition-all duration-500"
               />
             </div>
-            
+
             {/* Teks yang hide saat hover atau collapsed */}
-            <div className={`transition-all duration-500 overflow-hidden ${
-              collapsed || logoHovered ? "opacity-0 scale-95 w-0" : "opacity-100 scale-100 w-auto"
-            }`}>
+            <div className={`transition-all duration-500 overflow-hidden ${collapsed || logoHovered ? "opacity-0 scale-95 w-0" : "opacity-100 scale-100 w-auto"
+              }`}>
               <div className="text-center">
                 <h2 className="font-bold text-white text-lg whitespace-nowrap">PIGTOWN</h2>
                 <p className="text-xs text-red-300 whitespace-nowrap">BARBERSHOP</p>
@@ -139,17 +161,16 @@ export default  function Sidebar({ user }: SidebarProps) {
             {menuItems.map((item) => {
               const isActive = pathname === item.href
               const IconComponent = item.icon
-              
+
               return (
                 <Button
                   key={item.href}
                   variant={isActive ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 h-14 transition-all duration-300 transform hover:scale-105 ${
-                    isActive
+                  className={`w-full justify-start gap-3 h-14 transition-all duration-300 transform hover:scale-105 rounded-xl ${isActive
                       ? "bg-red-700/80 text-white border-2 border-red-600 shadow-lg"
                       : "text-red-200 hover:text-white hover:bg-red-800/50 border border-transparent hover:border-red-600/50"
-                  } ${collapsed ? "px-2" : "px-4"} rounded-xl`}
-                  onClick={() => router.push(item.href)}
+                    } ${collapsed ? "px-2" : "px-4"}`}
+                  onClick={() => handleMenuClick(item.href)}
                 >
                   <IconComponent className={`h-5 w-5 flex-shrink-0 ${item.color}`} />
                   {!collapsed && (
@@ -164,13 +185,12 @@ export default  function Sidebar({ user }: SidebarProps) {
           </nav>
         </div>
 
-        {/* Logout Button dengan gradient yang sama */}
-        <div className="p-3 shrink-0"> {/* Hapus bg-black/20 */}
+        {/* Logout Button */}
+        <div className="p-3 shrink-0">
           <Button
             variant="ghost"
-            className={`w-full justify-start gap-3 h-12 text-red-200 hover:text-white hover:bg-red-800/50 border border-transparent hover:border-red-600/50 transition-all duration-300 transform hover:scale-105 rounded-xl ${
-              collapsed ? "px-2 justify-center" : "px-4"
-            }`}
+            className={`w-full justify-start gap-3 h-12 text-red-200 hover:text-white hover:bg-red-800/50 border border-transparent hover:border-red-600/50 transition-all duration-300 transform hover:scale-105 rounded-xl ${collapsed ? "px-2 justify-center" : "px-4"
+              }`}
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5 flex-shrink-0 text-red-400" />

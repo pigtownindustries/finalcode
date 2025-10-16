@@ -1,18 +1,22 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { ChevronRight } from "lucide-react"
 
 interface User {
-  name: string
+  name?: string
   email: string
   role: string
+  [key: string]: any
 }
 
 interface HeaderProps {
   user: User
+  onMenuClick?: () => void
 }
 
-export default function Header({ user }: HeaderProps) {
+export default function Header({ user, onMenuClick }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState("")
   const [isScrolled, setIsScrolled] = useState(false)
 
@@ -45,27 +49,36 @@ export default function Header({ user }: HeaderProps) {
   }, [])
 
   return (
-    <header className={`sticky top-0 z-40 px-6 py-4 transition-all duration-300 ${
-      isScrolled 
-        ? "bg-gradient-to-r from-red-900 via-red-800 to-black shadow-xl border-b border-red-900 backdrop-blur-sm" 
+    <header className={`sticky top-0 z-30 px-4 md:px-6 py-2 md:py-4 transition-all duration-300 ${isScrolled
+        ? "bg-gradient-to-r from-red-900 via-red-800 to-black shadow-xl border-b border-red-900 backdrop-blur-sm"
         : "bg-gradient-to-r from-red-900 via-red-800 to-black border-b border-red-800"
-    }`}>
+      }`}>
       <div className="flex items-center justify-between">
+        {/* Menu Button - Modern Circular Style untuk Mobile */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onMenuClick}
+          className="lg:hidden bg-red-700/80 text-white hover:bg-red-600 rounded-full p-1.5 shadow-lg border-2 border-red-600/50 transition-all duration-300 transform hover:scale-110 mr-2"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+
         {/* Welcome Message dengan efek interaktif */}
-        <div className="group cursor-pointer">
-          <h1 className="text-2xl font-bold text-white transition-all duration-300 group-hover:scale-105">
-           {" "}
-            <span className="text-white"> {/* Diubah jadi putih solid */}
+        <div className="group cursor-pointer flex-1">
+          <h1 className="text-base md:text-2xl font-bold text-white transition-all duration-300 group-hover:scale-105">
+            {" "}
+            <span className="text-white truncate block"> {/* Diubah jadi putih solid */}
               {user.name || user.email}!
             </span>
           </h1>
-          <p className="text-sm text-red-300/80 transition-all duration-300 group-hover:text-red-200 mt-1">
+          <p className="text-[10px] md:text-sm text-red-300/80 transition-all duration-300 group-hover:text-red-200 mt-0.5 md:mt-1 truncate">
             {currentTime}
           </p>
         </div>
 
         {/* Sisi kanan sengaja dikosongkan */}
-        <div className="w-10"> {/* Spacer minimal untuk balance */}</div>
+        <div className="w-10 lg:block hidden"> {/* Spacer minimal untuk balance */}</div>
       </div>
 
       {/* Progress Bar untuk waktu (efek visual) */}

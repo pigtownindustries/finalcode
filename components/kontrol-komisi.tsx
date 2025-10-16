@@ -1039,82 +1039,94 @@ export function KontrolKomisi() {
                                 ) : (
                                     <div className="space-y-3">
                                         {filteredItems.map(item => (
-                                            <div key={item.id} className="p-4 border rounded-lg hover:shadow-md transition-all bg-white">
-                                                <div className="flex items-start gap-3">
+                                            <div key={item.id} className="p-3 md:p-4 border rounded-lg hover:shadow-md transition-all bg-white">
+                                                <div className="flex items-start gap-2 md:gap-3">
                                                     <Checkbox
                                                         checked={selectedItems.includes(item.id)}
                                                         onCheckedChange={() => toggleItemSelection(item.id)}
-                                                        className="mt-1"
+                                                        className="mt-1 flex-shrink-0"
                                                         disabled={item.services?.type === 'product' || item.commission_status === 'no_commission'}
                                                     />
-                                                    <div className="flex-1 flex flex-col md:flex-row md:items-start gap-4">
-                                                        {/* Left Section - Info */}
-                                                        <div className="flex-1 flex items-start gap-3">
-                                                            <Avatar className="h-10 w-10 border-2 border-blue-100">
-                                                                <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                                                                    {item.users?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || '??'}
-                                                                </AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex-1 space-y-2">
-                                                                <div className="flex items-start justify-between">
-                                                                    <div>
-                                                                        <p className="font-semibold text-gray-900">{item.services?.name || 'Layanan Tidak Diketahui'}</p>
-                                                                        <p className="text-sm text-gray-600">{item.users?.name || 'Karyawan Tidak Diketahui'}</p>
+                                                    <div className="flex-1 min-w-0">
+                                                        {/* Mobile Layout: Stack Everything */}
+                                                        <div className="space-y-3">
+                                                            {/* Header Section */}
+                                                            <div className="flex items-start gap-2 md:gap-3">
+                                                                <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-blue-100 flex-shrink-0">
+                                                                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xs md:text-sm font-semibold">
+                                                                        {item.users?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || '??'}
+                                                                    </AvatarFallback>
+                                                                </Avatar>
+                                                                <div className="flex-1 min-w-0 space-y-1">
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <p className="font-semibold text-sm md:text-base text-gray-900 truncate">
+                                                                                {item.services?.name || 'Layanan Tidak Diketahui'}
+                                                                            </p>
+                                                                            <p className="text-xs md:text-sm text-gray-600 truncate">
+                                                                                {item.users?.name || 'Karyawan Tidak Diketahui'}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="flex-shrink-0">
+                                                                            {getStatusBadge(item)}
+                                                                        </div>
                                                                     </div>
-                                                                    {getStatusBadge(item)}
                                                                 </div>
-                                                                
-                                                                <div className="flex flex-wrap gap-2 text-xs">
-                                                                    <Badge variant="outline" className="bg-gray-50 text-gray-700">
-                                                                        <Calendar className="h-3 w-3 mr-1" />
-                                                                        {formatDate(item.created_at)}
-                                                                    </Badge>
-                                                                    {item.transactions?.customer_name && (
-                                                                        <Badge variant="outline" className="bg-green-50 text-green-700">
-                                                                            Customer: {item.transactions.customer_name}
-                                                                        </Badge>
-                                                                    )}
-                                                                    {item.transactions?.payment_method && (
-                                                                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                                                                            {item.transactions.payment_method}
-                                                                        </Badge>
-                                                                    )}
-                                                                    {item.services?.type === 'product' && (
-                                                                        <Badge variant="outline" className="bg-gray-100 text-gray-700">
-                                                                            <Package className="h-3 w-3 mr-1" />
-                                                                            Produk
-                                                                        </Badge>
-                                                                    )}
-                                                                    {item.services?.type === 'service' && (
-                                                                        <Badge variant="outline" className="bg-purple-100 text-purple-700">
-                                                                            <Sparkles className="h-3 w-3 mr-1" />
-                                                                            Layanan
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <p className="text-xs text-gray-400 font-mono">
-                                                                    #{item.transactions?.transaction_number || 'N/A'}
-                                                                </p>
                                                             </div>
-                                                        </div>
 
-                                                        {/* Right Section - Actions and Details */}
-                                                        <div className="flex flex-col md:items-end gap-3">
-                                                            <div className="text-right">
-                                                                <p className="text-sm text-gray-500">Harga: Rp {formatNominal(item.unit_price)}</p>
-                                                                <p className="text-sm text-gray-500">
+                                                            {/* Badges Section */}
+                                                            <div className="flex flex-wrap gap-1.5 text-xs">
+                                                                <Badge variant="outline" className="bg-gray-50 text-gray-700 text-[10px] md:text-xs">
+                                                                    <Calendar className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                                                                    {formatDate(item.created_at)}
+                                                                </Badge>
+                                                                {item.transactions?.customer_name && (
+                                                                    <Badge variant="outline" className="bg-green-50 text-green-700 text-[10px] md:text-xs truncate max-w-[120px]">
+                                                                        {item.transactions.customer_name}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.transactions?.payment_method && (
+                                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[10px] md:text-xs">
+                                                                        {item.transactions.payment_method}
+                                                                    </Badge>
+                                                                )}
+                                                                {item.services?.type === 'product' && (
+                                                                    <Badge variant="outline" className="bg-gray-100 text-gray-700 text-[10px] md:text-xs">
+                                                                        <Package className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                                                                        Produk
+                                                                    </Badge>
+                                                                )}
+                                                                {item.services?.type === 'service' && (
+                                                                    <Badge variant="outline" className="bg-purple-100 text-purple-700 text-[10px] md:text-xs">
+                                                                        <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
+                                                                        Layanan
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Transaction Number */}
+                                                            <p className="text-[10px] md:text-xs text-gray-400 font-mono truncate">
+                                                                #{item.transactions?.transaction_number || 'N/A'}
+                                                            </p>
+
+                                                            {/* Price Details Section */}
+                                                            <div className="space-y-1 bg-gray-50 p-2 rounded">
+                                                                <p className="text-xs md:text-sm text-gray-600">
+                                                                    Harga: <span className="font-medium">Rp {formatNominal(item.unit_price)}</span>
+                                                                </p>
+                                                                <p className="text-xs md:text-sm text-gray-600">
                                                                     {item.quantity} × Rp {formatNominal(item.unit_price)} = 
                                                                     <span className="font-semibold text-gray-900">
                                                                         {' '}Rp {formatNominal(item.unit_price * item.quantity)}
                                                                     </span>
                                                                 </p>
                                                                 {item.commission_amount && (
-                                                                    <p className="text-sm text-green-600 font-semibold">
+                                                                    <p className="text-xs md:text-sm text-green-600 font-semibold">
                                                                         Komisi: Rp {formatNominal(item.commission_amount)}
                                                                     </p>
                                                                 )}
                                                                 {item.commission_type && item.commission_value && (
-                                                                    <p className="text-xs text-gray-500">
+                                                                    <p className="text-[10px] md:text-xs text-gray-500">
                                                                         {item.commission_type === 'percentage' 
                                                                             ? `${item.commission_value}%` 
                                                                             : `Rp ${formatNominal(item.commission_value)}`
@@ -1123,18 +1135,19 @@ export function KontrolKomisi() {
                                                                 )}
                                                             </div>
                                                             
-                                                            <div className="flex gap-2">
-                                                                <Button 
-                                                                    size="sm" 
-                                                                    onClick={() => handleOpenModal(item)}
-                                                                    className="gap-2"
-                                                                    variant={!item.commission_status ? "default" : "outline"}
-                                                                    disabled={item.services?.type === 'product' || item.commission_status === 'no_commission'}
-                                                                >
-                                                                    <Edit className="h-4 w-4" />
+                                                            {/* Action Button */}
+                                                            <Button 
+                                                                size="sm"
+                                                                onClick={() => handleOpenModal(item)}
+                                                                className="w-full gap-2 h-9"
+                                                                variant={!item.commission_status ? "default" : "outline"}
+                                                                disabled={item.services?.type === 'product' || item.commission_status === 'no_commission'}
+                                                            >
+                                                                <Edit className="h-3 w-3 md:h-4 md:w-4" />
+                                                                <span className="text-xs md:text-sm">
                                                                     {!item.commission_status ? "Atur Komisi" : "Edit Komisi"}
-                                                                </Button>
-                                                            </div>
+                                                                </span>
+                                                            </Button>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -251,25 +251,26 @@ export default function PointsManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-bold">Bonus & Penalty Management</h2>
-          <p className="text-muted-foreground">Kelola bonus gaji dan potongan gaji karyawan</p>
+          <h2 className="text-xl md:text-2xl font-bold">Bonus & Penalty Management</h2>
+          <p className="text-xs md:text-sm text-muted-foreground">Kelola bonus gaji dan potongan gaji karyawan</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="w-full sm:w-auto text-sm">
               <Plus className="w-4 h-4 mr-2" />
-              Tambah Bonus/Penalty
+              <span className="hidden xs:inline">Tambah Bonus/Penalty</span>
+              <span className="xs:hidden">Tambah</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingTransaction ? "Edit Bonus/Penalty" : "Tambah Bonus/Penalty"}</DialogTitle>
-              <DialogDescription>Berikan bonus atau penalty yang akan mempengaruhi gaji karyawan</DialogDescription>
+              <DialogTitle className="text-lg md:text-xl">{editingTransaction ? "Edit Bonus/Penalty" : "Tambah Bonus/Penalty"}</DialogTitle>
+              <DialogDescription className="text-xs md:text-sm">Berikan bonus atau penalty yang akan mempengaruhi gaji karyawan</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
               <div>
                 <Label htmlFor="user_id">Karyawan</Label>
                 <Select
@@ -353,23 +354,24 @@ export default function PointsManagement() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Stats Cards - Mobile Responsive */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Karyawan</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                <CardTitle className="text-xs md:text-sm font-medium">Total Karyawan</CardTitle>
+                <Users className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{users.length}</div>
+              <CardContent className="p-3 md:p-4 pt-0">
+                <div className="text-xl md:text-2xl font-bold">{users.length}</div>
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Bonus</CardTitle>
-                <Award className="h-4 w-4 text-green-600" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                <CardTitle className="text-xs md:text-sm font-medium line-clamp-1">Total Bonus</CardTitle>
+                <Award className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
+              <CardContent className="p-3 md:p-4 pt-0">
+                <div className="text-sm md:text-2xl font-bold text-green-600 truncate">
                   Rp{" "}
                   {transactions
                     .filter((t) => t.amount > 0)
@@ -379,12 +381,12 @@ export default function PointsManagement() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Penalty</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-red-600" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                <CardTitle className="text-xs md:text-sm font-medium line-clamp-1">Total Penalty</CardTitle>
+                <AlertTriangle className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+              <CardContent className="p-3 md:p-4 pt-0">
+                <div className="text-sm md:text-2xl font-bold text-red-600 truncate">
                   Rp{" "}
                   {Math.abs(
                     transactions.filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0),
@@ -393,9 +395,9 @@ export default function PointsManagement() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Transaksi Bulan Ini</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
+                <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Transaksi Bulan Ini</CardTitle>
+                <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">

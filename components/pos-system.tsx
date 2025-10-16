@@ -75,7 +75,7 @@ const parseNominal = (value: string): number => {
 
 export function POSSystem() {
   const [selectedCategory, setSelectedCategory] = useState("semua")
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [cart, setCart] = useState < CartItem[] > ([])
   const [customerName, setCustomerName] = useState("")
   const [selectedBranch, setSelectedBranch] = useState("")
   const [servingEmployee, setServingEmployee] = useState("")
@@ -84,24 +84,24 @@ export function POSSystem() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [currentTransaction, setCurrentTransaction] = useState<any | null>(null)
-  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage")
+  const [currentTransaction, setCurrentTransaction] = useState < any | null > (null)
+  const [discountType, setDiscountType] = useState < "percentage" | "fixed" > ("percentage")
   const [discountValue, setDiscountValue] = useState("")
   const [discountReason, setDiscountReason] = useState("")
-  const [services, setServices] = useState<ServiceWithCategory[]>([])
-  const [categories, setCategories] = useState<any[]>([])
-  const [branches, setBranches] = useState<Branch[]>([])
-  const [employees, setEmployees] = useState<any[]>([])
-  const [currentUser, setCurrentUser] = useState<any | null>(null)
-  const [receiptTemplate, setReceiptTemplate] = useState<ReceiptTemplateWithBranch | null>(null)
-  const [branchInfo, setBranchInfo] = useState<any>(null)
+  const [services, setServices] = useState < ServiceWithCategory[] > ([])
+  const [categories, setCategories] = useState < any[] > ([])
+  const [branches, setBranches] = useState < Branch[] > ([])
+  const [employees, setEmployees] = useState < any[] > ([])
+  const [currentUser, setCurrentUser] = useState < any | null > (null)
+  const [receiptTemplate, setReceiptTemplate] = useState < ReceiptTemplateWithBranch | null > (null)
+  const [branchInfo, setBranchInfo] = useState < any > (null)
   const [loading, setLoading] = useState(true)
   const [isBluetoothOpen, setIsBluetoothOpen] = useState(false)
   const [bluetoothConnected, setBluetoothConnected] = useState(false)
-  const [bluetoothDevice, setBluetoothDevice] = useState<BluetoothDevice | null>(null)
-  const [bluetoothCharacteristic, setBluetoothCharacteristic] = useState<BluetoothRemoteGATTCharacteristic | null>(null)
-  const [bluetoothError, setBluetoothError] = useState<string | null>(null)
-  const [outletStock, setOutletStock] = useState<OutletStock[]>([])
+  const [bluetoothDevice, setBluetoothDevice] = useState < BluetoothDevice | null > (null)
+  const [bluetoothCharacteristic, setBluetoothCharacteristic] = useState < BluetoothRemoteGATTCharacteristic | null > (null)
+  const [bluetoothError, setBluetoothError] = useState < string | null > (null)
+  const [outletStock, setOutletStock] = useState < OutletStock[] > ([])
   const [stockLoading, setStockLoading] = useState(false)
 
   const categoryIcons = {
@@ -138,7 +138,7 @@ export function POSSystem() {
 
   const loadOutletStock = useCallback(async (branchId: string) => {
     if (!branchId) return;
-    
+
     setStockLoading(true);
     try {
       const { data, error } = await getOutletStock(branchId);
@@ -243,7 +243,7 @@ export function POSSystem() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
-        switch(e.key) {
+        switch (e.key) {
           case 'n':
             e.preventDefault();
             if (cart.length > 0) setIsCartOpen(true);
@@ -280,7 +280,7 @@ export function POSSystem() {
 
   const handleScanAndConnect = async () => {
     setBluetoothError(null)
-    
+
     // Cek compatibility
     if (!navigator.bluetooth) {
       setBluetoothError("Browser Anda tidak mendukung Bluetooth. Gunakan Chrome atau Edge.");
@@ -288,20 +288,20 @@ export function POSSystem() {
     }
 
     try {
-      const device = await navigator.bluetooth.requestDevice({ 
+      const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ['generic_access', 'generic_attribute'] 
+        optionalServices: ['generic_access', 'generic_attribute']
       })
-      
+
       setBluetoothError(null)
       setBluetoothDevice(device)
-      
+
       const server = await device.gatt?.connect()
       setBluetoothConnected(true)
-      
+
       setIsBluetoothOpen(false)
       toast({ title: "Berhasil Terhubung", description: `Terhubung ke printer ${device.name}` })
-      
+
       device.addEventListener("gattserverdisconnected", () => {
         setBluetoothConnected(false)
         setBluetoothDevice(null)
@@ -346,14 +346,14 @@ export function POSSystem() {
         const stockItem = outletStock.find(os => os.service_id === service.id && os.outlet_id === branch.id);
         const inCart = cart.find(item => item.service.id === service.id)?.quantity || 0;
         const availableStock = stockItem?.stock_quantity || 0;
-        
+
         if (inCart >= availableStock) {
           toast({ title: "Stok Tidak Cukup", variant: "destructive" })
           return;
         }
       }
     }
-    
+
     setCart(prev => {
       const existing = prev.find(item => item.service.id === service.id)
       if (existing) {
@@ -370,21 +370,21 @@ export function POSSystem() {
       removeFromCart(serviceId)
       return
     }
-    
+
     const service = services.find(s => s.id === serviceId)
     if (service?.type === 'product') {
       const branch = branches.find(b => b.name === selectedBranch);
       if (branch) {
         const stockItem = outletStock.find(os => os.service_id === serviceId && os.outlet_id === branch.id);
         const availableStock = stockItem?.stock_quantity || 0;
-        
+
         if (newQuantity > availableStock) {
           toast({ title: 'Stok Tidak Cukup', variant: 'destructive' })
           return
         }
       }
     }
-    
+
     setCart(prev => prev.map(item => item.service.id === serviceId ? { ...item, quantity: newQuantity } : item))
   }
 
@@ -548,12 +548,12 @@ export function POSSystem() {
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-x-hidden max-w-[100vw]">
-      {/* Header */}
-      <div className="bg-white border-b p-4 sticky top-0 z-50">
+    <div className="flex flex-col flex-1">
+      {/* Header POS - STICKY di desktop, SCROLL di mobile */}
+      <div className="bg-white border-b p-2 md:p-4 lg:sticky lg:top-0 z-20 shadow-sm">
         <div className="max-w-7xl mx-auto w-full">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-            <div>
+            <div className="hidden md:block">
               <h1 className="text-xl md:text-2xl font-bold">Point of Sale</h1>
               <p className="text-muted-foreground text-sm md:text-base">Pigtown Barbershop</p>
             </div>
@@ -570,9 +570,9 @@ export function POSSystem() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className={`gap-1 md:gap-2 text-xs md:text-sm ${bluetoothConnected ? "text-blue-600 border-blue-600" : ""}`}
                 onClick={() => {
                   setIsBluetoothOpen(true)
@@ -601,20 +601,25 @@ export function POSSystem() {
                 <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
                 Semua
               </Button>
-              {categories.map((category) => {
-                const IconComponent = categoryIcons[category.name as keyof typeof categoryIcons] || Scissors
-                return (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.name ? "default" : "outline"}
-                    className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === category.name ? "" : "bg-transparent"}`}
-                    onClick={() => setSelectedCategory(category.name)}
-                  >
-                    <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
-                    {category.name}
-                  </Button>
+              {/* Filter duplikat berdasarkan category.name */}
+              {categories
+                .filter((category, index, self) =>
+                  index === self.findIndex((c) => c.name === category.name)
                 )
-              })}
+                .map((category) => {
+                  const IconComponent = categoryIcons[category.name as keyof typeof categoryIcons] || Scissors
+                  return (
+                    <Button
+                      key={category.id}
+                      variant={selectedCategory === category.name ? "default" : "outline"}
+                      className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === category.name ? "" : "bg-transparent"}`}
+                      onClick={() => setSelectedCategory(category.name)}
+                    >
+                      <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
+                      {category.name}
+                    </Button>
+                  )
+                })}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4 mt-2 md:mt-4">
@@ -849,7 +854,7 @@ export function POSSystem() {
                   <span>Total Bayar:</span>
                   <span className="text-primary">{formatPrice(getFinalTotal())}</span>
                 </div>
-            </div>
+              </div>
             )}
           </div>
 
