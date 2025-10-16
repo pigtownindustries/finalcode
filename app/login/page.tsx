@@ -27,7 +27,9 @@ export default function LoginPage() {
                 alt="Pigtown Barbershop Logo"
                 width={80}
                 height={80}
+                priority
                 className="object-contain transition-transform duration-300 hover:rotate-2"
+                style={{ width: 'auto', height: 'auto', maxWidth: '80px', maxHeight: '80px' }}
               />
             </div>
             <h1 className="text-xl font-bold text-gray-800 transition-colors duration-300 hover:text-red-600">PIGTOWN BARBERSHOP</h1>

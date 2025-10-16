@@ -138,9 +138,10 @@ export default function Sidebar({
               <Image
                 src="/images/pigtown-logo.png"
                 alt="Pigtown Logo"
-                width={logoHovered ? 48 : 40}
-                height={logoHovered ? 48 : 40}
+                width={40}
+                height={40}
                 className="object-contain transition-all duration-500"
+                style={{ width: 'auto', height: 'auto', maxWidth: '40px', maxHeight: '40px' }}
               />
             </div>
 

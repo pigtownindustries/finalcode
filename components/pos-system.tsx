@@ -943,12 +943,27 @@ export function POSSystem() {
       {/* Receipt Dialog */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="max-w-2xl">
-          {/* Print-only CSS: hanya #receipt yang dicetak */}
+          {/* Print-only CSS: hanya #receipt yang dicetak dengan ukuran sesuai paper_width */}
           <style>{`
             @media print {
+              @page {
+                size: ${receiptTemplate?.paper_width || 80}mm auto;
+                margin: 0;
+              }
               body * { visibility: hidden !important; }
               #receipt, #receipt * { visibility: visible !important; }
-              #receipt { position: absolute !important; left: 0; top: 0; width: 100vw !important; background: white !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+              #receipt { 
+                position: absolute !important; 
+                left: 0; 
+                top: 0; 
+                width: ${receiptTemplate?.paper_width || 80}mm !important;
+                max-width: ${receiptTemplate?.paper_width || 80}mm !important;
+                background: white !important; 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                padding: 5mm !important;
+                font-size: ${receiptTemplate?.paper_width === 58 ? '9px' : '11px'} !important;
+              }
             }
           `}</style>
           <DialogHeader>
@@ -960,69 +975,99 @@ export function POSSystem() {
 
           {currentTransaction && (
             <div className="space-y-4">
-              <div className="bg-white p-4 border rounded-lg text-black font-mono text-xs" id="receipt">
+              <div 
+                className="bg-white p-4 border rounded-lg text-black font-mono" 
+                id="receipt"
+                style={{ 
+                  maxWidth: `${receiptTemplate?.paper_width || 80}mm`,
+                  fontSize: receiptTemplate?.paper_width === 58 ? '10px' : '12px'
+                }}
+              >
+                {/* Header dengan template */}
                 <div className="text-center mb-2">
-                  {receiptTemplate?.logo_url && (
+                  {receiptTemplate?.show_logo && receiptTemplate?.logo_url && (
                     <img src={receiptTemplate.logo_url} alt="Logo" className="h-12 w-auto mx-auto mb-2" />
                   )}
-                  <p className="font-bold">PIGTOWN BARBERSHOP</p>
-                  <p>{branchInfo?.name}</p>
-                  <p>{branchInfo?.address}</p>
-                  <p>{currentTransaction.timestamp}</p>
+                  {receiptTemplate?.header_text ? (
+                    <div className="whitespace-pre-line font-bold">{receiptTemplate.header_text}</div>
+                  ) : (
+                    <>
+                      <p className="font-bold">PIGTOWN BARBERSHOP</p>
+                      <p className="text-xs">{branchInfo?.name}</p>
+                    </>
+                  )}
+                  {receiptTemplate?.show_address && branchInfo?.address && (
+                    <p className="text-xs">{branchInfo.address}</p>
+                  )}
+                  {receiptTemplate?.show_phone && branchInfo?.phone && (
+                    <p className="text-xs">Telp: {branchInfo.phone}</p>
+                  )}
                 </div>
 
-                <Separator className="border-dashed border-black my-2" />
+                <div className="border-t border-dashed border-black my-2" />
 
-                <div className="space-y-1">
+                {/* Info Transaksi */}
+                <div className="text-xs space-y-1">
+                  {receiptTemplate?.show_date && (
+                    <p>Tanggal: {currentTransaction.timestamp}</p>
+                  )}
                   <p>No: {currentTransaction.receipt_number}</p>
-                  <p>Kasir: {currentTransaction.employeeName}</p>
+                  {receiptTemplate?.show_barber && (
+                    <p>Kasir: {currentTransaction.employeeName}</p>
+                  )}
                   {currentTransaction.customer_name && (
                     <p>Customer: {currentTransaction.customer_name}</p>
                   )}
                 </div>
 
-                <Separator className="border-dashed border-black my-2" />
+                <div className="border-t border-dashed border-black my-2" />
 
+                {/* Items */}
                 {currentTransaction.items.map((item: any, index: number) => (
-                  <div key={index} className="mb-2">
+                  <div key={index} className="mb-1 text-xs">
                     <p className="font-medium">{item.service.name}</p>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between">
                       <span>{item.quantity} x {formatPrice(item.service.price)}</span>
                       <span>{formatPrice(item.service.price * item.quantity)}</span>
                     </div>
                   </div>
                 ))}
 
-                <Separator className="border-dashed border-black my-2" />
+                <div className="border-t border-dashed border-black my-2" />
 
-                <div className="space-y-1">
+                {/* Total */}
+                <div className="text-xs space-y-1">
                   <div className="flex justify-between">
-                    <p>Subtotal:</p>
-                    <p>{formatPrice(currentTransaction.total_amount)}</p>
+                    <span>Subtotal:</span>
+                    <span>{formatPrice(currentTransaction.total_amount)}</span>
                   </div>
 
                   {currentTransaction.discount_amount > 0 && (
                     <div className="flex justify-between">
-                      <p>Diskon:</p>
-                      <p>-{formatPrice(currentTransaction.discount_amount)}</p>
+                      <span>Diskon:</span>
+                      <span>-{formatPrice(currentTransaction.discount_amount)}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between font-bold">
-                    <p>TOTAL:</p>
-                    <p>{formatPrice(currentTransaction.final_amount)}</p>
+                  <div className="flex justify-between font-bold text-sm">
+                    <span>TOTAL:</span>
+                    <span>{formatPrice(currentTransaction.final_amount)}</span>
                   </div>
 
-                  <div className="flex justify-between text-xs">
-                    <p>Metode: {currentTransaction.payment_method}</p>
-                    <p>{currentTransaction.payment_status}</p>
+                  <div className="flex justify-between mt-1">
+                    <span>Pembayaran: {currentTransaction.payment_method}</span>
                   </div>
                 </div>
 
-                <Separator className="border-dashed border-black my-2" />
+                <div className="border-t border-dashed border-black my-2" />
 
-                <div className="text-center mt-2">
-                  <p>{receiptTemplate?.footer_text || "Terima kasih atas kunjungan Anda!"}</p>
+                {/* Footer */}
+                <div className="text-center text-xs mt-2">
+                  {receiptTemplate?.footer_text ? (
+                    <div className="whitespace-pre-line">{receiptTemplate.footer_text}</div>
+                  ) : (
+                    <p>Terima kasih atas kunjungan Anda!</p>
+                  )}
                 </div>
               </div>
 

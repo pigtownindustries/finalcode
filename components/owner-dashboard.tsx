@@ -4,6 +4,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 // UI Component Imports
 import { Button } from "@/components/ui/button"
@@ -286,7 +287,7 @@ export function OwnerDashboard() {
               {/* Left: Back Button + Logo + Title (Horizontal) */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm" 
                   onClick={() => router.push("/dashboard")} 
                   className="flex-shrink-0 h-10 w-10 p-0 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-lg"
@@ -294,10 +295,13 @@ export function OwnerDashboard() {
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 
-                <img 
+                <Image 
                   src="/images/pigtown-logo.png" 
-                  alt="Pigtown Logo" 
-                  className="h-12 w-12 object-contain flex-shrink-0" 
+                  alt="Pigtown Logo"
+                  width={48}
+                  height={48}
+                  className="object-contain flex-shrink-0"
+                  style={{ width: 'auto', height: 'auto', maxWidth: '48px', maxHeight: '48px' }}
                 />
                 
                 <div className="flex flex-col min-w-0 flex-1">
@@ -488,10 +492,13 @@ export function OwnerDashboard() {
                 <div className="flex items-center gap-4">
                   <div className="relative flex-shrink-0 group">
                     <div>
-                      <img 
+                      <Image 
                         src="/images/pigtown-logo.png" 
-                        alt="Pigtown Logo" 
-                        className="h-20 w-20 object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12" 
+                        alt="Pigtown Logo"
+                        width={80}
+                        height={80}
+                        className="object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12"
+                        style={{ width: 'auto', height: 'auto', maxWidth: '80px', maxHeight: '80px' }}
                       />
                     </div>
                     <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl transition-all duration-300 group-hover:bg-blue-400/30 group-hover:blur-2xl" />
