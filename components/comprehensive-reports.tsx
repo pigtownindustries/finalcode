@@ -21,6 +21,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  ComposedChart,
+  Legend,
 } from "recharts"
 import { FileText, Users, MapPin, DollarSign, Clock, Award, CreditCard, Loader2, Trophy } from "lucide-react"
 import { supabase, getBranches } from "@/lib/supabase"
@@ -944,7 +946,7 @@ export function ComprehensiveReports() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">{dashboardStats.totalEmployees}</div>
+                <div className="text-2xl font-bold text-red-600">{dashboardStats.totalEmployees}</div>
                 <p className="text-xs text-gray-600">Aktif di {dashboardStats.activeBranches} cabang</p>
               </CardContent>
             </Card>
@@ -969,20 +971,57 @@ export function ComprehensiveReports() {
             <CardContent>
               {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
+                  <ComposedChart data={revenueData}>
+                    <defs>
+                      <linearGradient id="revenueBar" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.9}/>
+                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0.7}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
+                    <XAxis dataKey="month" fontSize={12} />
+                    <YAxis 
+                      yAxisId="left" 
+                      fontSize={12}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      fontSize={12}
+                    />
                     <Tooltip
+                      contentStyle={{
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        border: '1px solid rgba(0, 0, 0, 0.1)',
+                        borderRadius: '8px',
+                        padding: '8px 12px'
+                      }}
                       formatter={(value, name) => [
                         name === "revenue" ? `Rp ${Number(value).toLocaleString("id-ID")}` : value,
                         name === "revenue" ? "Revenue" : "Transaksi",
                       ]}
                     />
-                    <Bar yAxisId="left" dataKey="revenue" fill="#ef4444" />
-                    <Line yAxisId="right" type="monotone" dataKey="transactions" stroke="#3b82f6" strokeWidth={2} />
-                  </LineChart>
+                    <Legend />
+                    <Bar 
+                      yAxisId="left" 
+                      dataKey="revenue" 
+                      fill="url(#revenueBar)"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={60}
+                      name="Revenue"
+                    />
+                    <Line 
+                      yAxisId="right" 
+                      type="monotone" 
+                      dataKey="transactions" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', r: 4 }}
+                      activeDot={{ r: 6 }}
+                      name="Transaksi"
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-gray-500">
@@ -1206,7 +1245,7 @@ export function ComprehensiveReports() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold text-purple-600">{attendanceStats.topEmployee}</div>
+                <div className="text-lg font-bold text-red-600">{attendanceStats.topEmployee}</div>
                 <p className="text-xs text-gray-600">Jam kerja terbanyak</p>
               </CardContent>
             </Card>
@@ -1260,3 +1299,4 @@ export function ComprehensiveReports() {
     </div>
   )
 }
+

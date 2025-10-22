@@ -347,25 +347,25 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-cyan-50">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-orange-50">
         <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white p-4 md:p-6">
+          <CardHeader className="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 text-white p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-bold">
               <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
                 <Clock className="h-5 w-5 md:h-8 md:w-8" />
               </div>
               Kontrol Presensi Karyawan
             </CardTitle>
-            <CardDescription className="text-purple-100 text-sm md:text-lg">Memuat data presensi...</CardDescription>
+            <CardDescription className="text-red-100 text-sm md:text-lg">Memuat data presensi...</CardDescription>
           </CardHeader>
           <CardContent className="p-6 md:p-12">
             <div className="flex flex-col items-center justify-center space-y-4 md:space-y-6">
               <div className="relative">
-                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
                 <div className="absolute inset-0 w-16 h-16 md:w-20 md:h-20 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
               </div>
               <div className="text-center space-y-2">
-                <div className="text-base md:text-xl font-semibold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                <div className="text-base md:text-xl font-semibold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
                   Sedang memuat data...
                 </div>
                 <div className="text-sm md:text-base text-gray-500">Mohon tunggu sebentar</div>
@@ -378,22 +378,22 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-purple-50 to-cyan-50 p-3 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-orange-50 p-3 md:p-6">
       <div className="space-y-4 md:space-y-8 max-w-7xl mx-auto">
         {/* Main Attendance Card */}
         <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-all duration-500">
-          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white relative overflow-hidden p-4 md:p-6">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-blue-600/20 to-cyan-600/20 animate-pulse"></div>
+          <CardHeader className="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 text-white relative overflow-hidden p-4 md:p-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 via-rose-600/20 to-orange-600/20 animate-pulse"></div>
             <div className="relative z-10">
               <CardTitle className="flex items-center gap-2 md:gap-4 text-lg md:text-2xl lg:text-3xl font-bold mb-2">
                 <div className="p-2 md:p-3 bg-white/20 rounded-xl md:rounded-2xl backdrop-blur-sm">
                   <Sparkles className="h-6 w-6 md:h-8 lg:h-10 md:w-8 lg:w-10" />
                 </div>
-                <span className="bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-white to-red-100 bg-clip-text text-transparent">
                   Kontrol Presensi Karyawan
                 </span>
               </CardTitle>
-              <CardDescription className="text-purple-100 text-xs md:text-sm lg:text-lg flex items-center gap-1 md:gap-2">
+              <CardDescription className="text-red-100 text-xs md:text-sm lg:text-lg flex items-center gap-1 md:gap-2">
                 <Zap className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="line-clamp-2">Pantau presensi dan foto karyawan secara real-time dengan fitur hapus foto yang fleksibel</span>
               </CardDescription>
@@ -404,10 +404,10 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
               {employees.length === 0 ? (
                 <div className="text-center py-12 md:py-20">
                   <div className="relative mb-6 md:mb-8">
-                    <div className="w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full flex items-center justify-center">
-                      <Users className="h-10 w-10 md:h-16 md:w-16 text-white" />
+                    <div className="w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                      <Clock className="h-8 w-8 md:h-16 md:w-16 text-white" />
                     </div>
-                    <div className="absolute inset-0 w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-purple-400 to-cyan-400 rounded-full animate-ping opacity-20"></div>
+                    <div className="absolute inset-0 w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-red-400 to-orange-400 rounded-full animate-ping opacity-20"></div>
                   </div>
                   <p className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4">Belum ada data karyawan</p>
                   <p className="text-sm md:text-base lg:text-lg text-gray-600">Silakan tambahkan data karyawan ke database untuk mulai menggunakan fitur ini</p>
@@ -428,23 +428,23 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   return (
                     <div 
                       key={employee.id} 
-                      className="group relative p-4 md:p-6 lg:p-8 border-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white to-gray-50 hover:from-purple-50 hover:to-cyan-50 shadow-md md:shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-500"
+                      className="group relative p-4 md:p-6 lg:p-8 border-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white to-gray-50 hover:from-red-50 hover:to-orange-50 shadow-md md:shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-500"
                       style={{
                         animationDelay: `${index * 100}ms`,
                         animation: 'slideInUp 0.6s ease-out forwards'
                       }}
                     >
                       {/* Gradient Border Effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                      <div className="absolute inset-[1px] bg-gradient-to-br from-white to-gray-50 group-hover:from-purple-50 group-hover:to-cyan-50 rounded-2xl md:rounded-3xl"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                      <div className="absolute inset-[1px] bg-gradient-to-br from-white to-gray-50 group-hover:from-red-50 group-hover:to-orange-50 rounded-2xl md:rounded-3xl"></div>
                       
                       <div className="relative z-10">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-8 mb-4 md:mb-8">
                           <div className="flex items-center gap-3 md:gap-6">
                             <div className="relative flex-shrink-0">
-                              <Avatar className="h-14 w-14 md:h-16 lg:h-20 md:w-16 lg:w-20 ring-2 md:ring-4 ring-purple-200 group-hover:ring-purple-400 transition-all duration-300">
+                              <Avatar className="h-14 w-14 md:h-16 lg:h-20 md:w-16 lg:w-20 ring-2 md:ring-4 ring-red-200 group-hover:ring-rose-400 transition-all duration-300">
                                 <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover" />
-                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-cyan-500 text-white text-base md:text-xl font-bold">
+                                <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white text-base md:text-xl font-bold">
                                   {employee.name
                                     .split(" ")
                                     .map((n) => n[0])
@@ -520,7 +520,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                         <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl md:rounded-2xl p-4 md:p-6 lg:p-8 border-0">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-6 mb-4 md:mb-6">
                             <p className="font-bold text-sm md:text-base lg:text-xl text-gray-800 flex items-center gap-2 md:gap-3">
-                              <Camera className="h-4 w-4 md:h-5 lg:h-6 md:w-5 lg:w-6 text-purple-600" />
+                              <Camera className="h-4 w-4 md:h-5 lg:h-6 md:w-5 lg:w-6 text-red-600" />
                               <span className="line-clamp-1">Foto Presensi Terbaru</span>
                             </p>
                             <div className="flex gap-2 md:gap-4 w-full sm:w-auto">
@@ -529,7 +529,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1 sm:flex-none gap-2 bg-white/80 backdrop-blur-sm border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-all duration-300 rounded-lg md:rounded-xl shadow-md text-xs md:text-sm h-9 md:h-10"
+                                    className="flex-1 sm:flex-none gap-2 bg-white/80 backdrop-blur-sm border-red-200 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-all duration-300 rounded-lg md:rounded-xl shadow-md text-xs md:text-sm h-9 md:h-10"
                                     onClick={() => {
                                       setSelectedEmployee(employee)
                                       loadEmployeePhotos(employee.id)
@@ -541,7 +541,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                                 </DialogTrigger>
                                 <DialogContent className="max-w-[95vw] md:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl md:rounded-3xl border-0 bg-white/95 backdrop-blur-xl">
                                   <DialogHeader className="pb-4 md:pb-6">
-                                    <DialogTitle className="text-lg md:text-2xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                                    <DialogTitle className="text-lg md:text-2xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
                                       📸 Foto Presensi - {employee.name}
                                     </DialogTitle>
                                   </DialogHeader>
@@ -555,7 +555,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                                           animation: 'fadeInUp 0.5s ease-out forwards'
                                         }}
                                       >
-                                        <div className="relative aspect-square bg-gradient-to-br from-purple-100 to-cyan-100 rounded-2xl overflow-hidden shadow-lg group-hover/photo:shadow-2xl transition-all duration-300">
+                                        <div className="relative aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg group-hover/photo:shadow-2xl transition-all duration-300">
                                           {record.check_in_photo && (
                                             <img
                                               src={record.check_in_photo || "/placeholder.svg"}
@@ -607,7 +607,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
                               <Button
                                 size="lg"
-                                className="gap-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+                                className="gap-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
                                 onClick={() => handleOpenPhotoManager(employee.id, employee.name)}
                               >
                                 <Settings className="h-5 w-5" />
@@ -621,7 +621,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                             {attendance.data?.slice(0, 4).map((record: AttendanceWithDetails, index: number) => (
                               <div 
                                 key={record.id || index} 
-                                className="group/thumb relative aspect-square bg-gradient-to-br from-purple-100 to-cyan-100 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+                                className="group/thumb relative aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
                                 style={{
                                   animationDelay: `${index * 100}ms`,
                                   animation: 'zoomIn 0.5s ease-out forwards'
@@ -640,7 +640,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                                     </div>
                                   </>
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 group-hover/thumb:from-purple-200 group-hover/thumb:to-cyan-200 transition-all duration-300">
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 group-hover/thumb:from-red-200 group-hover/thumb:to-orange-200 transition-all duration-300">
                                     <Camera className="h-10 w-10 text-gray-400 group-hover/thumb:text-gray-600 transition-colors duration-300" />
                                   </div>
                                 )}
@@ -665,21 +665,21 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
         {/* Photo Manager Modal */}
         <Dialog open={isPhotoManagerOpen} onOpenChange={handleClosePhotoManager}>
           <DialogContent className="max-w-[95vw] md:max-w-6xl lg:max-w-7xl max-h-[95vh] overflow-y-auto rounded-2xl md:rounded-3xl border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
-            <DialogHeader className="pb-4 md:pb-8 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-t-2xl md:rounded-t-3xl -mt-6 -mx-6 px-4 md:px-8 py-4 md:py-6">
+            <DialogHeader className="pb-4 md:pb-8 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-t-2xl md:rounded-t-3xl -mt-6 -mx-6 px-4 md:px-8 py-4 md:py-6">
               <DialogTitle className="text-lg md:text-2xl lg:text-3xl font-bold flex items-center gap-2 md:gap-3">
                 <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
                   <Settings className="h-5 w-5 md:h-6 lg:h-8 md:w-6 lg:w-8" />
                 </div>
                 <span className="truncate">Manajemen Foto - {selectedEmployeeName}</span>
               </DialogTitle>
-              <DialogDescription className="text-purple-100 text-xs md:text-sm lg:text-lg line-clamp-2">
+              <DialogDescription className="text-red-100 text-xs md:text-sm lg:text-lg line-clamp-2">
                 🎯 Kelola foto presensi karyawan - hapus foto individual atau dalam jumlah banyak
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 md:space-y-8 p-3 md:p-6">
               {/* Enhanced Controls */}
-              <div className="bg-gradient-to-r from-purple-50 to-cyan-50 rounded-xl md:rounded-2xl p-3 md:p-6 border border-purple-200/50">
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl md:rounded-2xl p-3 md:p-6 border border-red-200/50">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 md:gap-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-6 w-full lg:w-auto">
                     <div className="flex items-center gap-2 md:gap-3 bg-white/70 backdrop-blur-sm px-3 md:px-4 py-2 rounded-lg md:rounded-xl w-full sm:w-auto">
@@ -694,7 +694,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                     </div>
                     
                     {selectedPhotos.size > 0 && (
-                      <Badge className="bg-gradient-to-r from-purple-500 to-cyan-500 text-white px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold shadow-lg animate-bounce w-full sm:w-auto justify-center">
+                      <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold shadow-lg animate-bounce w-full sm:w-auto justify-center">
                         ✨ {selectedPhotos.size} foto dipilih
                       </Badge>
                     )}
@@ -768,7 +768,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                       </div>
 
                       {/* Enhanced Photo Container */}
-                      <div className="aspect-square bg-gradient-to-br from-purple-100 to-cyan-100 rounded-2xl overflow-hidden shadow-lg group-hover/item:shadow-2xl transition-all duration-300">
+                      <div className="aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg group-hover/item:shadow-2xl transition-all duration-300">
                         <img 
                           src={photo.photoUrl} 
                           alt={`${photo.photoType} ${format(new Date(photo.date), 'dd MMM yyyy', { locale: id })}`}
@@ -780,7 +780,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                       {/* Enhanced Photo Info */}
                       <div className="p-4 space-y-2 bg-white/70 backdrop-blur-sm rounded-xl mt-3 border border-gray-200/50">
                         <div className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                          <Calendar className="w-4 h-4 text-purple-600" />
+                          <Calendar className="w-4 h-4 text-red-600" />
                           <span>{format(new Date(photo.date), 'dd MMM yyyy', { locale: id })}</span>
                         </div>
                         
@@ -842,7 +842,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
           <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
             <DialogContent className="max-w-6xl rounded-3xl border-0 bg-white/95 backdrop-blur-xl shadow-2xl">
               <DialogHeader className="pb-6">
-                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
                   🖼️ Preview Foto - {format(new Date(previewPhoto.date), 'dd MMM yyyy', { locale: id })}
                 </DialogTitle>
                 <DialogDescription className="text-lg text-gray-600">
@@ -859,11 +859,11 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   />
                 </div>
                 
-                <div className="bg-gradient-to-r from-purple-50 to-cyan-50 rounded-2xl p-6 border border-purple-200/50">
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-6 border border-red-200/50">
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="space-y-3">
                       <p className="text-gray-700 font-bold flex items-center gap-3 text-lg">
-                        <MapPin className="w-5 h-5 text-purple-600" />
+                        <MapPin className="w-5 h-5 text-red-600" />
                         {previewPhoto.branchName} • {formatShiftTime(previewPhoto.shiftType)}
                       </p>
                       <p className="text-gray-600 flex items-center gap-3 text-lg">
@@ -880,7 +880,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                           previewPhoto.photoUrl, 
                           `${selectedEmployeeName}_${previewPhoto.photoType}_${previewPhoto.date}_${previewPhoto.time}.jpg`
                         )}
-                        className="gap-3 bg-white/80 backdrop-blur-sm border-purple-200 hover:bg-purple-50 hover:border-purple-300 hover:scale-105 transition-all duration-300 rounded-xl shadow-lg"
+                        className="gap-3 bg-white/80 backdrop-blur-sm border-red-200 hover:bg-red-50 hover:border-rose-300 hover:scale-105 transition-all duration-300 rounded-xl shadow-lg"
                       >
                         <Download className="w-5 h-5" />
                         Download
@@ -946,3 +946,5 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
     </div>
   )
 }
+
+

@@ -97,9 +97,9 @@ export function KelolaPengeluaranCabang() {
     { id: "utilities", name: "Utilitas", icon: Zap, color: "bg-yellow-100 text-yellow-800" },
     { id: "equipment", name: "Peralatan", icon: Wrench, color: "bg-blue-100 text-blue-800" },
     { id: "supplies", name: "Supplies", icon: ShoppingBag, color: "bg-green-100 text-green-800" },
-    { id: "salary", name: "Gaji", icon: Users, color: "bg-purple-100 text-purple-800" },
+    { id: "salary", name: "Gaji", icon: Users, color: "bg-red-100 text-red-800" },
     { id: "transportation", name: "Transportasi", icon: Car, color: "bg-orange-100 text-orange-800" },
-    { id: "marketing", name: "Marketing", icon: FileText, color: "bg-pink-100 text-pink-800" },
+    { id: "marketing", name: "Marketing", icon: FileText, color: "bg-rose-100 text-rose-800" },
     { id: "maintenance", name: "Maintenance", icon: Wrench, color: "bg-gray-100 text-gray-800" },
   ]
 

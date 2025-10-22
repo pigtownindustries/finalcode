@@ -217,29 +217,29 @@ export function OwnerDashboard() {
   // Loading State dengan tampilan modern
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center overflow-hidden relative">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-900 to-slate-900 flex items-center justify-center overflow-hidden relative">
         {/* Background Effects */}
         <div className="absolute inset-0">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-red-500/30 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         </div>
 
         <div className="text-center space-y-8 relative z-10">
           <div className="relative">
-            <div className="w-20 h-20 border-4 border-purple-200/30 border-t-purple-500 rounded-full animate-spin mx-auto"></div>
-            <div className="w-16 h-16 border-4 border-pink-200/30 border-t-pink-500 rounded-full animate-spin mx-auto absolute inset-0 m-auto" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-            <div className="w-12 h-12 border-4 border-cyan-200/30 border-t-cyan-500 rounded-full animate-spin mx-auto absolute inset-0 m-auto" style={{ animationDuration: '2s' }}></div>
+            <div className="w-20 h-20 border-4 border-red-200/30 border-t-red-500 rounded-full animate-spin mx-auto"></div>
+            <div className="w-16 h-16 border-4 border-rose-200/30 border-t-rose-500 rounded-full animate-spin mx-auto absolute inset-0 m-auto" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+            <div className="w-12 h-12 border-4 border-orange-200/30 border-t-orange-500 rounded-full animate-spin mx-auto absolute inset-0 m-auto" style={{ animationDuration: '2s' }}></div>
           </div>
           <div className="space-y-4">
-            <div className="text-3xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent animate-pulse">
+            <div className="text-3xl font-bold bg-gradient-to-r from-white via-red-200 to-rose-200 bg-clip-text text-transparent animate-pulse">
               Loading Dashboard
             </div>
-            <div className="text-purple-300 text-lg">Mengambil data real-time dari database...</div>
+            <div className="text-red-300 text-lg">Mengambil data real-time dari database...</div>
             <div className="flex justify-center space-x-2">
               {[0, 1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="w-3 h-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-bounce"
+                  className="w-3 h-3 bg-gradient-to-r from-red-500 to-rose-500 rounded-full animate-bounce"
                   style={{ animationDelay: `${i * 0.2}s` }}
                 />
               ))}
@@ -253,10 +253,10 @@ export function OwnerDashboard() {
   return (
     <>
       {/* Main Dashboard Content */}
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900 relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-red-900 dark:to-slate-900 relative overflow-hidden">
         {/* Enhanced Background Effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 dark:bg-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-red-500/20 dark:bg-red-500/30 rounded-full blur-3xl animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/20 dark:bg-blue-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
@@ -290,7 +290,7 @@ export function OwnerDashboard() {
                   variant="ghost" 
                   size="sm" 
                   onClick={() => router.push("/dashboard")} 
-                  className="flex-shrink-0 h-10 w-10 p-0 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-lg"
+                  className="flex-shrink-0 h-10 w-10 p-0 bg-gradient-to-r from-red-500/80 to-rose-500/80 text-white border-0 hover:from-red-600/90 hover:to-rose-600/90 shadow-lg"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -305,7 +305,7 @@ export function OwnerDashboard() {
                 />
                 
                 <div className="flex flex-col min-w-0 flex-1">
-                  <h1 className="text-lg font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 bg-clip-text text-transparent leading-tight truncate">
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-tight truncate">
                     Owner Dashboard
                   </h1>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight truncate">
@@ -330,14 +330,14 @@ export function OwnerDashboard() {
 
                 <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
                   <DialogTrigger asChild>
-                    <Button className="h-10 w-10 p-0 bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white border-0 shadow-lg">
+                    <Button className="h-10 w-10 p-0 bg-gradient-to-r from-indigo-500/90 to-red-500/90 text-white border-0 shadow-lg">
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-700/50 shadow-2xl">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2 text-xl">
-                        <Settings className="h-6 w-6 text-purple-500 animate-pulse" />
+                        <Settings className="h-6 w-6 text-red-500 animate-pulse" />
                         Pengaturan Akun
                       </DialogTitle>
                       <DialogDescription>
@@ -352,7 +352,7 @@ export function OwnerDashboard() {
                           type="email"
                           value={accountSettings.email}
                           onChange={(e) => setAccountSettings((prev) => ({ ...prev, email: e.target.value }))}
-                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-purple-500 focus:ring-purple-500/50 backdrop-blur-sm transition-all duration-300"
+                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
                           placeholder="owner@example.com"
                         />
                       </div>
@@ -365,7 +365,7 @@ export function OwnerDashboard() {
                             type={showPassword ? "text" : "password"}
                             value={accountSettings.newPassword}
                             onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
-                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-purple-500 focus:ring-purple-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
+                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
                             placeholder="Masukkan password baru"
                           />
                           <Button
@@ -390,7 +390,7 @@ export function OwnerDashboard() {
                           type={showPassword ? "text" : "password"}
                           value={accountSettings.confirmPassword}
                           onChange={(e) => setAccountSettings((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-purple-500 focus:ring-purple-500/50 backdrop-blur-sm transition-all duration-300"
+                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
                           placeholder="Konfirmasi password baru"
                         />
                       </div>
@@ -432,7 +432,7 @@ export function OwnerDashboard() {
                               const value = e.target.value.replace(/\D/g, "").slice(0, 6);
                               setAccountSettings((prev) => ({ ...prev, pin: value }));
                             }}
-                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-purple-500 focus:ring-purple-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
+                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
                             placeholder="123456"
                             maxLength={6}
                           />
@@ -457,7 +457,7 @@ export function OwnerDashboard() {
                       <div className="flex gap-2 pt-4">
                         <Button
                           type="submit"
-                          className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
+                          className="flex-1 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
                         >
                           Simpan Perubahan
                         </Button>
@@ -483,7 +483,7 @@ export function OwnerDashboard() {
                   variant="outline" 
                   size="sm" 
                   onClick={() => router.push("/dashboard")} 
-                  className="group gap-2 bg-gradient-to-r from-purple-500/80 to-pink-500/80 text-white border-0 hover:from-purple-600/90 hover:to-pink-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm mt-3"
+                  className="group gap-2 bg-gradient-to-r from-red-500/80 to-rose-500/80 text-white border-0 hover:from-red-600/90 hover:to-rose-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm mt-3"
                 >
                   <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
                   Kembali
@@ -505,7 +505,7 @@ export function OwnerDashboard() {
                   </div>
                   
                   <div className="flex flex-col justify-center">
-                    <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 dark:from-purple-400 dark:via-pink-400 dark:to-blue-400 bg-clip-text text-transparent leading-none">
+                    <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-none">
                       Owner Dashboard
                     </h1>
                     <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 font-medium mt-1 leading-none">
@@ -531,7 +531,7 @@ export function OwnerDashboard() {
 
                 <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
                   <DialogTrigger asChild>
-                    <Button className="group gap-2 bg-gradient-to-r from-indigo-500/90 to-purple-500/90 text-white border-0 hover:from-indigo-600/90 hover:to-purple-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm">
+                    <Button className="group gap-2 bg-gradient-to-r from-indigo-500/90 to-red-500/90 text-white border-0 hover:from-indigo-600/90 hover:to-red-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm">
                       <Settings className="h-4 w-4 group-hover:rotate-180 transition-transform duration-500" />
                       <span>Settings</span>
                     </Button>
@@ -553,7 +553,7 @@ export function OwnerDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="sm:hidden bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-md border-white/30 text-slate-700 dark:text-slate-300 hover:bg-white/30 dark:hover:bg-slate-800/30 transition-all duration-300"
+                        className="sm:hidden bg-gradient-to-r from-red-500/20 to-rose-500/20 backdrop-blur-md border-white/30 text-slate-700 dark:text-slate-300 hover:bg-white/30 dark:hover:bg-slate-800/30 transition-all duration-300"
                       >
                         <Menu className="h-4 w-4 mr-2" />
                         Menu
@@ -608,7 +608,7 @@ export function OwnerDashboard() {
                             key={tab.value}
                             value={tab.value}
                             className={`group relative overflow-hidden px-2 sm:px-4 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 ${activeTab === tab.value
-                                ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white shadow-xl shadow-purple-500/30'
+                                ? 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-600 text-white shadow-xl shadow-red-500/30'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                               }`}
                             style={{ animationDelay: `${index * 100}ms` }}
@@ -629,7 +629,7 @@ export function OwnerDashboard() {
               <div className="p-4 lg:p-6 relative">
                 <TabsContent value="overview" className="space-y-6 mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-pink-500/5 to-blue-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-blue-500/5 rounded-2xl blur-xl"></div>
                     <OverviewAndAnalytics
                       onRefreshData={() => testDatabaseConnection()}
                       realTimeEnabled={realTimeEnabled}
@@ -658,7 +658,7 @@ export function OwnerDashboard() {
 
                 <TabsContent value="branches" className="mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-red-500/5 to-pink-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-red-500/5 to-rose-500/5 rounded-2xl blur-xl"></div>
                     <div className="relative bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/30 p-6">
                       <BranchManagement />
                     </div>
@@ -676,7 +676,7 @@ export function OwnerDashboard() {
 
                 <TabsContent value="kasbon" className="mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-red-500/5 to-rose-500/5 rounded-2xl blur-xl"></div>
                     <div className="relative bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/30 p-6">
                       <KasbonManagement />
                     </div>
@@ -685,7 +685,7 @@ export function OwnerDashboard() {
 
                 <TabsContent value="pengeluaran" className="mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-pink-500/5 to-purple-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-red-500/5 rounded-2xl blur-xl"></div>
                     <div className="relative bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/30 p-6">
                       <KelolaPengeluaranCabang />
                     </div>
@@ -703,7 +703,7 @@ export function OwnerDashboard() {
 
                 <TabsContent value="cashiers" className="mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-purple-500/5 to-indigo-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 via-red-500/5 to-red-500/5 rounded-2xl blur-xl"></div>
                     <div className="relative bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/30 p-6">
                       <CashierManagement />
                     </div>
@@ -712,7 +712,7 @@ export function OwnerDashboard() {
 
                 <TabsContent value="reports" className="mt-0">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 via-pink-500/5 to-purple-500/5 rounded-2xl blur-xl"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-rose-500/5 via-rose-500/5 to-red-500/5 rounded-2xl blur-xl"></div>
                     <div className="relative bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-700/30 p-6">
                       <ComprehensiveReports />
                     </div>
@@ -722,38 +722,10 @@ export function OwnerDashboard() {
             </Tabs>
           </div>
 
-          {/* Floating Action Button */}
-          <div className="fixed bottom-8 right-8 z-40">
-            <Button
-              className="group w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 hover:from-purple-600 hover:via-pink-600 hover:to-purple-700 shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 hover:scale-110 border-2 border-white/20"
-              onClick={() => toast({
-                title: "✨ Quick Action",
-                description: "Fitur quick action akan segera hadir dengan lebih banyak opsi!",
-                duration: 3000
-              })}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-ping"></div>
-              <Plus className="h-6 w-6 text-white group-hover:rotate-180 transition-transform duration-500 relative z-10" />
-            </Button>
-          </div>
-
-          {/* Floating Particles Effect */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {[...Array(15)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-gradient-to-r from-purple-400 to-pink-400 dark:from-purple-300 dark:to-pink-300 rounded-full opacity-30"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animation: `float ${20 + Math.random() * 10}s linear infinite`,
-                  animationDelay: `${Math.random() * 20}s`
-                }}
-              />
-            ))}
-          </div>
         </div>
       </div>
     </>
   )
 }
+
+

@@ -46,7 +46,7 @@ const menuItems = [
     icon: CreditCard,
     href: "/points",
     description: "Sistem poin pelanggan",
-    color: "text-purple-400"
+    color: "text-orange-400"
   },
   {
     title: "Kasbon",
@@ -60,7 +60,7 @@ const menuItems = [
     icon: LayoutDashboard,
     href: "/owner",
     description: "Dashboard lengkap owner",
-    color: "text-cyan-400"
+    color: "text-red-400"
   },
 ]
 

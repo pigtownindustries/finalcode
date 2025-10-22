@@ -321,7 +321,11 @@ function EmployeeManagement() {
     };
 
     const handleAddEmployee = async () => {
+        console.log("=== handleAddEmployee called ===")
+        console.log("newEmployee data:", newEmployee)
+        
         if (!newEmployee.name.trim()) {
+            console.log("Validation failed: name is empty")
             toast({
                 title: "Error",
                 description: "Nama karyawan harus diisi",
@@ -331,6 +335,7 @@ function EmployeeManagement() {
         }
         
         if (!newEmployee.email.trim() || !/\S+@\S+\.\S+/.test(newEmployee.email)) {
+            console.log("Validation failed: email invalid")
             toast({
                 title: "Error",
                 description: "Email harus valid",
@@ -339,7 +344,18 @@ function EmployeeManagement() {
             return
         }
         
+        if (!newEmployee.position.trim()) {
+            console.log("Validation failed: position is empty")
+            toast({
+                title: "Error",
+                description: "Posisi harus diisi",
+                variant: "destructive",
+            })
+            return
+        }
+        
         if (!newEmployee.pin || newEmployee.pin.length !== 6) {
+            console.log("Validation failed: PIN invalid", { pin: newEmployee.pin, length: newEmployee.pin?.length })
             toast({
                 title: "Error",
                 description: "PIN harus 6 digit",
@@ -348,6 +364,7 @@ function EmployeeManagement() {
             return
         }
 
+        console.log("All validations passed, starting to add employee...")
         setOperationLoading(true)
         try {
             console.log("Adding new employee:", newEmployee)
@@ -357,8 +374,9 @@ function EmployeeManagement() {
                 phone: newEmployee.phone,
                 position: newEmployee.position,
                 pin: newEmployee.pin,
-                salary: newEmployee.salary,
+                baseSalary: newEmployee.salary,
                 status: newEmployee.status,
+                role: 'cashier',
             })
 
             if (error) {
@@ -368,6 +386,7 @@ function EmployeeManagement() {
                     description: error.message || "Gagal menambahkan karyawan",
                     variant: "destructive",
                 })
+                setOperationLoading(false)
                 return
             }
 
@@ -383,11 +402,12 @@ function EmployeeManagement() {
                 email: "", 
                 phone: "", 
                 position: "", 
-                pin: "", 
+                pin: "",
                 salary: 3000000,
                 status: "active",
             })
             await loadEmployees()
+            setOperationLoading(false)
         } catch (error) {
             console.error("Error in handleAddEmployee:", error)
             toast({
@@ -395,7 +415,6 @@ function EmployeeManagement() {
                 description: "Terjadi kesalahan saat menambahkan karyawan",
                 variant: "destructive",
             })
-        } finally {
             setOperationLoading(false)
         }
     }
@@ -652,10 +671,10 @@ function EmployeeManagement() {
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={operationLoading}>
+                            <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={operationLoading}>
                                 Batal
                             </Button>
-                            <Button onClick={handleAddEmployee} disabled={operationLoading}>
+                            <Button type="button" onClick={handleAddEmployee} disabled={operationLoading}>
                                 {operationLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Tambah Karyawan"}
                             </Button>
                         </div>
@@ -1074,7 +1093,7 @@ function EmployeeManagement() {
                                         <div className="text-xs text-muted-foreground">Tingkat Kehadiran</div>
                                     </div>
                                     <div className="text-center p-3 bg-muted rounded-lg">
-                                        <div className="text-2xl font-bold text-purple-600">⭐ {selectedEmployeeDetail.rating || "N/A"}</div>
+                                        <div className="text-2xl font-bold text-red-600">⭐ {selectedEmployeeDetail.rating || "N/A"}</div>
                                         <div className="text-xs text-muted-foreground">Rating</div>
                                     </div>
                                 </div>

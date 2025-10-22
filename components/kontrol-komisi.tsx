@@ -1097,7 +1097,7 @@ export function KontrolKomisi() {
                                                                     </Badge>
                                                                 )}
                                                                 {item.services?.type === 'service' && (
-                                                                    <Badge variant="outline" className="bg-purple-100 text-purple-700 text-[10px] md:text-xs">
+                                                                    <Badge variant="outline" className="bg-red-100 text-red-700 text-[10px] md:text-xs">
                                                                         <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                                                                         Layanan
                                                                     </Badge>

@@ -506,7 +506,7 @@ export function TransactionHistory() {
       case "cash":
         return "bg-blue-100 text-blue-800"
       case "qris":
-        return "bg-purple-100 text-purple-800"
+        return "bg-red-100 text-red-800"
       case "debit":
         return "bg-orange-100 text-orange-800"
       case "credit":
@@ -644,7 +644,7 @@ export function TransactionHistory() {
             <CardTitle className="text-xs md:text-sm font-medium text-gray-600 line-clamp-2">Rata-rata Transaksi</CardTitle>
           </CardHeader>
           <CardContent className="p-3 md:p-4 pt-0">
-            <div className="text-sm md:text-2xl font-bold text-purple-600 truncate">
+            <div className="text-sm md:text-2xl font-bold text-red-600 truncate">
               Rp{" "}
               {completedTransactions > 0 ? Math.round(totalRevenue / completedTransactions).toLocaleString("id-ID") : 0}
             </div>

@@ -279,39 +279,95 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={revenueData} key={animationKey}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="date" stroke="#e2e8f0" fontSize={12} />
-            <YAxis stroke="#e2e8f0" fontSize={12} tickFormatter={(value) => `Rp${value/1000000}Jt`} />
+            <defs>
+              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.9}/>
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.7}/>
+              </linearGradient>
+              <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f87171" stopOpacity={0.9}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.7}/>
+              </linearGradient>
+              <filter id="shadow">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+              </filter>
+            </defs>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              stroke="rgba(255,255,255,0.08)" 
+              vertical={false}
+            />
+            <XAxis 
+              dataKey="date" 
+              stroke="#94a3b8" 
+              fontSize={12}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+            />
+            <YAxis 
+              stroke="#94a3b8" 
+              fontSize={12} 
+              tickFormatter={(value) => `${value/1000000}Jt`}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+            />
             <Tooltip 
               contentStyle={{
-                background: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                backdropFilter: 'blur(10px)'
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '16px',
+                backdropFilter: 'blur(20px)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                padding: '12px 16px'
               }}
+              labelStyle={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '8px' }}
+              itemStyle={{ color: '#cbd5e1', fontSize: '13px' }}
               formatter={(value: any) => [`Rp ${Number(value).toLocaleString('id-ID')}`, '']}
             />
-            <Legend />
+            <Legend 
+              wrapperStyle={{ paddingTop: '20px' }}
+              iconType="circle"
+              iconSize={10}
+            />
             <Bar 
               dataKey="revenue" 
               name="Revenue"
-              shape={<Animated3DBar />}
-              fill={CHART_COLORS.revenue[0]}
+              fill="url(#revenueGradient)"
+              radius={[8, 8, 0, 0]}
+              filter="url(#shadow)"
+              animationDuration={1000}
+              animationBegin={0}
             />
             <Bar 
               dataKey="expenses" 
               name="Pengeluaran"
-              shape={<Animated3DBar />}
-              fill={CHART_COLORS.expenses[0]}
+              fill="url(#expenseGradient)"
+              radius={[8, 8, 0, 0]}
+              filter="url(#shadow)"
+              animationDuration={1000}
+              animationBegin={200}
             />
             <Line 
               type="monotone" 
               dataKey="netProfit" 
               name="Net Profit"
-              stroke={CHART_COLORS.netProfit[0]}
+              stroke="#10b981"
               strokeWidth={3}
-              dot={{ fill: CHART_COLORS.netProfit[0], strokeWidth: 2, r: 5 }}
-              activeDot={{ r: 8, fill: CHART_COLORS.netProfit[1] }}
+              dot={{ 
+                fill: '#10b981', 
+                strokeWidth: 2, 
+                r: 6,
+                filter: 'url(#shadow)'
+              }}
+              activeDot={{ 
+                r: 9, 
+                fill: '#34d399',
+                stroke: '#fff',
+                strokeWidth: 2,
+                filter: 'url(#shadow)'
+              }}
+              animationDuration={1200}
+              animationBegin={400}
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -335,34 +391,89 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
+            <defs>
+              {expenseCategories.map((entry, index) => (
+                <linearGradient 
+                  key={`gradient-${index}`} 
+                  id={`categoryGradient${index}`} 
+                  x1="0" 
+                  y1="0" 
+                  x2="0" 
+                  y2="1"
+                >
+                  <stop 
+                    offset="0%" 
+                    stopColor={CHART_COLORS.branches[index % CHART_COLORS.branches.length]} 
+                    stopOpacity={1}
+                  />
+                  <stop 
+                    offset="100%" 
+                    stopColor={CHART_COLORS.branches[index % CHART_COLORS.branches.length]} 
+                    stopOpacity={0.7}
+                  />
+                </linearGradient>
+              ))}
+              <filter id="pieGlow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
             <Pie
               data={expenseCategories}
               cx="50%"
               cy="50%"
-              outerRadius={80}
-              innerRadius={40}
-              paddingAngle={2}
+              outerRadius={100}
+              innerRadius={55}
+              paddingAngle={3}
               dataKey="total"
               nameKey="category"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-              labelLine={false}
+              label={({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = outerRadius + 30;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                return (
+                  <text 
+                    x={x} 
+                    y={y} 
+                    fill="#e2e8f0" 
+                    textAnchor={x > cx ? 'start' : 'end'} 
+                    dominantBaseline="central"
+                    fontSize={13}
+                    fontWeight={600}
+                  >
+                    {`${name} ${(percent * 100).toFixed(0)}%`}
+                  </text>
+                );
+              }}
+              animationBegin={0}
+              animationDuration={1200}
+              animationEasing="ease-out"
             >
               {expenseCategories.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
-                  fill={CHART_COLORS.branches[index % CHART_COLORS.branches.length]}
-                  stroke="rgba(255,255,255,0.8)"
+                  fill={`url(#categoryGradient${index})`}
+                  stroke="rgba(255,255,255,0.15)"
                   strokeWidth={2}
+                  filter="url(#pieGlow)"
                 />
               ))}
             </Pie>
             <Tooltip 
               contentStyle={{
-                background: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                backdropFilter: 'blur(10px)'
+                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                borderRadius: '16px',
+                backdropFilter: 'blur(20px)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                padding: '12px 16px'
               }}
+              labelStyle={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '8px' }}
+              itemStyle={{ color: '#cbd5e1', fontSize: '13px' }}
               formatter={(value: any) => [`Rp ${Number(value).toLocaleString('id-ID')}`, 'Jumlah']}
             />
           </PieChart>
@@ -386,7 +497,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         </div>
         <div className="h-64 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Memuat data dashboard...</p>
           </div>
         </div>
@@ -399,7 +510,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       {/* Header Section - Mobile Responsive */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-red-400 to-rose-400 bg-clip-text text-transparent">
             📊 3D Analytics Dashboard
           </h2>
           <p className="text-xs md:text-sm text-muted-foreground">Data real-time dengan visualisasi 3D modern</p>
@@ -424,9 +535,9 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
             <div className="w-full sm:w-auto">
               <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
                 <BarChart3 className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-                Revenue vs Expenses 3D
+                Revenue vs Expenses
               </CardTitle>
-              <CardDescription className="text-xs md:text-sm">Data real-time dengan efek 3D dan animasi</CardDescription>
+              <CardDescription className="text-xs md:text-sm">Analisis perbandingan pendapatan dan pengeluaran</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
@@ -435,10 +546,10 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         </Card>
 
         {/* Performance Metrics - Mobile Responsive */}
-        <Card className="bg-gradient-to-br from-slate-900/20 to-purple-900/20 border-white/10 backdrop-blur-sm">
+        <Card className="bg-gradient-to-br from-slate-900/20 to-red-900/20 border-white/10 backdrop-blur-sm">
           <CardHeader className="p-4 md:p-6">
             <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
-              <Activity className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
+              <Activity className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
               Statistik Utama
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">Ringkasan performa bisnis</CardDescription>
@@ -489,9 +600,9 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-white">
               <PieChartIcon className="h-5 w-5 text-green-400" />
-              Kategori Pengeluaran 3D
+              Kategori Pengeluaran
             </CardTitle>
-            <CardDescription>Distribusi pengeluaran dengan visualisasi modern</CardDescription>
+            <CardDescription>Distribusi pengeluaran berdasarkan kategori</CardDescription>
           </CardHeader>
           <CardContent>
             <ExpenseCategoriesChart3D />

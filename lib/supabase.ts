@@ -1141,13 +1141,13 @@ export async function addEmployee(employee: Partial<Employee>) {
   const userData = {
     name: employee.name,
     email: employee.email,
-    phone: employee.phone,
-    role: employee.role,
+    phone: employee.phone || null,
+    role: employee.role || "cashier",
     status: employee.status || "active",
     pin: employee.pin,
     position: employee.position,
-    salary: employee.baseSalary,
-    commission_rate: employee.commissionRate,
+    salary: employee.salary || employee.baseSalary || 0,
+    commission_rate: employee.commissionRate || 0,
   }
 
   const { data, error } = await supabase.from("users").insert([userData]).select().single()

@@ -218,10 +218,10 @@ export function PointsSystem() {
         <Card className="h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
             <CardTitle className="text-sm md:text-base font-medium">Total Poin</CardTitle>
-            <Star className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
+            <Star className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-xl md:text-2xl font-bold text-purple-600">{statistics.totalPoints.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-red-600">{statistics.totalPoints.toLocaleString()}</div>
             <p className="text-xs md:text-sm text-muted-foreground">Semua karyawan</p>
           </CardContent>
         </Card>

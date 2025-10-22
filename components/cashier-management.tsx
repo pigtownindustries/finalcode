@@ -1069,7 +1069,7 @@ export function CashierManagement() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
             Kelola Menu Kasir
           </h1>
           <p className="text-gray-600 mt-2">Kelola kategori, layanan, dan produk yang ditampilkan di kasir</p>
@@ -1183,15 +1183,15 @@ export function CashierManagement() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 hover:shadow-lg transition-all duration-200">
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 hover:shadow-lg transition-all duration-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">Total Menu</p>
-                <p className="text-2xl font-bold text-purple-900">{menuItems.length}</p>
-                <p className="text-purple-500 text-xs mt-1">layanan & produk</p>
+                <p className="text-red-600 text-sm font-medium">Total Menu</p>
+                <p className="text-2xl font-bold text-red-900">{menuItems.length}</p>
+                <p className="text-red-500 text-xs mt-1">layanan & produk</p>
               </div>
-              <div className="bg-purple-500 p-3 rounded-full">
+              <div className="bg-red-500 p-3 rounded-full">
                 <Menu className="h-6 w-6 text-white" />
               </div>
             </div>
