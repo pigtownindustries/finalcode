@@ -652,15 +652,55 @@ export function AttendanceSystem() {
           description: `${selectedEmployee.name} berhasil check-in di ${branchToUse}`,
         })
       } else if (attendanceAction === "check-out") {
-        const activeRecords = attendanceRecords.filter(
+        // Cari dari cache terlebih dahulu
+        let activeRecords = attendanceRecords.filter(
           (record) => record.employeeId === selectedEmployee.id && record.date === selectedDate && !record.checkOut,
         )
 
-        const existingRecord = activeRecords.sort(
-          (a, b) => new Date(b.checkIn || "").getTime() - new Date(a.checkIn || "").getTime(),
-        )[0]
+        // Jika tidak ketemu di cache, ambil langsung dari database (lebih andal)
+        let existingRecord = activeRecords
+          .sort((a, b) => new Date(b.checkIn || "").getTime() - new Date(a.checkIn || "").getTime())[0]
+
+        if (!existingRecord) {
+          const { data: dbRecords, error: fetchErr } = await supabase
+            .from("attendance")
+            .select("*")
+            .eq("user_id", selectedEmployee.id)
+            .eq("date", selectedDate)
+            .is("check_out_time", null)
+            .order("check_in_time", { ascending: false })
+            .limit(1)
+
+          if (fetchErr) {
+            throw fetchErr
+          }
+
+          if (dbRecords && dbRecords.length > 0) {
+            const r = dbRecords[0] as any
+            existingRecord = {
+              id: r.id,
+              employeeId: selectedEmployee.id,
+              employeeName: selectedEmployee.name,
+              branch: "",
+              branchId: r.branch_id,
+              date: r.date,
+              shift: r.shift_type || "",
+              checkIn: r.check_in_time,
+              checkOut: r.check_out_time,
+              breakStart: r.break_start_time,
+              breakEnd: r.break_end_time,
+              totalBreakTime: r.total_break_minutes || r.break_duration || 0,
+              totalWorkingHours: 0,
+              status: r.status === "on_break" ? "on-break" : "present",
+              photo: r.check_in_photo,
+              location: "",
+            }
+          }
+        }
 
         if (!existingRecord?.id) {
+          // Sebelum menyerah, coba refresh daftar presensi agar UI sinkron
+          await fetchAttendanceRecords()
           throw new Error("Tidak ada record check-in aktif untuk hari ini. Silakan check-in terlebih dahulu.")
         }
 
@@ -678,7 +718,9 @@ export function AttendanceSystem() {
             status: "checked_out",
             total_hours: totalHours,
           })
-          .eq("id", existingRecord.id)
+          .eq("user_id", selectedEmployee.id)
+          .eq("date", selectedDate)
+          .is("check_out_time", null)
 
         if (error) throw error
 
@@ -824,8 +866,10 @@ export function AttendanceSystem() {
     handleBreakAction("break-end")
   }
 
-  const openCheckOutCamera = (employee: Employee) => {
+  const openCheckOutCamera = async (employee: Employee) => {
     if (isProcessing) return
+    // Segarkan data presensi agar checkout menggunakan data terbaru
+    await fetchAttendanceRecords()
     setSelectedEmployee(employee)
     setAttendanceAction("check-out")
     setIsCameraOpen(true)

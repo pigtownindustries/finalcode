@@ -1138,6 +1138,8 @@ export async function getEmployees() {  // ✅ HAPUS parameter branchId
 export async function addEmployee(employee: Partial<Employee>) {
   console.log("[v11] addEmployee called with:", employee)
 
+  // Just create user profile in users table
+  // Admin will manually create auth user in Supabase Dashboard if needed
   const userData = {
     name: employee.name,
     email: employee.email,

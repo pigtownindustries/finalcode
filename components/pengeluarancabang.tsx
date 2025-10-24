@@ -270,9 +270,13 @@ export function PengeluaranCabang() {
     if (!currentExpense) return
     
     try {
+      // Hanya kirim field yang boleh diupdate
       const expenseData = {
-        ...currentExpense,
+        description: currentExpense.description,
         amount: Number(currentExpense.amount),
+        category: currentExpense.category,
+        branch_id: currentExpense.branch_id,
+        notes: currentExpense.notes || null,
       }
 
       const result = await updateExpenseRequest(currentExpense.id, expenseData)
@@ -666,80 +670,80 @@ export function PengeluaranCabang() {
                 >
                   <SelectTrigger className="text-xs sm:text-sm">
                     <SelectValue placeholder="Pilih kategori" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id} className="text-xs sm:text-sm">
-                          <div className="flex items-center gap-2">
-                            <category.icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                            {category.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs sm:text-sm">Cabang</Label>
-                  <Select
-                    value={currentExpense.branch_id || ""}
-                    onValueChange={(value) => setCurrentExpense({ ...currentExpense, branch_id: value })}
-                  >
-                    <SelectTrigger className="text-xs sm:text-sm">
-                      <SelectValue placeholder="Pilih cabang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id} className="text-xs sm:text-sm">
-                          {branch.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-amount" className="text-xs sm:text-sm">Jumlah</Label>
-                  <Input
-                    id="edit-amount"
-                    value={formatInputNumber(currentExpense.amount.toString())}
-                    onChange={(e) => {
-                      const formatted = formatInputNumber(e.target.value)
-                      setCurrentExpense({ ...currentExpense, amount: Number(unformatInputNumber(formatted)) })
-                    }}
-                    placeholder="500.000"
-                    className="text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="col-span-1 sm:col-span-2 space-y-2">
-                  <Label htmlFor="edit-description" className="text-xs sm:text-sm">Deskripsi</Label>
-                  <Textarea
-                    id="edit-description"
-                    value={currentExpense.description}
-                    onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })}
-                    placeholder="Deskripsi detail pengeluaran..."
-                    className="text-xs sm:text-sm min-h-[80px]"
-                  />
-                </div>
-                <div className="col-span-1 sm:col-span-2 space-y-2">
-                  <Label htmlFor="edit-notes" className="text-xs sm:text-sm">Catatan (Opsional)</Label>
-                  <Textarea
-                    id="edit-notes"
-                    value={currentExpense.notes || ""}
-                    onChange={(e) => setCurrentExpense({ ...currentExpense, notes: e.target.value })}
-                    placeholder="Catatan tambahan..."
-                    className="text-xs sm:text-sm min-h-[60px]"
-                  />
-                </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id} className="text-xs sm:text-sm">
+                        <div className="flex items-center gap-2">
+                          <category.icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                          {category.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="text-xs sm:text-sm">
-                Batal
-              </Button>
-              <Button onClick={handleEditExpense} className="text-xs sm:text-sm">Simpan Perubahan</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <div className="space-y-2">
+                <Label className="text-xs sm:text-sm">Cabang</Label>
+                <Select
+                  value={currentExpense.branch_id || ""}
+                  onValueChange={(value) => setCurrentExpense({ ...currentExpense, branch_id: value })}
+                >
+                  <SelectTrigger className="text-xs sm:text-sm">
+                    <SelectValue placeholder="Pilih cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id} className="text-xs sm:text-sm">
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-1 sm:col-span-2 space-y-2">
+                <Label htmlFor="edit-amount" className="text-xs sm:text-sm">Jumlah</Label>
+                <Input
+                  id="edit-amount"
+                  value={formatInputNumber(currentExpense.amount.toString())}
+                  onChange={(e) => {
+                    const formatted = formatInputNumber(e.target.value)
+                    setCurrentExpense({ ...currentExpense, amount: Number(unformatInputNumber(formatted)) })
+                  }}
+                  placeholder="500.000"
+                  className="text-xs sm:text-sm"
+                />
+              </div>
+              <div className="col-span-1 sm:col-span-2 space-y-2">
+                <Label htmlFor="edit-description" className="text-xs sm:text-sm">Deskripsi</Label>
+                <Textarea
+                  id="edit-description"
+                  value={currentExpense.description}
+                  onChange={(e) => setCurrentExpense({ ...currentExpense, description: e.target.value })}
+                  placeholder="Deskripsi detail pengeluaran..."
+                  className="text-xs sm:text-sm min-h-[80px]"
+                />
+              </div>
+              <div className="col-span-1 sm:col-span-2 space-y-2">
+                <Label htmlFor="edit-notes" className="text-xs sm:text-sm">Catatan (Opsional)</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={currentExpense.notes || ""}
+                  onChange={(e) => setCurrentExpense({ ...currentExpense, notes: e.target.value })}
+                  placeholder="Catatan tambahan..."
+                  className="text-xs sm:text-sm min-h-[60px]"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} className="text-xs sm:text-sm">
+              Batal
+            </Button>
+            <Button onClick={handleEditExpense} className="text-xs sm:text-sm">Simpan Perubahan</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
         {/* View Dialog - Responsif untuk mobile */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

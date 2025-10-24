@@ -48,35 +48,19 @@ export function LoginForm() {
       }
 
       if (data.user) {
-        // Get user profile from database
-        const { data: userProfile, error: profileError } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", data.user.email)
-          .single()
-
-        if (profileError) {
-          toast.error("Error", {
-            description: "Gagal mengambil data profil pengguna",
-          })
-          setIsLoading(false)
-          return
-        }
-
-        // Store user session
+        // Store user session from auth only
         const userData = {
-          id: userProfile.id,
-          email: userProfile.email,
-          name: userProfile.name,
-          role: userProfile.role,
-          branch_id: userProfile.branch_id,
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+          role: data.user.user_metadata?.role || 'owner',
           loginTime: new Date().toISOString(),
         }
 
         localStorage.setItem("user", JSON.stringify(userData))
 
         toast.success("Login Berhasil", {
-          description: `Selamat datang, ${userProfile.name}!`,
+          description: `Selamat datang, ${userData.name}!`,
         })
 
         setTimeout(() => {

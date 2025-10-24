@@ -24,7 +24,7 @@ import {
   ComposedChart,
   Legend,
 } from "recharts"
-import { FileText, Users, MapPin, DollarSign, Clock, Award, CreditCard, Loader2, Trophy } from "lucide-react"
+import { FileText, Users, MapPin, DollarSign, Clock, Award, CreditCard, Loader2, Trophy, Coffee, LogOut, XCircle } from "lucide-react"
 import { supabase, getBranches } from "@/lib/supabase"
 
 interface RevenueData {
@@ -88,6 +88,10 @@ export function ComprehensiveReports() {
     averageHours: "08:12:00",
     attendanceRate: 94.5,
     topEmployee: "Loading...",
+    todayPresent: 0,
+    todayAbsent: 0,
+    todayOnBreak: 0,
+    todayCheckedOut: 0,
   })
   const [employeeAttendanceList, setEmployeeAttendanceList] = useState<
     Array<{
@@ -96,6 +100,13 @@ export function ComprehensiveReports() {
       totalMinutes: number
       attendanceRate: number
       daysWorked: number
+      // Real-time today's data
+      todayCheckIn?: string
+      todayCheckOut?: string
+      todayBreakDuration?: number
+      todayWorkingHours?: number
+      currentStatus?: "present" | "on-break" | "checked-out" | "absent"
+      branch?: string
     }>
   >([])
 
@@ -351,24 +362,56 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching attendance stats...")
 
-      const { data: attendance, error } = await supabase.from("attendance").select(`
+      const today = new Date().toISOString().split("T")[0]
+
+      // Get ALL attendance records for historical stats
+      const { data: allAttendance, error: allError } = await supabase.from("attendance").select(`
           total_hours,
           status,
           date,
-          users:user_id (name)
-        `)
+          check_in_time,
+          check_out_time,
+          total_break_minutes,
+          user_id,
+          branch_id
+        `) as { data: any[] | null; error: any }
 
-      if (error) {
-        console.log("[v0] Attendance error:", error)
+      if (allError) {
+        console.log("[v0] Attendance error:", allError)
         return
       }
 
-      const employeeStats: { [key: string]: { totalMinutes: number; daysWorked: number; checkedOutDays: number } } = {}
+      // Get TODAY's attendance for real-time data
+      const { data: todayAttendance, error: todayError} = await supabase
+        .from("attendance")
+        .select(`*`) as { data: any[] | null; error: any }
 
-      attendance?.forEach((a) => {
-        const name = a.users?.name || "Unknown"
+      if (todayError) {
+        console.log("[v0] Today attendance error:", todayError)
+      }
+
+      // Get users and branches for mapping
+      const { data: usersData } = await supabase.from("users").select("id, name")
+      const { data: branchesData } = await supabase.from("branches").select("id, name")
+
+      const userMap = new Map(usersData?.map((u: any) => [u.id, u.name]) || [])
+      const branchMap = new Map(branchesData?.map((b: any) => [b.id, b.name]) || [])
+
+      // Calculate per-employee stats
+      const employeeStats: {
+        [key: string]: {
+          totalMinutes: number
+          daysWorked: number
+          checkedOutDays: number
+          todayRecord?: any
+        }
+      } = {}
+
+      // Process all historical attendance
+      allAttendance?.forEach((a: any) => {
+        const name = userMap.get(a.user_id) || "Unknown"
         const hours = a.total_hours || 0
-        const minutes = Math.round(hours * 60) // Convert hours to minutes
+        const minutes = Math.round(hours * 60)
 
         if (!employeeStats[name]) {
           employeeStats[name] = { totalMinutes: 0, daysWorked: 0, checkedOutDays: 0 }
@@ -381,11 +424,67 @@ export function ComprehensiveReports() {
         }
       })
 
+      // Link today's records to employee stats
+      const todayFiltered = todayAttendance?.filter((r: any) => r.date === today) || []
+      todayFiltered.forEach((record: any) => {
+        const name = userMap.get(record.user_id) || "Unknown"
+        if (employeeStats[name]) {
+          employeeStats[name].todayRecord = record
+        } else {
+          // Employee hasn't worked before but is working today
+          employeeStats[name] = {
+            totalMinutes: 0,
+            daysWorked: 0,
+            checkedOutDays: 0,
+            todayRecord: record,
+          }
+        }
+      })
+
+      // Calculate real-time working hours for today
+      const calculateCurrentWorkingHours = (record: any): number => {
+        if (!record.check_in_time) return 0
+
+        const checkInTime = new Date(record.check_in_time)
+        const checkOutTime = record.check_out_time ? new Date(record.check_out_time) : new Date()
+        const breakMinutes = record.total_break_minutes || 0
+
+        const workMinutes = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60)
+        const netMinutes = Math.max(0, workMinutes - breakMinutes)
+
+        return netMinutes / 60 // Convert to hours
+      }
+
+      const formatTime = (hours: number): string => {
+        if (hours <= 0) return "00:00:00"
+        const totalSeconds = Math.floor(hours * 3600)
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const s = totalSeconds % 60
+        return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+      }
+
       const employeeList = Object.entries(employeeStats)
         .map(([name, stats]) => {
           const totalHours = Math.floor(stats.totalMinutes / 60)
           const remainingMinutes = stats.totalMinutes % 60
           const seconds = Math.floor((stats.totalMinutes % 1) * 60)
+
+          const todayRecord = stats.todayRecord
+          let currentStatus: "present" | "on-break" | "checked-out" | "absent" = "absent"
+          let todayWorkingHours = 0
+
+          if (todayRecord) {
+            todayWorkingHours = calculateCurrentWorkingHours(todayRecord)
+
+            if (todayRecord.status === "checked_in") {
+              currentStatus = "present"
+            } else if (todayRecord.status === "on_break") {
+              currentStatus = "on-break"
+            } else if (todayRecord.status === "checked_out") {
+              currentStatus = "checked-out"
+            }
+          }
 
           return {
             name,
@@ -393,21 +492,42 @@ export function ComprehensiveReports() {
             totalMinutes: stats.totalMinutes,
             attendanceRate: stats.daysWorked > 0 ? Math.round((stats.checkedOutDays / stats.daysWorked) * 100) : 0,
             daysWorked: stats.daysWorked,
+            // Today's real-time data
+            todayCheckIn: todayRecord?.check_in_time,
+            todayCheckOut: todayRecord?.check_out_time,
+            todayBreakDuration: todayRecord?.total_break_minutes || 0,
+            todayWorkingHours,
+            currentStatus,
+            branch: branchMap.get(todayRecord?.branch_id) || "N/A",
           }
         })
-        .sort((a, b) => b.totalMinutes - a.totalMinutes) // Sort by total minutes (best to worst)
+        .sort((a, b) => {
+          // Sort by today's working hours first (active employees on top), then by total minutes
+          if (a.currentStatus !== "absent" && b.currentStatus === "absent") return -1
+          if (a.currentStatus === "absent" && b.currentStatus !== "absent") return 1
+          if (a.currentStatus !== "absent" && b.currentStatus !== "absent") {
+            return b.todayWorkingHours! - a.todayWorkingHours!
+          }
+          return b.totalMinutes - a.totalMinutes
+        })
 
       setEmployeeAttendanceList(employeeList)
 
-      const totalMinutes = attendance?.reduce((sum, a) => sum + (a.total_hours || 0) * 60, 0) || 0
-      const totalRecords = attendance?.length || 1
+      // Calculate summary stats
+      const todayPresent = employeeList.filter((e) => e.currentStatus === "present").length
+      const todayOnBreak = employeeList.filter((e) => e.currentStatus === "on-break").length
+      const todayCheckedOut = employeeList.filter((e) => e.currentStatus === "checked-out").length
+      const todayAbsent = employeeList.filter((e) => e.currentStatus === "absent").length
+
+      const totalMinutes = allAttendance?.reduce((sum, a) => sum + (a.total_hours || 0) * 60, 0) || 0
+      const totalRecords = allAttendance?.length || 1
       const averageMinutes = totalMinutes / totalRecords
 
       const avgHours = Math.floor(averageMinutes / 60)
       const avgMins = Math.floor(averageMinutes % 60)
       const avgSecs = Math.floor((averageMinutes % 1) * 60)
 
-      const checkedInCount = attendance?.filter((a) => a.status === "checked_out").length || 0
+      const checkedInCount = allAttendance?.filter((a) => a.status === "checked_out").length || 0
       const attendanceRate = totalRecords > 0 ? (checkedInCount / totalRecords) * 100 : 0
 
       const topEmployee = employeeList[0]?.name || "No data"
@@ -416,6 +536,10 @@ export function ComprehensiveReports() {
         averageHours: `${avgHours.toString().padStart(2, "0")}:${avgMins.toString().padStart(2, "0")}:${avgSecs.toString().padStart(2, "0")}`,
         attendanceRate: Math.round(attendanceRate * 10) / 10,
         topEmployee,
+        todayPresent,
+        todayAbsent,
+        todayOnBreak,
+        todayCheckedOut,
       })
 
       console.log("[v0] Attendance stats updated:", {
@@ -423,6 +547,10 @@ export function ComprehensiveReports() {
         attendanceRate,
         topEmployee,
         employeeCount: employeeList.length,
+        todayPresent,
+        todayOnBreak,
+        todayCheckedOut,
+        todayAbsent,
       })
     } catch (error) {
       console.error("[v0] Error fetching attendance stats:", error)
@@ -1070,7 +1198,7 @@ export function ComprehensiveReports() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -1212,88 +1340,410 @@ export function ComprehensiveReports() {
         </TabsContent>
 
         <TabsContent value="attendance" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
+          {/* Summary Cards Hari Ini */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Rata-rata Jam Kerja
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{attendanceStats.averageHours}</div>
-                <p className="text-xs text-gray-600">per hari per karyawan</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Tingkat Kehadiran
+                  Hadir Hari Ini
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%</div>
-                <p className="text-xs text-gray-600">bulan ini</p>
+                <div className="text-3xl font-bold text-green-600">{attendanceStats.todayPresent || 0}</div>
+                <p className="text-xs text-green-700 mt-1">Sedang bekerja</p>
               </CardContent>
             </Card>
-            <Card>
+
+            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                  <Award className="h-4 w-4" />
-                  Karyawan Terbaik
+                <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Istirahat
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold text-red-600">{attendanceStats.topEmployee}</div>
-                <p className="text-xs text-gray-600">Jam kerja terbanyak</p>
+                <div className="text-3xl font-bold text-blue-600">{attendanceStats.todayOnBreak || 0}</div>
+                <p className="text-xs text-blue-700 mt-1">Sedang break</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  Sudah Pulang
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-600">{attendanceStats.todayCheckedOut || 0}</div>
+                <p className="text-xs text-gray-700 mt-1">Completed today</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Belum Masuk
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600">{attendanceStats.todayAbsent || 0}</div>
+                <p className="text-xs text-red-700 mt-1">Not checked in</p>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
-                Ranking Kehadiran Karyawan
-              </CardTitle>
-              <p className="text-sm text-gray-600">Diurutkan berdasarkan total jam kerja (terbaik ke terburuk)</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {employeeAttendanceList.map((employee, index) => (
-                  <div key={employee.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                          index === 0
-                            ? "bg-yellow-100 text-yellow-800"
-                            : index === 1
-                              ? "bg-gray-100 text-gray-800"
-                              : index === 2
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-blue-100 text-blue-800"
+          {/* Sub-tabs: Grid Karyawan & Laporan Detail */}
+          <Tabs defaultValue="grid" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="grid">📋 Grid Karyawan</TabsTrigger>
+              <TabsTrigger value="report">📊 Laporan Detail</TabsTrigger>
+            </TabsList>
+
+            {/* Grid Karyawan - Seperti di Attendance System */}
+            <TabsContent value="grid" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Status Karyawan Real-Time
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Data diperbarui otomatis setiap 5 detik • Klik refresh untuk update manual
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4">
+                    {employeeAttendanceList.map((employee, index) => (
+                      <Card
+                        key={employee.name}
+                        className={`overflow-hidden transition-all hover:shadow-lg ${
+                          employee.currentStatus === "present"
+                            ? "border-l-4 border-green-500 bg-green-50/30"
+                            : employee.currentStatus === "on-break"
+                              ? "border-l-4 border-blue-500 bg-blue-50/30"
+                              : employee.currentStatus === "checked-out"
+                                ? "border-l-4 border-gray-500 bg-gray-50/30"
+                                : "border-l-4 border-red-300 bg-red-50/20"
                         }`}
                       >
-                        {index + 1}
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div
+                                className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg ${
+                                  index === 0
+                                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600 ring-4 ring-yellow-200"
+                                    : index === 1
+                                      ? "bg-gradient-to-br from-gray-400 to-gray-600 ring-4 ring-gray-200"
+                                      : index === 2
+                                        ? "bg-gradient-to-br from-orange-400 to-orange-600 ring-4 ring-orange-200"
+                                        : "bg-gradient-to-br from-blue-500 to-indigo-600"
+                                }`}
+                              >
+                                {employee.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-xl font-bold text-gray-900">{employee.name}</h3>
+                                  {index < 3 && (
+                                    <span className="text-2xl">
+                                      {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  {employee.branch} • {employee.daysWorked} hari kerja
+                                </p>
+                              </div>
+                            </div>
+                            <Badge
+                              className={`px-4 py-2 text-sm font-semibold ${
+                                employee.currentStatus === "present"
+                                  ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                  : employee.currentStatus === "on-break"
+                                    ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
+                                    : employee.currentStatus === "checked-out"
+                                      ? "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                                      : "bg-red-100 text-red-800 hover:bg-red-100"
+                              }`}
+                            >
+                              {employee.currentStatus === "present" && "🟢 Sedang Bekerja"}
+                              {employee.currentStatus === "on-break" && "🟡 Istirahat"}
+                              {employee.currentStatus === "checked-out" && "⚪ Sudah Pulang"}
+                              {employee.currentStatus === "absent" && "🔴 Belum Masuk"}
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                            <div className="bg-white p-4 rounded-lg border-2 border-green-200 shadow-sm">
+                              <div className="text-xs font-medium text-gray-600 mb-2">Check In</div>
+                              <div className="text-lg font-bold text-green-700">
+                                {employee.todayCheckIn
+                                  ? new Date(employee.todayCheckIn).toLocaleTimeString("id-ID", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "--:--"}
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-lg border-2 border-red-200 shadow-sm">
+                              <div className="text-xs font-medium text-gray-600 mb-2">Check Out</div>
+                              <div className="text-lg font-bold text-red-700">
+                                {employee.todayCheckOut
+                                  ? new Date(employee.todayCheckOut).toLocaleTimeString("id-ID", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "--:--"}
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-lg border-2 border-blue-200 shadow-sm">
+                              <div className="text-xs font-medium text-gray-600 mb-2">Jam Kerja Hari Ini</div>
+                              <div className="text-lg font-bold text-blue-700">
+                                {employee.todayWorkingHours
+                                  ? (() => {
+                                      const hours = employee.todayWorkingHours
+                                      const h = Math.floor(hours)
+                                      const m = Math.floor((hours % 1) * 60)
+                                      const s = Math.floor(((hours % 1) * 60 - m) * 60)
+                                      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+                                    })()
+                                  : "00:00:00"}
+                              </div>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-lg border-2 border-orange-200 shadow-sm">
+                              <div className="text-xs font-medium text-gray-600 mb-2">Istirahat</div>
+                              <div className="text-lg font-bold text-orange-700">
+                                {employee.todayBreakDuration
+                                  ? (() => {
+                                      const mins = employee.todayBreakDuration
+                                      const h = Math.floor(mins / 60)
+                                      const m = mins % 60
+                                      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:00`
+                                    })()
+                                  : "00:00:00"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                            <div className="flex gap-6">
+                              <div>
+                                <span className="text-sm text-gray-600">Total Jam (All Time): </span>
+                                <span className="font-bold text-blue-600 text-lg">{employee.totalHours}</span>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-600">Kehadiran: </span>
+                                <span className="font-bold text-green-600 text-lg">{employee.attendanceRate}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {employeeAttendanceList.length === 0 && (
+                      <div className="text-center py-12">
+                        <Users className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">Tidak ada data karyawan</p>
                       </div>
-                      <div>
-                        <div className="font-semibold text-gray-900">{employee.name}</div>
-                        <div className="text-sm text-gray-600">{employee.daysWorked} hari kerja</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg text-blue-600">{employee.totalHours}</div>
-                      <div className="text-sm text-gray-600">{employee.attendanceRate}% kehadiran</div>
-                    </div>
+                    )}
                   </div>
-                ))}
-                {employeeAttendanceList.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">Tidak ada data kehadiran karyawan</div>
-                )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Laporan Detail - Tabel Lengkap */}
+            <TabsContent value="report" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Rata-rata Jam Kerja
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">{attendanceStats.averageHours}</div>
+                    <p className="text-xs text-gray-600">per hari (all time)</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Tingkat Kehadiran
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">{attendanceStats.attendanceRate}%</div>
+                    <p className="text-xs text-gray-600">completion rate</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                      <Trophy className="h-4 w-4" />
+                      Karyawan Terbaik
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-bold text-red-600">{attendanceStats.topEmployee}</div>
+                    <p className="text-xs text-gray-600">Jam kerja terbanyak</p>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Laporan Presensi Lengkap
+                  </CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Tabel lengkap dengan semua data presensi karyawan • Update real-time setiap 5 detik
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-red-500 to-orange-500 text-white">
+                          <th className="p-3 text-left font-semibold border border-red-600">Rank</th>
+                          <th className="p-3 text-left font-semibold border border-red-600">Nama Karyawan</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Status Hari Ini</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Cabang</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Check In</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Check Out</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Jam Kerja Hari Ini</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Istirahat</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Total Jam (All Time)</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Hari Kerja</th>
+                          <th className="p-3 text-center font-semibold border border-red-600">Kehadiran %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employeeAttendanceList.map((employee, index) => (
+                          <tr
+                            key={employee.name}
+                            className={`border-b hover:bg-gray-50 transition-colors ${
+                              index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                            } ${
+                              employee.currentStatus === "present"
+                                ? "border-l-4 border-green-500"
+                                : employee.currentStatus === "on-break"
+                                  ? "border-l-4 border-blue-500"
+                                  : employee.currentStatus === "checked-out"
+                                    ? "border-l-4 border-gray-500"
+                                    : "border-l-4 border-red-300"
+                            }`}
+                          >
+                            <td className="p-3 border border-gray-200">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                    index === 0
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : index === 1
+                                        ? "bg-gray-200 text-gray-800"
+                                        : index === 2
+                                          ? "bg-orange-100 text-orange-800"
+                                          : "bg-blue-100 text-blue-800"
+                                  }`}
+                                >
+                                  {index + 1}
+                                </span>
+                                {index < 3 && <span className="text-lg">{index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}</span>}
+                              </div>
+                            </td>
+                            <td className="p-3 font-semibold text-gray-900 border border-gray-200">{employee.name}</td>
+                            <td className="p-3 text-center border border-gray-200">
+                              <Badge
+                                className={`${
+                                  employee.currentStatus === "present"
+                                    ? "bg-green-100 text-green-800"
+                                    : employee.currentStatus === "on-break"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : employee.currentStatus === "checked-out"
+                                        ? "bg-gray-100 text-gray-800"
+                                        : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {employee.currentStatus === "present" && "🟢 Bekerja"}
+                                {employee.currentStatus === "on-break" && "🟡 Break"}
+                                {employee.currentStatus === "checked-out" && "⚪ Pulang"}
+                                {employee.currentStatus === "absent" && "🔴 Absent"}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-center text-sm text-gray-700 border border-gray-200">
+                              {employee.branch}
+                            </td>
+                            <td className="p-3 text-center font-mono text-green-700 font-semibold border border-gray-200">
+                              {employee.todayCheckIn
+                                ? new Date(employee.todayCheckIn).toLocaleTimeString("id-ID", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })
+                                : "--:--:--"}
+                            </td>
+                            <td className="p-3 text-center font-mono text-red-700 font-semibold border border-gray-200">
+                              {employee.todayCheckOut
+                                ? new Date(employee.todayCheckOut).toLocaleTimeString("id-ID", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })
+                                : "--:--:--"}
+                            </td>
+                            <td className="p-3 text-center font-mono text-blue-700 font-bold border border-gray-200">
+                              {employee.todayWorkingHours
+                                ? (() => {
+                                    const hours = employee.todayWorkingHours
+                                    const h = Math.floor(hours)
+                                    const m = Math.floor((hours % 1) * 60)
+                                    const s = Math.floor(((hours % 1) * 60 - m) * 60)
+                                    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+                                  })()
+                                : "00:00:00"}
+                            </td>
+                            <td className="p-3 text-center font-mono text-orange-700 font-semibold border border-gray-200">
+                              {employee.todayBreakDuration
+                                ? (() => {
+                                    const mins = employee.todayBreakDuration
+                                    const h = Math.floor(mins / 60)
+                                    const m = mins % 60
+                                    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:00`
+                                  })()
+                                : "00:00:00"}
+                            </td>
+                            <td className="p-3 text-center font-mono text-indigo-700 font-bold text-lg border border-gray-200">
+                              {employee.totalHours}
+                            </td>
+                            <td className="p-3 text-center text-gray-700 border border-gray-200">{employee.daysWorked}</td>
+                            <td className="p-3 text-center border border-gray-200">
+                              <span className="font-bold text-green-700 text-lg">{employee.attendanceRate}%</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {employeeAttendanceList.length === 0 && (
+                      <div className="text-center py-12">
+                        <FileText className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                        <p className="text-gray-500">Tidak ada data presensi</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

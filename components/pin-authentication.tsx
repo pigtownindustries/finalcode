@@ -194,7 +194,12 @@ export function PinAuthentication({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        // Samakan perilaku tombol X dengan tombol Batal: selalu kembali ke menu sebelumnya
+        onCancel()
+      }
+    }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-center justify-center">

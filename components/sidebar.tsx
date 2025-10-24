@@ -45,7 +45,7 @@ const menuItems = [
     title: "Poin",
     icon: CreditCard,
     href: "/points",
-    description: "Sistem poin pelanggan",
+    description: "Sistem poin karyawan",
     color: "text-orange-400"
   },
   {
