@@ -68,16 +68,12 @@ export function OwnerDashboard() {
   const [loading, setLoading] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [showPin, setShowPin] = useState(false)
-  const [showCurrentPin, setShowCurrentPin] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountSettings, setAccountSettings] = useState({
     email: "",
-    currentPassword: "",
+    ownerName: "",
     newPassword: "",
-    confirmPassword: "",
-    pin: "",
-    currentPin: ""
+    confirmPassword: ""
   })
   const [realTimeEnabled, setRealTimeEnabled] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "error">("disconnected")
@@ -110,9 +106,7 @@ export function OwnerDashboard() {
       setAccountSettings((prev) => ({
         ...prev,
         email: user.email || "",
-        pin: (user as any).pin || "",
-        currentPin: (user as any).pin || "",
-        currentPassword: "",
+        ownerName: (user.user_metadata as any)?.full_name || (user.email?.split('@')[0] || ""),
       }))
       
       setLoading(false)
@@ -153,12 +147,6 @@ export function OwnerDashboard() {
       toast({ title: "Error", description: "Password baru dan konfirmasi tidak cocok!", variant: "destructive" })
       return
     }
-    
-    // Validasi PIN
-    if (accountSettings.pin && (accountSettings.pin.length !== 6 || !/^\d+$/.test(accountSettings.pin))) {
-      toast({ title: "Error", description: "PIN harus 6 digit angka!", variant: "destructive" })
-      return
-    }
 
     try {
       const currentUser = await getCurrentUser()
@@ -179,12 +167,10 @@ export function OwnerDashboard() {
         if (passwordError) throw passwordError
       }
 
-      // Update PIN di database
-      if (accountSettings.pin !== accountSettings.currentPin) {
-        const pinUpdated = await updateUserPin(currentUser.id, accountSettings.pin)
-        if (!pinUpdated) {
-          throw new Error("Gagal update PIN")
-        }
+      // Update nama pemilik di metadata auth
+      if ((currentUser.user_metadata as any)?.full_name !== accountSettings.ownerName) {
+        const { error: metaError } = await supabase.auth.updateUser({ data: { full_name: accountSettings.ownerName } })
+        if (metaError) throw metaError
       }
 
       // Update data user lainnya
@@ -192,7 +178,7 @@ export function OwnerDashboard() {
         .from("users")
         .update({ 
           email: accountSettings.email,
-          pin: accountSettings.pin 
+          name: accountSettings.ownerName
         })
         .eq("id", currentUser.id)
 
@@ -202,10 +188,8 @@ export function OwnerDashboard() {
       setSettingsOpen(false)
       setAccountSettings((prev) => ({ 
         ...prev, 
-        currentPassword: "", 
         newPassword: "", 
-        confirmPassword: "",
-        currentPin: prev.pin // Update current pin dengan yang baru
+        confirmPassword: ""
       }))
       
     } catch (error: any) {
@@ -346,6 +330,17 @@ export function OwnerDashboard() {
                     </DialogHeader>
                     <form onSubmit={handleSettingsSubmit} className="space-y-4">
                       <div className="space-y-2">
+                        <Label htmlFor="ownerName" className="text-sm font-medium">Nama Pemilik</Label>
+                        <Input
+                          id="ownerName"
+                          type="text"
+                          value={accountSettings.ownerName}
+                          onChange={(e) => setAccountSettings((prev) => ({ ...prev, ownerName: e.target.value }))}
+                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
+                          placeholder="Nama pemilik"
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                         <Input
                           id="email"
@@ -393,65 +388,6 @@ export function OwnerDashboard() {
                           className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
                           placeholder="Konfirmasi password baru"
                         />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPin" className="text-sm font-medium">PIN Saat Ini</Label>
-                        <div className="relative">
-                          <Input
-                            id="currentPin"
-                            type={showCurrentPin ? "text" : "password"}
-                            value={accountSettings.currentPin}
-                            disabled
-                            className="bg-gray-100 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 pr-10 backdrop-blur-sm"
-                            placeholder="PIN saat ini"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowCurrentPin(!showCurrentPin)}
-                          >
-                            {showCurrentPin ?
-                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
-                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
-                            }
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="pin" className="text-sm font-medium">PIN Baru (6 digit)</Label>
-                        <div className="relative">
-                          <Input
-                            id="pin"
-                            type={showPin ? "text" : "password"}
-                            value={accountSettings.pin}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                              setAccountSettings((prev) => ({ ...prev, pin: value }));
-                            }}
-                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
-                            placeholder="123456"
-                            maxLength={6}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPin(!showPin)}
-                          >
-                            {showPin ?
-                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
-                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
-                            }
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          PIN digunakan untuk autentikasi akses ke dashboard
-                        </p>
                       </div>
                       
                       <div className="flex gap-2 pt-4">

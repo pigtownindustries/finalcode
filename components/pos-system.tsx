@@ -652,7 +652,7 @@ export function POSSystem() {
                 return (
                   <Card
                     key={service.id}
-                    className={`hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={`h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => {
                       if (service.type === "product" && availableStock <= 0) return
                       addToCart(service)
@@ -671,7 +671,7 @@ export function POSSystem() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="mt-auto">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
                           <p className="text-lg md:text-2xl font-bold text-primary">{formatPrice(service.price)}</p>
@@ -693,7 +693,17 @@ export function POSSystem() {
                             )}
                           </div>
                         </div>
-                        <Button size="sm" className="gap-1 text-xs md:text-sm" disabled={service.type === "product" && availableStock <= 0}>
+                        <Button
+                          size="sm"
+                          className="gap-1 text-xs md:text-sm"
+                          disabled={service.type === "product" && availableStock <= 0}
+                          onClick={(e) => {
+                            // Hindari trigger onClick Card agar tidak double
+                            e.stopPropagation()
+                            if (service.type === "product" && availableStock <= 0) return
+                            addToCart(service)
+                          }}
+                        >
                           <Plus className="h-3 w-3" />
                           {service.type === "product" && availableStock <= 0 ? "Habis" : "Tambah"}
                         </Button>
