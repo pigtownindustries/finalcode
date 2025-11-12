@@ -1,26 +1,33 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { 
-    Settings, Trash2, AlertCircle, Loader2, Package, Search,
-    Users, DollarSign, Calendar, FileText, RefreshCw, Edit,
-    CheckCircle, XCircle, Filter, Download, Eye, CheckSquare,
-    Square, Sliders, ChevronDown, ChevronUp, BarChart3, Sparkles
+    Settings, Trash2, CheckCircle, XCircle, Loader2, 
+    Users, DollarSign, AlertTriangle, RefreshCw, 
+    Sparkles, Search, Download, Eye, Edit
 } from "lucide-react";
-import { supabase, subscribeToEvents } from "@/lib/supabase";
-import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/lib/supabase";
 
 // Helper functions
+const formatRupiah = (value: number): string => {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(value);
+};
+
 const formatNominal = (value: string | number): string => {
     if (!value && value !== 0) return "";
     const stringValue = String(value).replace(/[^0-9]/g, '');
@@ -34,1275 +41,1033 @@ const parseNominal = (value: string): number => {
 };
 
 // Data Types
+interface Employee {
+    id: string;
+    name: string;
+    email: string;
+    role?: string;
+    position?: string;
+}
+
+interface Service {
+    id: string;
+    name: string;
+    price: number;
+    type: 'service' | 'product';
+}
+
+interface CommissionRule {
+    id: string;
+    user_id: string;
+    service_id: string;
+    commission_type: 'percentage' | 'fixed';
+    commission_value: number;
+    service_name?: string;
+    service_price?: number;
+}
+
+interface EmployeeCommissionStatus {
+    employee: Employee;
+    totalServices: number;
+    configuredServices: number;
+    notConfiguredServices: number;
+    commissions: CommissionRule[];
+    missingServices: Service[];
+}
+
 interface TransactionItem {
     id: string;
     transaction_id: string;
-    quantity: number;
-    unit_price: number;
-    created_at: string;
     barber_id: string;
     service_id: string;
-    commission_type?: 'percentage' | 'fixed' | null;
+    quantity: number;
+    unit_price: number;
+    commission_type?: string | null;
     commission_value?: number | null;
     commission_amount?: number | null;
-    commission_status?: string | null;
-    users: {
-        id: string;
-        name: string;
-        email: string;
-    } | null;
-    services: {
-        id: string;
-        name: string;
-        price: number;
-        type: 'service' | 'product';
-    } | null;
-    transactions: {
-        id: string;
-        transaction_number: string;
-        created_at: string;
-        customer_name: string;
-        total_amount: number;
-        payment_status: string;
-        payment_method: string;
-    } | null;
+    created_at: string;
+    barber_name?: string;
+    service_name?: string;
 }
 
-interface CommissionStats {
-    totalItems: number;
-    pendingItems: number;
-    completedItems: number;
-    noCommissionItems: number;
-    totalAmount: number;
-    totalCommission: number;
-    barberCount: number;
-}
-
-interface FilterState {
-    status: 'all' | 'pending' | 'completed' | 'no_commission';
-    barber: string;
-    dateRange: 'today' | 'week' | 'month' | 'all';
-    serviceCategory: string;
-}
-
-interface EmployeeSummary {
-    id: string;
-    name: string;
-    totalCommission: number;
-    pendingItems: number;
-    completedItems: number;
-    noCommissionItems: number;
-    totalTransactions: number;
-}
-
-export function KontrolKomisi() {
+export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
     const { toast } = useToast();
-    const [allItems, setAllItems] = useState<TransactionItem[]>([]);
-    const [filteredItems, setFilteredItems] = useState<TransactionItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [stats, setStats] = useState<CommissionStats>({
-        totalItems: 0,
-        pendingItems: 0,
-        completedItems: 0,
-        noCommissionItems: 0,
-        totalAmount: 0,
-        totalCommission: 0,
-        barberCount: 0
-    });
-
-    const [filters, setFilters] = useState<FilterState>({
-        status: 'all',
-        barber: 'all',
-        dateRange: 'month',
-        serviceCategory: 'all'
-    });
-
-    const [selectedItem, setSelectedItem] = useState<TransactionItem | null>(null);
-    const [selectedItems, setSelectedItems] = useState<string[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+    const [services, setServices] = useState<Service[]>([]);
+    const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
+    const [employeeStatuses, setEmployeeStatuses] = useState<EmployeeCommissionStatus[]>([]);
+    const [transactions, setTransactions] = useState<TransactionItem[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
+    
+    // Dialog states
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+    const [selectedService, setSelectedService] = useState('');
+    const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
     const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>('percentage');
     const [commissionValue, setCommissionValue] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [activeBarbers, setActiveBarbers] = useState<{id: string, name: string}[]>([]);
-    const [serviceCategories, setServiceCategories] = useState<any[]>([]);
-    const [employeeSummaries, setEmployeeSummaries] = useState<EmployeeSummary[]>([]);
-    const [activeTab, setActiveTab] = useState('transactions');
-    const [expandedEmployees, setExpandedEmployees] = useState<Set<string>>(new Set());
-    const [exportDateRange, setExportDateRange] = useState({ start: '', end: '' });
+    const [editMode, setEditMode] = useState(false);
+    const [editingCommissionId, setEditingCommissionId] = useState<string | null>(null);
 
-    // FUNGSI: Ambil data karyawan aktif dari database
-    const fetchActiveBarbers = useCallback(async () => {
-        try {
-            console.log('🔄 Fetching active barbers...');
-            
-            const { data, error } = await supabase
-                .from('users')
-                .select('id, name, email')
-                .eq('role', 'barber')
-                .eq('status', 'active')
-                .order('name');
-
-            if (error) {
-                console.error('❌ Error fetching barbers:', error);
-                throw error;
-            }
-
-            console.log('✅ Active barbers:', data);
-            setActiveBarbers(data || []);
-            
-        } catch (error) {
-            console.error('❌ Failed to fetch barbers:', error);
-            toast({
-                title: "Gagal Memuat Data Karyawan",
-                description: (error as Error).message,
-                variant: "destructive",
-            });
-        }
-    }, [toast]);
-
-    // FUNGSI: Ambil kategori service
-    const fetchServiceCategories = useCallback(async () => {
-        try {
-            const { data, error } = await supabase
-                .from('service_categories')
-                .select('id, name')
-                .order('name');
-
-            if (error) {
-                console.error('❌ Error fetching categories:', error);
-                return;
-            }
-
-            setServiceCategories(data || []);
-        } catch (error) {
-            console.error('❌ Failed to fetch categories:', error);
-        }
+    // Load data
+    useEffect(() => {
+        loadData();
     }, []);
 
-    // FUNGSI: Ambil semua transaction items
-    const fetchAllItems = useCallback(async () => {
+    // Rebuild employee statuses when employees change
+    useEffect(() => {
+        if (employees.length > 0 && services.length > 0) {
+            buildEmployeeStatuses(employees, services, commissionRules);
+        }
+    }, [employees, services, commissionRules]);
+
+    const loadData = async () => {
         setLoading(true);
         try {
-            console.log('🔄 Fetching all transaction items...');
+            console.log('[loadData] Starting to load commission data...');
             
-            const { data, error } = await supabase
+            // Load services
+            const { data: servicesData, error: servicesError } = await supabase
+                .from('services')
+                .select('*')
+                .eq('type', 'service')
+                .order('name');
+
+            if (servicesError) throw servicesError;
+            console.log('[loadData] Services loaded:', servicesData?.length);
+            setServices(servicesData || []);
+
+            // Load commission rules
+            const { data: rulesData, error: rulesError } = await supabase
+                .from('commission_rules')
+                .select('*');
+
+            if (rulesError) throw rulesError;
+            console.log('[loadData] Commission rules loaded:', rulesData?.length);
+            setCommissionRules(rulesData || []);
+
+            // Load recent transactions
+            const { data: transactionsData, error: transactionsError } = await supabase
                 .from('transaction_items')
                 .select(`
-                    id, 
-                    transaction_id, 
-                    quantity, 
-                    unit_price, 
-                    created_at, 
-                    barber_id, 
-                    service_id,
-                    commission_type,
-                    commission_value,
-                    commission_amount,
-                    commission_status,
-                    users:barber_id (id, name, email),
-                    services:service_id (id, name, price, type),
-                    transactions:transaction_id (
-                        id,
-                        transaction_number, 
-                        created_at, 
-                        customer_name,
-                        total_amount,
-                        payment_status,
-                        payment_method
-                    )
+                    *,
+                    users:barber_id(name),
+                    services:service_id(name, price)
                 `)
-                .not('barber_id', 'is', null)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(100);
 
-            if (error) {
-                console.error('❌ Supabase error:', error);
-                throw error;
+            if (!transactionsError && transactionsData) {
+                const formattedTransactions: TransactionItem[] = transactionsData.map((item: any) => ({
+                    id: item.id,
+                    transaction_id: item.transaction_id,
+                    barber_id: item.barber_id,
+                    service_id: item.service_id,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    commission_type: item.commission_type,
+                    commission_value: item.commission_value,
+                    commission_amount: item.commission_amount,
+                    created_at: item.created_at,
+                    barber_name: item.users?.name || 'Unknown',
+                    service_name: item.services?.name || 'Unknown'
+                }));
+                console.log('[loadData] Transactions loaded:', formattedTransactions.length);
+                setTransactions(formattedTransactions);
             }
 
-            setAllItems(data || []);
-            
-            // Hitung stats
-            if (data && data.length > 0) {
-                const totalAmount = data.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-                const totalCommission = data.reduce((sum, item) => sum + (item.commission_amount || 0), 0);
-                
-                const pendingItems = data.filter(item => 
-                    item.services?.type === 'service' && 
-                    (!item.commission_status || item.commission_status === 'pending' || item.commission_status === 'pending_rule')
-                ).length;
-
-                const completedItems = data.filter(item => 
-                    item.commission_status === 'credited'
-                ).length;
-
-                const noCommissionItems = data.filter(item => 
-                    item.services?.type === 'product' || item.commission_status === 'no_commission'
-                ).length;
-                
-                const uniqueBarberIds = new Set(data.map(item => item.barber_id));
-                const barberCount = Array.from(uniqueBarberIds).length;
-                
-                setStats({
-                    totalItems: data.length,
-                    pendingItems,
-                    completedItems,
-                    noCommissionItems,
-                    totalAmount,
-                    totalCommission,
-                    barberCount
-                });
-
-                // Hitung employee summaries
-                const summaries = await calculateEmployeeSummaries(data);
-                setEmployeeSummaries(summaries);
-            } else {
-                setStats({
-                    totalItems: 0,
-                    pendingItems: 0,
-                    completedItems: 0,
-                    noCommissionItems: 0,
-                    totalAmount: 0,
-                    totalCommission: 0,
-                    barberCount: 0
-                });
-                setEmployeeSummaries([]);
+            // Build employee statuses
+            if (employees.length > 0) {
+                console.log('[loadData] Building employee statuses for', employees.length, 'employees');
+                buildEmployeeStatuses(employees, servicesData || [], rulesData || []);
             }
             
-        } catch (error) {
-            console.error('❌ Error fetching items:', error);
+            console.log('[loadData] Data loading completed successfully');
+        } catch (error: any) {
+            console.error('[loadData] Error loading data:', error);
             toast({
-                title: "Gagal Memuat Data Transaksi",
-                description: (error as Error).message,
-                variant: "destructive",
+                title: "Error",
+                description: error.message,
+                variant: "destructive"
             });
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    };
 
-    // FUNGSI: Hitung summary per karyawan
-    const calculateEmployeeSummaries = async (items: TransactionItem[]): Promise<EmployeeSummary[]> => {
-        const employeeMap = new Map<string, EmployeeSummary>();
-
-        items.forEach(item => {
-            if (!item.barber_id || !item.users) return;
-
-            if (!employeeMap.has(item.barber_id)) {
-                employeeMap.set(item.barber_id, {
-                    id: item.barber_id,
-                    name: item.users.name,
-                    totalCommission: 0,
-                    pendingItems: 0,
-                    completedItems: 0,
-                    noCommissionItems: 0,
-                    totalTransactions: 0
-                });
-            }
-
-            const employee = employeeMap.get(item.barber_id)!;
-            
-            if (item.commission_amount) {
-                employee.totalCommission += item.commission_amount;
-            }
-
-            if (item.services?.type === 'service') {
-                if (!item.commission_status || item.commission_status === 'pending' || item.commission_status === 'pending_rule') {
-                    employee.pendingItems++;
-                } else if (item.commission_status === 'credited') {
-                    employee.completedItems++;
-                }
-            } else if (item.services?.type === 'product') {
-                employee.noCommissionItems++;
-            }
-
-            employee.totalTransactions++;
+    const buildEmployeeStatuses = (
+        emps: Employee[], 
+        servs: Service[], 
+        rules: CommissionRule[]
+    ) => {
+        console.log('[buildEmployeeStatuses] Called with:', {
+            employees: emps.length,
+            services: servs.length,
+            rules: rules.length
         });
 
-        return Array.from(employeeMap.values());
+        if (!emps || emps.length === 0) {
+            console.log('[buildEmployeeStatuses] No employees, setting empty statuses');
+            setEmployeeStatuses([]);
+            return;
+        }
+
+        const statuses: EmployeeCommissionStatus[] = emps.map(employee => {
+            // Ambil hanya komisi unik per layanan (yang terbaru jika ada duplikat)
+            const employeeRules = rules.filter(r => r.user_id === employee.id);
+            const uniqueCommissions = new Map<string, CommissionRule>();
+            
+            employeeRules.forEach(rule => {
+                const existing = uniqueCommissions.get(rule.service_id);
+                // Simpan yang terbaru berdasarkan created_at
+                if (!existing || (rule.created_at && existing.created_at && new Date(rule.created_at) > new Date(existing.created_at))) {
+                    uniqueCommissions.set(rule.service_id, rule);
+                } else if (!existing) {
+                    uniqueCommissions.set(rule.service_id, rule);
+                }
+            });
+
+            const employeeCommissions = Array.from(uniqueCommissions.values());
+            const configuredServiceIds = employeeCommissions.map(c => c.service_id);
+            const missingServices = servs.filter(s => !configuredServiceIds.includes(s.id));
+
+            return {
+                employee,
+                totalServices: servs.length,
+                configuredServices: employeeCommissions.length,
+                notConfiguredServices: missingServices.length,
+                commissions: employeeCommissions,
+                missingServices
+            };
+        });
+
+        console.log('[buildEmployeeStatuses] Statuses built:', statuses.length);
+        setEmployeeStatuses(statuses);
     };
 
-    // FUNGSI: Handle buka modal
-    const handleOpenModal = (item: TransactionItem) => {
-        setSelectedItem(item);
-        setCommissionType(item.commission_type || 'percentage');
-        setCommissionValue(item.commission_value?.toString() || '');
-        setIsModalOpen(true);
+    const openAddCommissionDialog = (employee: Employee) => {
+        setSelectedEmployee(employee);
+        setSelectedService('');
+        setCommissionType('percentage');
+        setCommissionValue('');
+        setEditMode(false);
+        setEditingCommissionId(null);
+        setIsDialogOpen(true);
     };
 
-    // FUNGSI: Handle buka batch modal
-    const handleOpenBatchModal = () => {
-        if (selectedItems.length === 0) {
+    const openEditCommissionDialog = (employee: Employee, commission: CommissionRule) => {
+        const service = services.find(s => s.id === commission.service_id);
+        setSelectedEmployee(employee);
+        setSelectedService(commission.service_id);
+        setCommissionType(commission.commission_type);
+        setCommissionValue(String(commission.commission_value));
+        setEditMode(true);
+        setEditingCommissionId(commission.id);
+        setIsDialogOpen(true);
+    };
+
+    const handleSaveCommission = async () => {
+        if (!selectedEmployee || !selectedService || !commissionValue) {
             toast({
-                title: "Pilih Item Terlebih Dahulu",
-                description: "Silakan pilih minimal satu item untuk di-edit secara batch",
+                title: "Error",
+                description: "Mohon lengkapi semua field",
                 variant: "destructive"
             });
             return;
         }
-        setIsBatchModalOpen(true);
-    };
 
-    // FUNGSI: Handle select/deselect item
-    const toggleItemSelection = (itemId: string) => {
-        setSelectedItems(prev => 
-            prev.includes(itemId)
-                ? prev.filter(id => id !== itemId)
-                : [...prev, itemId]
-        );
-    };
-
-    // FUNGSI: Select all filtered items
-    const selectAllItems = () => {
-        setSelectedItems(filteredItems
-            .filter(item => item.services?.type === 'service' && item.commission_status !== 'no_commission')
-            .map(item => item.id)
-        );
-    };
-
-    // FUNGSI: Deselect all items
-    const deselectAllItems = () => {
-        setSelectedItems([]);
-    };
-
-    // 🔥 FUNGSI: Save commission - VERSI FIXED
-    const handleSaveCommission = async (itemId?: string, type?: 'percentage' | 'fixed', value?: string) => {
-        const targetItem = itemId ? allItems.find(item => item.id === itemId) : selectedItem;
-        const targetType = type || commissionType;
-        const targetValue = value || commissionValue;
-
-        if (!targetItem || !targetValue) {
-            toast({ title: "Data tidak lengkap", variant: "destructive" });
+        const value = parseNominal(commissionValue);
+        
+        if (value <= 0) {
+            toast({
+                title: "Error",
+                description: "Nilai komisi harus lebih dari 0",
+                variant: "destructive"
+            });
             return;
         }
-        
-        setIsProcessing(true);
+
+        if (commissionType === 'percentage' && value > 100) {
+            toast({
+                title: "Error",
+                description: "Persentase tidak boleh lebih dari 100%",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setLoading(true);
         try {
-            const numericValue = targetType === 'percentage' ? parseFloat(targetValue) : parseNominal(targetValue);
-            
-            if (targetType === 'percentage' && (numericValue <= 0 || numericValue > 100)) {
-                toast({ title: "Persentase harus antara 1-100%", variant: "destructive" });
-                return;
-            }
-            
-            if (targetType === 'fixed' && numericValue <= 0) {
-                toast({ title: "Nominal komisi harus lebih dari 0", variant: "destructive" });
-                return;
-            }
+            console.log('Saving commission:', {
+                user_id: selectedEmployee.id,
+                service_id: selectedService,
+                commission_type: commissionType,
+                commission_value: value,
+                editMode,
+                editingCommissionId
+            });
 
-            // Hitung komisi
-            const commissionPerItem = targetType === 'percentage'
-                ? targetItem.unit_price * (numericValue / 100)
-                : numericValue;
-
-            const totalCommission = commissionPerItem * targetItem.quantity;
-
-            console.log('💾 Saving commission for item:', targetItem.id);
-            
-            // Update transaction item commission
-            const { error: updateError } = await supabase
-                .from('transaction_items')
-                .update({
-                    commission_type: targetType,
-                    commission_value: numericValue,
-                    commission_amount: totalCommission,
-                    commission_status: 'credited',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', targetItem.id);
-
-            if (updateError) throw updateError;
-
-            // Simpan ke commission_rules untuk automasi masa depan
-            if (targetItem.services?.type === 'service') {
-                const { error: ruleError } = await supabase
+            // CEK DUPLIKAT - Pastikan tidak ada komisi ganda untuk user_id + service_id yang sama
+            if (!editMode) {
+                console.log('Checking for duplicate commission...');
+                const { data: existingCommissions, error: checkError } = await supabase
                     .from('commission_rules')
-                    .upsert({
-                        user_id: targetItem.barber_id,
-                        service_id: targetItem.service_id,
-                        commission_type: targetType,
-                        commission_value: numericValue,
-                        updated_at: new Date().toISOString()
-                    }, {
-                        onConflict: 'user_id,service_id'
-                    });
+                    .select('*')
+                    .eq('user_id', selectedEmployee.id)
+                    .eq('service_id', selectedService);
 
-                if (ruleError) {
-                    console.warn('⚠️ Commission rules warning:', ruleError);
+                if (checkError) {
+                    console.error('Error checking duplicates:', checkError);
+                    throw checkError;
+                }
+
+                if (existingCommissions && existingCommissions.length > 0) {
+                    console.log('Duplicate found:', existingCommissions);
+                    toast({
+                        title: "Komisi Sudah Ada",
+                        description: `Komisi untuk layanan ini sudah diatur. Silakan gunakan tombol Edit untuk mengubahnya.`,
+                        variant: "destructive"
+                    });
+                    setLoading(false);
+                    return;
                 }
             }
 
-            toast({ 
-                title: "✅ Komisi Berhasil Disimpan",
-                description: `Komisi untuk ${targetItem.services?.name} berhasil ditetapkan.`
-            });
-            
-            if (!itemId) {
-                setIsModalOpen(false);
-            }
-            
-            // Refresh data
-            await fetchAllItems();
-            
-        } catch (error) {
-            console.error('❌ Error saving commission:', error);
-            
-            let errorMessage = "Terjadi kesalahan sistem";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            }
-            
-            toast({
-                title: "Gagal Menyimpan Komisi",
-                description: errorMessage,
-                variant: "destructive",
-            });
-        } finally {
-            setIsProcessing(false);
-        }
-    };
+            let data, error;
 
-    // 🔥 FUNGSI: Save batch commissions
-    const handleSaveBatchCommissions = async () => {
-        if (selectedItems.length === 0 || !commissionValue) {
-            toast({ title: "Data tidak lengkap", variant: "destructive" });
-            return;
-        }
-        
-        setIsProcessing(true);
-        try {
-            const numericValue = commissionType === 'percentage' ? parseFloat(commissionValue) : parseNominal(commissionValue);
-            
-            if (commissionType === 'percentage' && (numericValue <= 0 || numericValue > 100)) {
-                toast({ title: "Persentase harus antara 1-100%", variant: "destructive" });
-                return;
-            }
-            
-            if (commissionType === 'fixed' && numericValue <= 0) {
-                toast({ title: "Nominal komisi harus lebih dari 0", variant: "destructive" });
-                return;
-            }
-
-            // Process each selected item
-            for (const itemId of selectedItems) {
-                const item = allItems.find(i => i.id === itemId);
-                if (!item || item.services?.type !== 'service') continue;
-
-                // Hitung komisi
-                const commissionPerItem = commissionType === 'percentage'
-                    ? item.unit_price * (numericValue / 100)
-                    : numericValue;
-
-                const totalCommission = commissionPerItem * item.quantity;
-
-                // Update transaction item commission
-                const { error: updateError } = await supabase
-                    .from('transaction_items')
+            if (editMode && editingCommissionId) {
+                // Update existing commission
+                console.log('Updating commission with ID:', editingCommissionId);
+                const result = await supabase
+                    .from('commission_rules')
                     .update({
                         commission_type: commissionType,
-                        commission_value: numericValue,
-                        commission_amount: totalCommission,
-                        commission_status: 'credited',
-                        updated_at: new Date().toISOString()
+                        commission_value: value
                     })
-                    .eq('id', itemId);
-
-                if (updateError) throw updateError;
-
-                // Simpan ke commission_rules
-                const { error: ruleError } = await supabase
+                    .eq('id', editingCommissionId)
+                    .select();
+                data = result.data;
+                error = result.error;
+                console.log('Update result:', { data, error });
+            } else {
+                // Insert new commission
+                console.log('Inserting new commission');
+                const result = await supabase
                     .from('commission_rules')
-                    .upsert({
-                        user_id: item.barber_id,
-                        service_id: item.service_id,
+                    .insert({
+                        user_id: selectedEmployee.id,
+                        service_id: selectedService,
                         commission_type: commissionType,
-                        commission_value: numericValue,
-                        updated_at: new Date().toISOString()
-                    }, {
-                        onConflict: 'user_id,service_id'
+                        commission_value: value
+                    })
+                    .select();
+                data = result.data;
+                error = result.error;
+                console.log('Insert result:', { data, error });
+            }
+
+            if (error) {
+                console.error('Error saving commission:', error);
+                
+                // Jika error karena constraint unique violation
+                if (error.code === '23505') {
+                    toast({
+                        title: "Komisi Sudah Ada",
+                        description: "Komisi untuk karyawan dan layanan ini sudah ada. Gunakan Edit untuk mengubahnya.",
+                        variant: "destructive"
                     });
-
-                if (ruleError) {
-                    console.warn('⚠️ Commission rules warning:', ruleError);
+                } else {
+                    throw error;
                 }
+                setLoading(false);
+                return;
             }
 
-            toast({ 
-                title: "✅ Komisi Batch Berhasil Disimpan",
-                description: `Komisi untuk ${selectedItems.length} item berhasil ditetapkan.`
-            });
-            
-            setIsBatchModalOpen(false);
-            setSelectedItems([]);
-            
-            // Refresh data
-            await fetchAllItems();
-            
-        } catch (error) {
-            console.error('❌ Error saving batch commissions:', error);
-            
-            let errorMessage = "Terjadi kesalahan sistem";
-            if (error instanceof Error) {
-                errorMessage = error.message;
-            }
-            
+            console.log('Commission saved successfully:', data);
+
             toast({
-                title: "Gagal Menyimpan Komisi",
-                description: errorMessage,
-                variant: "destructive",
+                title: "Berhasil",
+                description: editMode ? "Komisi berhasil diupdate" : "Komisi berhasil ditambahkan"
+            });
+
+            setIsDialogOpen(false);
+            setSelectedEmployee(null);
+            setSelectedService('');
+            setCommissionValue('');
+            setEditMode(false);
+            setEditingCommissionId(null);
+            
+            // Reload data untuk update UI
+            await loadData();
+        } catch (error: any) {
+            console.error('Exception in handleSaveCommission:', error);
+            toast({
+                title: "Error",
+                description: error.message || "Gagal menyimpan komisi",
+                variant: "destructive"
             });
         } finally {
-            setIsProcessing(false);
+            setLoading(false);
         }
     };
 
-    // EFFECT: Load data pertama kali
-    useEffect(() => {
-        const initializeData = async () => {
-            await Promise.all([
-                fetchActiveBarbers(),
-                fetchServiceCategories(),
-                fetchAllItems()
-            ]);
-        };
-        
-        initializeData();
+    const handleDeleteCommission = async (commissionId: string) => {
+        if (!confirm('Hapus komisi ini?')) return;
 
-        // Realtime listener
-        const transactionItemsChannel = supabase
-            .channel('transaction_items_changes')
-            .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'transaction_items' 
-                }, 
-                (payload) => {
-                    console.log('🔄 Realtime change detected');
-                    fetchAllItems();
-                }
-            )
-            .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'transactions' 
-                }, 
-                (payload) => {
-                    console.log('🔄 Realtime transaction change');
-                    fetchAllItems();
-                }
-            )
-            .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'commission_rules' 
-                }, 
-                (payload) => {
-                    console.log('🔄 Realtime commission rule change');
-                    fetchAllItems();
-                }
-            )
-            .subscribe();
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('commission_rules')
+                .delete()
+                .eq('id', commissionId);
 
-        // Subscribe to global events
-        const eventsChannel = subscribeToEvents((event, payload) => {
-            if (event === 'commission_updated' || event === 'transaction_created') {
-                fetchAllItems();
-            }
-        });
+            if (error) throw error;
 
-        return () => {
-            supabase.removeChannel(transactionItemsChannel);
-            supabase.removeChannel(eventsChannel);
-        };
-    }, [fetchAllItems, fetchActiveBarbers, fetchServiceCategories]);
-
-    // EFFECT: Filter data
-    useEffect(() => {
-        let filtered = allItems;
-
-        // Filter pencarian
-        if (searchTerm) {
-            const lowercasedFilter = searchTerm.toLowerCase();
-            filtered = filtered.filter(item => {
-                const serviceName = item.services?.name || '';
-                const userName = item.users?.name || '';
-                const transactionNumber = item.transactions?.transaction_number || '';
-                const customerName = item.transactions?.customer_name || '';
-                
-                return (
-                    serviceName.toLowerCase().includes(lowercasedFilter) ||
-                    userName.toLowerCase().includes(lowercasedFilter) ||
-                    transactionNumber.toLowerCase().includes(lowercasedFilter) ||
-                    customerName.toLowerCase().includes(lowercasedFilter)
-                );
+            toast({
+                title: "Berhasil",
+                description: "Komisi berhasil dihapus"
             });
-        }
 
-        // Filter status komisi
-        if (filters.status !== 'all') {
-            filtered = filtered.filter(item => {
-                if (filters.status === 'pending') {
-                    return item.services?.type === 'service' && 
-                           (!item.commission_status || item.commission_status === 'pending' || item.commission_status === 'pending_rule');
-                } else if (filters.status === 'completed') {
-                    return item.commission_status === 'credited';
-                } else if (filters.status === 'no_commission') {
-                    return item.services?.type === 'product' || item.commission_status === 'no_commission';
-                }
-                return true;
+            loadData();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive"
             });
+        } finally {
+            setLoading(false);
         }
+    };
 
-        // Filter barber
-        if (filters.barber !== 'all') {
-            filtered = filtered.filter(item => item.barber_id === filters.barber);
-        }
+    const openTransactionDialog = (transaction: TransactionItem) => {
+        setSelectedTransaction(transaction);
+        setCommissionType('percentage');
+        setCommissionValue('');
+        setIsTransactionDialogOpen(true);
+    };
 
-        // Filter service category
-        if (filters.serviceCategory !== 'all') {
-            // Implement category filtering if needed
-        }
-
-        // Filter tanggal
-        const now = new Date();
-        if (filters.dateRange !== 'all') {
-            filtered = filtered.filter(item => {
-                const itemDate = new Date(item.created_at);
-                switch (filters.dateRange) {
-                    case 'today':
-                        return itemDate.toDateString() === now.toDateString();
-                    case 'week':
-                        const startOfWeek = new Date(now);
-                        startOfWeek.setDate(now.getDate() - now.getDay());
-                        return itemDate >= startOfWeek;
-                    case 'month':
-                        return itemDate.getMonth() === now.getMonth() && 
-                               itemDate.getFullYear() === now.getFullYear();
-                    default:
-                        return true;
-                }
+    const handleSaveTransactionCommission = async () => {
+        if (!selectedTransaction || !commissionValue) {
+            toast({
+                title: "Error",
+                description: "Mohon masukkan nilai komisi",
+                variant: "destructive"
             });
+            return;
         }
 
-        setFilteredItems(filtered);
-    }, [searchTerm, filters, allItems]);
-
-    // FUNGSI: Dapatkan nama barber dari ID
-    const getBarberName = (barberId: string) => {
-        const barber = activeBarbers.find(b => b.id === barberId);
-        return barber?.name || 'Unknown Barber';
-    };
-
-    const getStatusBadge = (item: TransactionItem) => {
-        if (item.services?.type === 'product') {
-            return (
-                <Badge variant="outline" className="bg-gray-100 text-gray-700">
-                    <Package className="h-3 w-3 mr-1" />
-                    Produk - No Komisi
-                </Badge>
-            );
-        } else if (item.commission_status === 'no_commission') {
-            return (
-                <Badge variant="outline" className="bg-gray-100 text-gray-700">
-                    <XCircle className="h-3 w-3 mr-1" />
-                    No Komisi
-                </Badge>
-            );
-        } else if (!item.commission_status || item.commission_status === 'pending' || item.commission_status === 'pending_rule') {
-            return (
-                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Belum Diatur
-                </Badge>
-            );
-        } else if (item.commission_status === 'credited') {
-            return (
-                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Sudah Diatur
-                </Badge>
-            );
+        const value = parseInt(commissionValue);
+        if (isNaN(value)) {
+            toast({
+                title: "Error",
+                description: "Nilai komisi harus berupa angka",
+                variant: "destructive"
+            });
+            return;
         }
-        return null;
+
+        if (commissionType === 'percentage' && (value < 0 || value > 100)) {
+            toast({
+                title: "Error",
+                description: "Persentase harus antara 0-100",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // Calculate commission amount
+            const commissionAmount = commissionType === 'percentage'
+                ? (selectedTransaction.unit_price * selectedTransaction.quantity * value) / 100
+                : value;
+
+            // Update transaction item
+            const { error } = await supabase
+                .from('transaction_items')
+                .update({
+                    commission_type: commissionType,
+                    commission_value: value,
+                    commission_amount: commissionAmount,
+                    commission_status: 'completed'
+                })
+                .eq('id', selectedTransaction.id);
+
+            if (error) throw error;
+
+            toast({
+                title: "Berhasil!",
+                description: "Komisi transaksi berhasil diatur dan tersimpan"
+            });
+
+            setIsTransactionDialogOpen(false);
+            loadData();
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message,
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+    const filteredStatuses = employeeStatuses.filter(status => 
+        status.employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        status.employee.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const pendingTransactions = transactions.filter(t => !t.commission_value);
+    const completedTransactions = transactions.filter(t => t.commission_value);
+
+    const getProgressColor = (configured: number, total: number) => {
+        const percentage = (configured / total) * 100;
+        if (percentage === 100) return 'text-green-600';
+        if (percentage >= 50) return 'text-yellow-600';
+        return 'text-red-600';
     };
 
-    const exportToCSV = () => {
-        const headers = ['No Transaksi', 'Tanggal', 'Layanan', 'Tipe', 'Karyawan', 'Customer', 'Quantity', 'Harga', 'Total', 'Status Komisi', 'Tipe Komisi', 'Nilai Komisi', 'Total Komisi'];
-        
-        const csvData = filteredItems.map(item => [
-            item.transactions?.transaction_number || '',
-            new Date(item.created_at).toLocaleDateString('id-ID'),
-            item.services?.name || '',
-            item.services?.type === 'product' ? 'Produk' : 'Layanan',
-            item.users?.name || '',
-            item.transactions?.customer_name || '',
-            item.quantity,
-            formatNominal(item.unit_price),
-            formatNominal(item.unit_price * item.quantity),
-            item.commission_status === 'credited' ? 'Sudah Diatur' : 
-            item.commission_status === 'no_commission' || item.services?.type === 'product' ? 'No Komisi' : 'Belum Diatur',
-            item.commission_type || '',
-            item.commission_value ? (item.commission_type === 'percentage' ? `${item.commission_value}%` : formatNominal(item.commission_value)) : '',
-            item.commission_amount ? formatNominal(item.commission_amount) : ''
-        ]);
-
-        const csvContent = [headers, ...csvData]
-            .map(row => row.map(field => `"${field}"`).join(','))
-            .join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `laporan-komisi-${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const getProgressBg = (configured: number, total: number) => {
+        const percentage = (configured / total) * 100;
+        if (percentage === 100) return 'bg-green-600';
+        if (percentage >= 50) return 'bg-yellow-600';
+        return 'bg-red-600';
     };
 
-    const toggleEmployeeExpansion = (employeeId: string) => {
-        setExpandedEmployees(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(employeeId)) {
-                newSet.delete(employeeId);
-            } else {
-                newSet.add(employeeId);
-            }
-            return newSet;
-        });
-    };
+    if (loading && employeeStatuses.length === 0) {
+        return (
+            <div className="w-full -mx-6">
+                <Card className="border-0 border-t border-b border-gray-200 rounded-none">
+                    <CardContent className="p-12 text-center">
+                        <Loader2 className="h-12 w-12 animate-spin mx-auto text-red-600 mb-4" />
+                        <p className="text-gray-600">Memuat data komisi...</p>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Kontrol Komisi</h1>
-                    <p className="text-gray-600">Kelola dan pantau semua komisi transaksi</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={exportToCSV} className="gap-2">
-                        <Download className="h-4 w-4" />
-                        Export CSV
-                    </Button>
-                    <Button onClick={fetchAllItems} disabled={loading} className="gap-2">
-                        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                        Refresh
-                    </Button>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-2 border-b pb-2">
-                <Button
-                    variant={activeTab === 'transactions' ? 'default' : 'ghost'}
-                    onClick={() => setActiveTab('transactions')}
-                    className="gap-2"
-                >
-                    <FileText className="h-4 w-4" />
-                    Transaksi
-                </Button>
-                <Button
-                    variant={activeTab === 'summary' ? 'default' : 'ghost'}
-                    onClick={() => setActiveTab('summary')}
-                    className="gap-2"
-                >
-                    <BarChart3 className="h-4 w-4" />
-                    Summary Karyawan
-                </Button>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <FileText className="h-4 w-4" />
-                            Total Items
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">{stats.totalItems}</div>
-                        <p className="text-xs text-gray-600">semua item transaksi</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
-                            Perlu Diatur
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{stats.pendingItems}</div>
-                        <p className="text-xs text-gray-600">layanan butuh komisi</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            Sudah Diatur
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{stats.completedItems}</div>
-                        <p className="text-xs text-gray-600">komisi terselesaikan</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-                            <Package className="h-4 w-4 text-gray-600" />
-                            No Komisi
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-gray-600">{stats.noCommissionItems}</div>
-                        <p className="text-xs text-gray-600">produk & layanan tanpa komisi</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Transactions Tab */}
-            {activeTab === 'transactions' && (
-                <>
-                    {/* Filters */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Filter className="h-5 w-5" />
-                                Filter & Pencarian
+        <div className="w-full -mx-6">
+            <Card className="border-0 border-t border-b border-gray-200 rounded-none shadow-sm">
+                <CardHeader className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-3 text-xl font-bold mb-2">
+                                <Sparkles className="h-6 w-6" />
+                                Kontrol Komisi
                             </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="relative md:col-span-2">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <CardDescription className="text-red-50 text-sm">
+                                Kelola dan pantau semua komisi transaksi
+                            </CardDescription>
+                        </div>
+                        <Button 
+                            onClick={loadData} 
+                            disabled={loading}
+                            variant="secondary"
+                            size="sm"
+                            className="gap-2"
+                        >
+                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                            Refresh
+                        </Button>
+                    </div>
+                </CardHeader>
+
+                <CardContent className="p-6">
+                    <Tabs defaultValue="transactions" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4 mb-6">
+                            <TabsTrigger value="transactions" className="gap-2">
+                                <AlertTriangle className="h-4 w-4" />
+                                Transaksi ({pendingTransactions.length})
+                            </TabsTrigger>
+                            <TabsTrigger value="manage" className="gap-2">
+                                <Settings className="h-4 w-4" />
+                                Atur Komisi
+                            </TabsTrigger>
+                            <TabsTrigger value="status" className="gap-2">
+                                <Users className="h-4 w-4" />
+                                Status
+                            </TabsTrigger>
+                            <TabsTrigger value="overview" className="gap-2">
+                                <DollarSign className="h-4 w-4" />
+                                Overview
+                            </TabsTrigger>
+                        </TabsList>
+
+                        {/* TAB 1: TRANSAKSI (PRIORITY) */}
+                        <TabsContent value="transactions" className="space-y-4">
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-semibold text-yellow-800 mb-1">Transaksi Perlu Diatur</p>
+                                        <p className="text-sm text-yellow-700">
+                                            Ada {pendingTransactions.length} transaksi yang belum diatur komisinya. 
+                                            Klik "Atur Komisi" untuk langsung menyimpan data komisi!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {pendingTransactions.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                                    <p className="text-xl font-semibold text-gray-800 mb-2">Semua Transaksi Sudah Diatur!</p>
+                                    <p className="text-gray-600">Tidak ada transaksi yang perlu pengaturan komisi</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {pendingTransactions.map((transaction) => (
+                                        <div 
+                                            key={transaction.id}
+                                            className="flex items-center justify-between p-4 bg-white border border-yellow-200 rounded-lg hover:shadow-sm transition-shadow"
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                                        Belum Diatur
+                                                    </Badge>
+                                                    <p className="text-xs text-gray-500">
+                                                        {new Date(transaction.created_at).toLocaleDateString('id-ID', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </p>
+                                                </div>
+                                                <p className="font-semibold text-gray-800">{transaction.barber_name}</p>
+                                                <p className="text-sm text-gray-600">
+                                                    {transaction.service_name} • {formatRupiah(transaction.unit_price)} x {transaction.quantity}
+                                                </p>
+                                                <p className="text-lg font-bold text-red-600 mt-1">
+                                                    Total: {formatRupiah(transaction.unit_price * transaction.quantity)}
+                                                </p>
+                                            </div>
+                                            <Button
+                                                onClick={() => openTransactionDialog(transaction)}
+                                                className="gap-2 bg-red-600 hover:bg-red-700"
+                                                disabled={loading}
+                                            >
+                                                <Settings className="h-4 w-4" />
+                                                Atur Komisi
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Transaksi yang sudah diatur */}
+                            {completedTransactions.length > 0 && (
+                                <div className="mt-6">
+                                    <p className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                        <CheckCircle className="h-5 w-5 text-green-600" />
+                                        Sudah Diatur ({completedTransactions.length} Transaksi)
+                                    </p>
+                                    <div className="space-y-2">
+                                        {completedTransactions.slice(0, 10).map((transaction) => (
+                                            <div 
+                                                key={transaction.id}
+                                                className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                                            >
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-sm text-gray-800">{transaction.barber_name}</p>
+                                                    <p className="text-xs text-gray-600">{transaction.service_name}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-semibold text-green-600">
+                                                        {transaction.commission_type === 'percentage' 
+                                                            ? `${transaction.commission_value}%`
+                                                            : formatRupiah(transaction.commission_value || 0)
+                                                        }
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        = {formatRupiah(transaction.commission_amount || 0)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </TabsContent>
+
+                        {/* TAB 2: ATUR KOMISI */}
+                        <TabsContent value="manage" className="space-y-4">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
-                                        placeholder="Cari transaksi, layanan, karyawan, customer..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Cari karyawan..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
                                         className="pl-10"
                                     />
                                 </div>
-
-                                <Select 
-                                    value={filters.status} 
-                                    onValueChange={(value: 'all' | 'pending' | 'completed' | 'no_commission') => 
-                                        setFilters(prev => ({ ...prev, status: value }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Filter Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">Semua Status</SelectItem>
-                                        <SelectItem value="pending">Belum Diatur</SelectItem>
-                                        <SelectItem value="completed">Sudah Diatur</SelectItem>
-                                        <SelectItem value="no_commission">No Komisi</SelectItem>
-                                    </SelectContent>
-                                </Select>
-
-                                <Select 
-                                    value={filters.dateRange} 
-                                    onValueChange={(value: 'today' | 'week' | 'month' | 'all') => 
-                                        setFilters(prev => ({ ...prev, dateRange: value }))
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Periode Waktu" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="today">Hari Ini</SelectItem>
-                                        <SelectItem value="week">Minggu Ini</SelectItem>
-                                        <SelectItem value="month">Bulan Ini</SelectItem>
-                                        <SelectItem value="all">Semua Waktu</SelectItem>
-                                    </SelectContent>
-                                </Select>
                             </div>
 
-                            {/* Filter Karyawan */}
-                            {activeBarbers.length > 0 && (
-                                <div className="mt-4">
-                                    <Label className="text-sm font-medium">Filter berdasarkan Karyawan</Label>
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        <Button
-                                            variant={filters.barber === 'all' ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setFilters(prev => ({ ...prev, barber: 'all' }))}
-                                        >
-                                            Semua Karyawan
-                                        </Button>
-                                        {activeBarbers.map(barber => (
-                                            <Button
-                                                key={barber.id}
-                                                variant={filters.barber === barber.id ? 'default' : 'outline'}
-                                                size="sm"
-                                                onClick={() => setFilters(prev => ({ ...prev, barber: barber.id }))}
-                                            >
-                                                {barber.name}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Batch Actions */}
-                            {selectedItems.length > 0 && (
-                                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="font-medium text-blue-900">
-                                                {selectedItems.length} item terpilih
-                                            </p>
-                                            <p className="text-sm text-blue-700">
-                                                Pilih aksi untuk item yang dipilih
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                size="sm"
-                                                onClick={handleOpenBatchModal}
-                                                className="gap-2"
-                                            >
-                                                <Settings className="h-4 w-4" />
-                                                Edit Batch
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={deselectAllItems}
-                                            >
-                                                Batal Pilih
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Main Content */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Settings className="h-5 w-5" />
-                                Daftar Semua Transaksi
-                                <Badge variant="outline" className="ml-2">
-                                    {filteredItems.length} items
-                                </Badge>
-                            </CardTitle>
-                            <CardDescription>
-                                Kelola komisi untuk semua transaksi - edit komisi yang belum diatur
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {/* Results */}
-                                {loading ? (
-                                    <div className="text-center py-12">
-                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary mb-4" />
-                                        <p className="text-gray-600">Memuat data transaksi...</p>
-                                    </div>
-                                ) : filteredItems.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed">
-                                        <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                                        <p className="font-medium text-lg mb-2">
-                                            {allItems.length === 0 
-                                                ? "Belum Ada Transaksi" 
-                                                : "Tidak Ditemukan Hasil"}
-                                        </p>
-                                        <p className="text-sm text-gray-400">
-                                            {allItems.length === 0 
-                                                ? "Belum ada transaksi yang tercatat dalam sistem." 
-                                                : "Tidak ada transaksi yang sesuai dengan filter yang dipilih."}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {filteredItems.map(item => (
-                                            <div key={item.id} className="p-3 md:p-4 border rounded-lg hover:shadow-md transition-all bg-white">
-                                                <div className="flex items-start gap-2 md:gap-3">
-                                                    <Checkbox
-                                                        checked={selectedItems.includes(item.id)}
-                                                        onCheckedChange={() => toggleItemSelection(item.id)}
-                                                        className="mt-1 flex-shrink-0"
-                                                        disabled={item.services?.type === 'product' || item.commission_status === 'no_commission'}
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        {/* Mobile Layout: Stack Everything */}
-                                                        <div className="space-y-3">
-                                                            {/* Header Section */}
-                                                            <div className="flex items-start gap-2 md:gap-3">
-                                                                <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-blue-100 flex-shrink-0">
-                                                                    <AvatarFallback className="bg-blue-100 text-blue-600 text-xs md:text-sm font-semibold">
-                                                                        {item.users?.name?.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || '??'}
-                                                                    </AvatarFallback>
-                                                                </Avatar>
-                                                                <div className="flex-1 min-w-0 space-y-1">
-                                                                    <div className="flex items-start justify-between gap-2">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <p className="font-semibold text-sm md:text-base text-gray-900 truncate">
-                                                                                {item.services?.name || 'Layanan Tidak Diketahui'}
-                                                                            </p>
-                                                                            <p className="text-xs md:text-sm text-gray-600 truncate">
-                                                                                {item.users?.name || 'Karyawan Tidak Diketahui'}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div className="flex-shrink-0">
-                                                                            {getStatusBadge(item)}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Badges Section */}
-                                                            <div className="flex flex-wrap gap-1.5 text-xs">
-                                                                <Badge variant="outline" className="bg-gray-50 text-gray-700 text-[10px] md:text-xs">
-                                                                    <Calendar className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
-                                                                    {formatDate(item.created_at)}
-                                                                </Badge>
-                                                                {item.transactions?.customer_name && (
-                                                                    <Badge variant="outline" className="bg-green-50 text-green-700 text-[10px] md:text-xs truncate max-w-[120px]">
-                                                                        {item.transactions.customer_name}
-                                                                    </Badge>
-                                                                )}
-                                                                {item.transactions?.payment_method && (
-                                                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-[10px] md:text-xs">
-                                                                        {item.transactions.payment_method}
-                                                                    </Badge>
-                                                                )}
-                                                                {item.services?.type === 'product' && (
-                                                                    <Badge variant="outline" className="bg-gray-100 text-gray-700 text-[10px] md:text-xs">
-                                                                        <Package className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
-                                                                        Produk
-                                                                    </Badge>
-                                                                )}
-                                                                {item.services?.type === 'service' && (
-                                                                    <Badge variant="outline" className="bg-red-100 text-red-700 text-[10px] md:text-xs">
-                                                                        <Sparkles className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
-                                                                        Layanan
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Transaction Number */}
-                                                            <p className="text-[10px] md:text-xs text-gray-400 font-mono truncate">
-                                                                #{item.transactions?.transaction_number || 'N/A'}
-                                                            </p>
-
-                                                            {/* Price Details Section */}
-                                                            <div className="space-y-1 bg-gray-50 p-2 rounded">
-                                                                <p className="text-xs md:text-sm text-gray-600">
-                                                                    Harga: <span className="font-medium">Rp {formatNominal(item.unit_price)}</span>
-                                                                </p>
-                                                                <p className="text-xs md:text-sm text-gray-600">
-                                                                    {item.quantity} × Rp {formatNominal(item.unit_price)} = 
-                                                                    <span className="font-semibold text-gray-900">
-                                                                        {' '}Rp {formatNominal(item.unit_price * item.quantity)}
-                                                                    </span>
-                                                                </p>
-                                                                {item.commission_amount && (
-                                                                    <p className="text-xs md:text-sm text-green-600 font-semibold">
-                                                                        Komisi: Rp {formatNominal(item.commission_amount)}
-                                                                    </p>
-                                                                )}
-                                                                {item.commission_type && item.commission_value && (
-                                                                    <p className="text-[10px] md:text-xs text-gray-500">
-                                                                        {item.commission_type === 'percentage' 
-                                                                            ? `${item.commission_value}%` 
-                                                                            : `Rp ${formatNominal(item.commission_value)}`
-                                                                        } per item
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            
-                                                            {/* Action Button */}
-                                                            <Button 
-                                                                size="sm"
-                                                                onClick={() => handleOpenModal(item)}
-                                                                className="w-full gap-2 h-9"
-                                                                variant={!item.commission_status ? "default" : "outline"}
-                                                                disabled={item.services?.type === 'product' || item.commission_status === 'no_commission'}
-                                                            >
-                                                                <Edit className="h-3 w-3 md:h-4 md:w-4" />
-                                                                <span className="text-xs md:text-sm">
-                                                                    {!item.commission_status ? "Atur Komisi" : "Edit Komisi"}
-                                                                </span>
-                                                            </Button>
-                                                        </div>
+                            <div className="space-y-0">
+                                {filteredStatuses.map((status, index) => (
+                                    <div 
+                                        key={status.employee.id}
+                                        className="border-t border-gray-200 first:border-t-0 p-6 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-4 mb-4">
+                                            <div className="flex items-center gap-4 flex-1">
+                                                <Avatar className="h-12 w-12 ring-2 ring-gray-200">
+                                                    <AvatarFallback className="bg-red-600 text-white font-bold">
+                                                        {status.employee.name.split(' ').map(n => n[0]).join('')}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <p className="font-bold text-lg text-gray-800">{status.employee.name}</p>
+                                                    <p className="text-sm text-gray-600">{status.employee.email}</p>
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {status.employee.position || status.employee.role || 'Karyawan'}
+                                                        </Badge>
+                                                        <Badge 
+                                                            variant={status.configuredServices === status.totalServices ? "default" : "destructive"}
+                                                            className="text-xs"
+                                                        >
+                                                            {status.configuredServices}/{status.totalServices} Layanan
+                                                        </Badge>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+
+                                            <div className="text-right">
+                                                <div className={`text-3xl font-bold mb-1 ${getProgressColor(status.configuredServices, status.totalServices)}`}>
+                                                    {Math.round((status.configuredServices / status.totalServices) * 100)}%
+                                                </div>
+                                                <p className="text-xs text-gray-600">Komisi Teratur</p>
+                                                <div className="w-32 h-2 bg-gray-200 rounded-full mt-2 overflow-hidden">
+                                                    <div 
+                                                        className={`h-full ${getProgressBg(status.configuredServices, status.totalServices)} transition-all`}
+                                                        style={{ width: `${(status.configuredServices / status.totalServices) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Komisi yang sudah diatur */}
+                                        {status.commissions.length > 0 && (
+                                            <div className="mb-4">
+                                                <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                                    Komisi Sudah Diatur ({status.commissions.length})
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {status.commissions.map((commission) => {
+                                                        const service = services.find(s => s.id === commission.service_id);
+                                                        return (
+                                                            <div 
+                                                                key={commission.id}
+                                                                className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                                                            >
+                                                                <div className="flex-1">
+                                                                    <p className="font-medium text-sm text-gray-800">{service?.name}</p>
+                                                                    <p className="text-xs text-gray-600">
+                                                                        {commission.commission_type === 'percentage' 
+                                                                            ? `${commission.commission_value}%`
+                                                                            : formatRupiah(commission.commission_value)
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => openEditCommissionDialog(status.employee, commission)}
+                                                                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                    >
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => handleDeleteCommission(commission.id)}
+                                                                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Layanan yang belum diatur */}
+                                        {status.notConfiguredServices > 0 && (
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                                                    Belum Diatur ({status.notConfiguredServices} Layanan)
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        onClick={() => openAddCommissionDialog(status.employee)}
+                                                        size="sm"
+                                                        className="gap-2 bg-red-600 hover:bg-red-700"
+                                                    >
+                                                        <Settings className="h-4 w-4" />
+                                                        Atur Komisi
+                                                    </Button>
+                                                    <p className="text-xs text-gray-600">
+                                                        {status.missingServices.map(s => s.name).join(', ')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {filteredStatuses.length === 0 && (
+                                    <div className="text-center py-12">
+                                        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                                        <p className="text-gray-600">Tidak ada karyawan ditemukan</p>
                                     </div>
                                 )}
                             </div>
-                        </CardContent>
-                    </Card>
-                </>
-            )}
+                        </TabsContent>
 
-            {/* Summary Tab */}
-            {activeTab === 'summary' && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5" />
-                            Summary Komisi per Karyawan
-                        </CardTitle>
-                        <CardDescription>
-                            Ringkasan komisi dan performa setiap karyawan
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {employeeSummaries.length === 0 ? (
-                                <div className="text-center py-12 text-gray-500">
-                                    <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                                    <p>Belum ada data komisi karyawan</p>
-                                </div>
-                            ) : (
-                                employeeSummaries.map(employee => (
-                                    <div key={employee.id} className="border rounded-lg p-4">
-                                        <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleEmployeeExpansion(employee.id)}>
-                                            <div className="flex items-center gap-3">
+                        {/* TAB 2: STATUS KOMISI */}
+                        <TabsContent value="status" className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <Card className="bg-green-50 border-green-200">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-green-600 rounded-lg">
+                                                <CheckCircle className="h-6 w-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-bold text-green-600">
+                                                    {employeeStatuses.filter(s => s.configuredServices === s.totalServices).length}
+                                                </p>
+                                                <p className="text-sm text-gray-600">Komisi Lengkap</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="bg-yellow-50 border-yellow-200">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-yellow-600 rounded-lg">
+                                                <AlertTriangle className="h-6 w-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-bold text-yellow-600">
+                                                    {employeeStatuses.filter(s => s.configuredServices > 0 && s.configuredServices < s.totalServices).length}
+                                                </p>
+                                                <p className="text-sm text-gray-600">Sebagian Diatur</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="bg-red-50 border-red-200">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-red-600 rounded-lg">
+                                                <XCircle className="h-6 w-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-bold text-red-600">
+                                                    {employeeStatuses.filter(s => s.configuredServices === 0).length}
+                                                </p>
+                                                <p className="text-sm text-gray-600">Belum Diatur</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="space-y-2">
+                                {employeeStatuses.map((status) => {
+                                    const percentage = Math.round((status.configuredServices / status.totalServices) * 100);
+                                    let statusColor = 'red';
+                                    let statusText = 'Belum Diatur';
+                                    
+                                    if (percentage === 100) {
+                                        statusColor = 'green';
+                                        statusText = 'Lengkap';
+                                    } else if (percentage > 0) {
+                                        statusColor = 'yellow';
+                                        statusText = 'Sebagian';
+                                    }
+
+                                    return (
+                                        <div key={status.employee.id} className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
+                                            <div className="flex items-center gap-4 flex-1">
                                                 <Avatar className="h-10 w-10">
-                                                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                                                        {employee.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                                    <AvatarFallback className={`bg-${statusColor}-600 text-white font-bold text-sm`}>
+                                                        {status.employee.name.split(' ').map(n => n[0]).join('')}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div>
-                                                    <p className="font-semibold">{employee.name}</p>
-                                                    <p className="text-sm text-gray-600">{employee.totalTransactions} transaksi</p>
+                                                <div className="flex-1">
+                                                    <p className="font-semibold text-gray-800">{status.employee.name}</p>
+                                                    <p className="text-sm text-gray-600">{status.configuredServices}/{status.totalServices} layanan diatur</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <p className="text-sm text-gray-600">Total Komisi</p>
-                                                    <p className="font-bold text-green-600">Rp {formatNominal(employee.totalCommission)}</p>
+                                                <div className="w-32 h-3 bg-gray-200 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full bg-${statusColor}-600 transition-all`}
+                                                        style={{ width: `${percentage}%` }}
+                                                    />
                                                 </div>
-                                                {expandedEmployees.has(employee.id) ? (
-                                                    <ChevronUp className="h-5 w-5 text-gray-400" />
-                                                ) : (
-                                                    <ChevronDown className="h-5 w-5 text-gray-400" />
-                                                )}
+                                                <Badge variant={percentage === 100 ? "default" : "destructive"} className="min-w-[80px] justify-center">
+                                                    {statusText}
+                                                </Badge>
                                             </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        </TabsContent>
 
-                                        {expandedEmployees.has(employee.id) && (
-                                            <div className="mt-4 pt-4 border-t space-y-3">
-                                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                                    <div className="text-center">
-                                                        <p className="font-semibold text-green-600">{employee.completedItems}</p>
+                        {/* TAB 3: OVERVIEW */}
+                        <TabsContent value="overview" className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-center">
+                                            <Users className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                                            <p className="text-3xl font-bold text-gray-800">{employeeStatuses.length}</p>
+                                            <p className="text-sm text-gray-600">Total Karyawan</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-center">
+                                            <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                                            <p className="text-3xl font-bold text-gray-800">{services.length}</p>
+                                            <p className="text-sm text-gray-600">Total Layanan</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-center">
+                                            <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                                            <p className="text-3xl font-bold text-gray-800">{commissionRules.length}</p>
+                                            <p className="text-sm text-gray-600">Komisi Diatur</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-4">
+                                        <div className="text-center">
+                                            <AlertTriangle className="h-8 w-8 text-red-600 mx-auto mb-2" />
+                                            <p className="text-3xl font-bold text-gray-800">
+                                                {(employeeStatuses.length * services.length) - commissionRules.length}
+                                            </p>
+                                            <p className="text-sm text-gray-600">Belum Diatur</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Detail Per Karyawan</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-3">
+                                        {employeeStatuses.map((status) => (
+                                            <div key={status.employee.id} className="p-4 bg-gray-50 rounded-lg">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <p className="font-semibold text-gray-800">{status.employee.name}</p>
+                                                    <Badge variant={status.configuredServices === status.totalServices ? "default" : "destructive"}>
+                                                        {Math.round((status.configuredServices / status.totalServices) * 100)}%
+                                                    </Badge>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-4 text-sm">
+                                                    <div>
+                                                        <p className="text-gray-600">Total Layanan</p>
+                                                        <p className="font-semibold">{status.totalServices}</p>
+                                                    </div>
+                                                    <div>
                                                         <p className="text-gray-600">Sudah Diatur</p>
+                                                        <p className="font-semibold text-green-600">{status.configuredServices}</p>
                                                     </div>
-                                                    <div className="text-center">
-                                                        <p className="font-semibold text-yellow-600">{employee.pendingItems}</p>
-                                                        <p className="text-gray-600">Perlu Diatur</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="font-semibold text-gray-600">{employee.noCommissionItems}</p>
-                                                        <p className="text-gray-600">No Komisi</p>
-                                                    </div>
-                                                    <div className="text-center">
-                                                        <p className="font-semibold">{employee.totalTransactions}</p>
-                                                        <p className="text-gray-600">Total Transaksi</p>
+                                                    <div>
+                                                        <p className="text-gray-600">Belum Diatur</p>
+                                                        <p className="font-semibold text-red-600">{status.notConfiguredServices}</p>
                                                     </div>
                                                 </div>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
-                                                    onClick={() => {
-                                                        setFilters(prev => ({ ...prev, barber: employee.id, status: 'pending' }));
-                                                        setActiveTab('transactions');
-                                                    }}
-                                                    className="w-full"
-                                                >
-                                                    Lihat Transaksi yang Perlu Diatur
-                                                </Button>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
 
-            {/* Commission Modal */}
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="sm:max-w-md">
+            {/* Dialog: Add Commission */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Settings className="h-5 w-5 text-blue-600" />
-                            {selectedItem?.commission_status ? "Edit Komisi" : "Atur Komisi"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {selectedItem?.commission_status 
-                                ? "Perbarui komisi untuk transaksi ini" 
-                                : "Tetapkan komisi untuk transaksi ini"}
-                        </DialogDescription>
+                        <DialogTitle>{editMode ? 'Edit Komisi' : 'Atur Komisi'} - {selectedEmployee?.name}</DialogTitle>
                     </DialogHeader>
-
-                    <div className="grid gap-4 py-4">
-                        {/* Transaction Info */}
-                        <div className="p-3 bg-gray-50 rounded-lg space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Layanan:</span>
-                                <span className="font-semibold">{selectedItem?.services?.name}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Karyawan:</span>
-                                <span className="font-semibold">{selectedItem?.users?.name}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Harga:</span>
-                                <span className="font-semibold">Rp {formatNominal(selectedItem?.unit_price || 0)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Quantity:</span>
-                                <span className="font-semibold">{selectedItem?.quantity}</span>
-                            </div>
-                            <div className="flex justify-between text-sm border-t pt-2">
-                                <span className="text-gray-600 font-medium">Total:</span>
-                                <span className="font-bold text-green-600">
-                                    Rp {formatNominal((selectedItem?.unit_price || 0) * (selectedItem?.quantity || 0))}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Commission Type */}
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">Tipe Komisi</Label>
+                            <Label>Pilih Layanan</Label>
                             <Select 
-                                value={commissionType} 
-                                onValueChange={(v: 'percentage' | 'fixed') => {
-                                    setCommissionType(v);
-                                    setCommissionValue('');
-                                }}
+                                value={selectedService} 
+                                onValueChange={setSelectedService}
+                                disabled={editMode}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Pilih tipe komisi" />
+                                    <SelectValue placeholder="Pilih layanan..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {editMode ? (
+                                        // Saat edit, tampilkan layanan yang sedang diedit
+                                        services
+                                            .filter(s => s.id === selectedService)
+                                            .map(service => (
+                                                <SelectItem key={service.id} value={service.id}>
+                                                    {service.name} - {formatRupiah(service.price)}
+                                                </SelectItem>
+                                            ))
+                                    ) : (
+                                        // Saat tambah, tampilkan layanan yang belum diatur
+                                        selectedEmployee && 
+                                            employeeStatuses
+                                                .find(s => s.employee.id === selectedEmployee.id)
+                                                ?.missingServices.map(service => (
+                                                    <SelectItem key={service.id} value={service.id}>
+                                                        {service.name} - {formatRupiah(service.price)}
+                                                    </SelectItem>
+                                                ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Tipe Komisi</Label>
+                            <Select 
+                                value={commissionType} 
+                                onValueChange={(value: 'percentage' | 'fixed') => setCommissionType(value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="percentage">Persentase (%)</SelectItem>
@@ -1311,109 +1076,96 @@ export function KontrolKomisi() {
                             </Select>
                         </div>
 
-                        {/* Commission Value */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">
-                                {commissionType === 'percentage' ? 'Nilai Persentase (%)' : 'Nilai Nominal (Rp)'}
+                            <Label>
+                                Nilai Komisi {commissionType === 'percentage' ? '(%)' : '(Rp)'}
                             </Label>
                             <Input
-                                value={commissionValue}
-                                onChange={(e) => setCommissionValue(
-                                    commissionType === 'fixed'
-                                        ? formatNominal(e.target.value)
-                                        : e.target.value.replace(/[^0-9.]/g, '')
-                                )}
-                                placeholder={commissionType === 'percentage' ? 'Contoh: 10' : 'Contoh: 5000'}
-                                className="text-lg"
+                                type="text"
+                                value={commissionType === 'percentage' ? commissionValue : formatNominal(commissionValue)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (commissionType === 'percentage') {
+                                        // Untuk percentage, hanya angka tanpa format
+                                        const numericValue = value.replace(/[^0-9]/g, '');
+                                        setCommissionValue(numericValue);
+                                    } else {
+                                        // Untuk fixed, simpan angka murni tapi tampilkan dengan format
+                                        const numericValue = value.replace(/[^0-9]/g, '');
+                                        setCommissionValue(numericValue);
+                                    }
+                                }}
+                                placeholder={commissionType === 'percentage' ? 'Contoh: 10' : 'Contoh: 50.000'}
                             />
+                            {commissionType === 'percentage' && commissionValue && (
+                                <p className="text-xs text-gray-600">
+                                    = {parseNominal(commissionValue)}% dari harga layanan
+                                </p>
+                            )}
+                            {commissionType === 'fixed' && commissionValue && (
+                                <p className="text-xs text-gray-600">
+                                    = {formatRupiah(parseNominal(commissionValue))} per transaksi
+                                </p>
+                            )}
                         </div>
-
-                        {/* Preview Calculation */}
-                        {commissionValue && selectedItem && (
-                            <div className="p-3 bg-blue-50 rounded-lg space-y-1">
-                                <p className="text-sm font-medium text-blue-900">Preview Komisi:</p>
-                                <div className="flex justify-between text-sm">
-                                    <span>Per Item:</span>
-                                    <span className="font-semibold">
-                                        {commissionType === 'percentage' 
-                                            ? `${commissionValue}% × Rp ${formatNominal(selectedItem.unit_price)}`
-                                            : `Rp ${formatNominal(commissionValue)}`
-                                        }
-                                    </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span>Total Komisi:</span>
-                                    <span className="font-bold text-green-600">
-                                        Rp {formatNominal(
-                                            commissionType === 'percentage'
-                                                ? (selectedItem.unit_price * (parseFloat(commissionValue) / 100)) * selectedItem.quantity
-                                                : parseNominal(commissionValue) * selectedItem.quantity
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
-                    <DialogFooter>
+                    <div className="flex gap-2">
                         <Button 
                             variant="outline" 
-                            onClick={() => setIsModalOpen(false)}
-                            disabled={isProcessing}
+                            onClick={() => setIsDialogOpen(false)}
+                            className="flex-1"
                         >
                             Batal
                         </Button>
                         <Button 
-                            onClick={() => handleSaveCommission()} 
-                            disabled={isProcessing || !commissionValue}
-                            className="gap-2 bg-blue-600 hover:bg-blue-700"
+                            onClick={handleSaveCommission}
+                            disabled={loading}
+                            className="flex-1 bg-red-600 hover:bg-red-700"
                         >
-                            {isProcessing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Menyimpan...
+                                </>
                             ) : (
-                                <Settings className="h-4 w-4" />
+                                'Simpan Komisi'
                             )}
-                            {isProcessing ? "Menyimpan..." : "Simpan Komisi"}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Batch Commission Modal */}
-            <Dialog open={isBatchModalOpen} onOpenChange={setIsBatchModalOpen}>
-                <DialogContent className="sm:max-w-md">
+            {/* Dialog: Transaction Commission */}
+            <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
+                <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Settings className="h-5 w-5 text-blue-600" />
-                            Edit Komisi Batch
-                        </DialogTitle>
-                        <DialogDescription>
-                            Atur komisi untuk {selectedItems.length} item sekaligus
-                        </DialogDescription>
+                        <DialogTitle>Atur Komisi Transaksi</DialogTitle>
                     </DialogHeader>
-
-                    <div className="grid gap-4 py-4">
-                        <div className="p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm font-medium text-blue-900">
-                                {selectedItems.length} item terpilih
+                    <div className="space-y-4 py-4">
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <p className="font-semibold text-gray-800 mb-2">{selectedTransaction?.barber_name}</p>
+                            <p className="text-sm text-gray-600 mb-1">{selectedTransaction?.service_name}</p>
+                            <p className="text-lg font-bold text-red-600">
+                                {selectedTransaction && formatRupiah(selectedTransaction.unit_price * selectedTransaction.quantity)}
                             </p>
-                            <p className="text-xs text-blue-700">
-                                Komisi akan diterapkan ke semua item yang dipilih
+                            <p className="text-xs text-gray-500 mt-1">
+                                {selectedTransaction && new Date(selectedTransaction.created_at).toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                })}
                             </p>
                         </div>
 
-                        {/* Commission Type */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">Tipe Komisi</Label>
+                            <Label>Tipe Komisi</Label>
                             <Select 
                                 value={commissionType} 
-                                onValueChange={(v: 'percentage' | 'fixed') => {
-                                    setCommissionType(v);
-                                    setCommissionValue('');
-                                }}
+                                onValueChange={(value: 'percentage' | 'fixed') => setCommissionType(value)}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Pilih tipe komisi" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="percentage">Persentase (%)</SelectItem>
@@ -1422,45 +1174,69 @@ export function KontrolKomisi() {
                             </Select>
                         </div>
 
-                        {/* Commission Value */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">
-                                {commissionType === 'percentage' ? 'Nilai Persentase (%)' : 'Nilai Nominal (Rp)'}
-                            </Label>
+                            <Label>Nilai Komisi {commissionType === 'percentage' ? '(%)' : '(Rp)'}</Label>
                             <Input
-                                value={commissionValue}
-                                onChange={(e) => setCommissionValue(
-                                    commissionType === 'fixed'
-                                        ? formatNominal(e.target.value)
-                                        : e.target.value.replace(/[^0-9.]/g, '')
-                                )}
-                                placeholder={commissionType === 'percentage' ? 'Contoh: 10' : 'Contoh: 5000'}
-                                className="text-lg"
+                                type="text"
+                                value={commissionType === 'percentage' ? commissionValue : formatNominal(commissionValue)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (commissionType === 'percentage') {
+                                        // Untuk percentage, hanya angka tanpa format
+                                        const numericValue = value.replace(/[^0-9]/g, '');
+                                        setCommissionValue(numericValue);
+                                    } else {
+                                        // Untuk fixed, simpan angka murni tapi tampilkan dengan format
+                                        const numericValue = value.replace(/[^0-9]/g, '');
+                                        setCommissionValue(numericValue);
+                                    }
+                                }}
+                                placeholder={commissionType === 'percentage' ? '10' : '50.000'}
                             />
+                            {selectedTransaction && commissionType === 'percentage' && commissionValue && (
+                                <p className="text-sm font-semibold text-green-600 bg-green-50 p-2 rounded">
+                                    Komisi: {formatRupiah((selectedTransaction.unit_price * selectedTransaction.quantity * parseNominal(commissionValue)) / 100)}
+                                </p>
+                            )}
+                            {commissionType === 'fixed' && commissionValue && (
+                                <p className="text-sm font-semibold text-green-600 bg-green-50 p-2 rounded">
+                                    Komisi: {formatRupiah(parseNominal(commissionValue))}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p className="text-xs text-blue-800">
+                                <strong>💾 Auto-Save:</strong> Komisi ini akan langsung tersimpan di database dan 
+                                dihitung dalam sistem penggajian bulan ini!
+                            </p>
                         </div>
                     </div>
 
-                    <DialogFooter>
+                    <div className="flex gap-2">
                         <Button 
                             variant="outline" 
-                            onClick={() => setIsBatchModalOpen(false)}
-                            disabled={isProcessing}
+                            onClick={() => setIsTransactionDialogOpen(false)}
+                            className="flex-1"
+                            disabled={loading}
                         >
                             Batal
                         </Button>
                         <Button 
-                            onClick={handleSaveBatchCommissions} 
-                            disabled={isProcessing || !commissionValue}
-                            className="gap-2 bg-blue-600 hover:bg-blue-700"
+                            onClick={handleSaveTransactionCommission}
+                            disabled={loading}
+                            className="flex-1 bg-red-600 hover:bg-red-700"
                         >
-                            {isProcessing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                            {loading ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Menyimpan...
+                                </>
                             ) : (
-                                <Settings className="h-4 w-4" />
+                                '💾 Simpan & Terapkan'
                             )}
-                            {isProcessing ? "Menyimpan..." : `Simpan ke ${selectedItems.length} Item`}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

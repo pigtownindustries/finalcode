@@ -347,28 +347,23 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-orange-50">
-        <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 text-white p-4 md:p-6">
-            <CardTitle className="flex items-center gap-2 md:gap-3 text-lg md:text-2xl font-bold">
-              <div className="p-1.5 md:p-2 bg-white/20 rounded-lg md:rounded-xl backdrop-blur-sm">
-                <Clock className="h-5 w-5 md:h-8 md:w-8" />
-              </div>
+      <div className="w-full">
+        <Card className="shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold">
+              <Clock className="h-6 w-6" />
               Kontrol Presensi Karyawan
             </CardTitle>
-            <CardDescription className="text-red-100 text-sm md:text-lg">Memuat data presensi...</CardDescription>
+            <CardDescription className="text-red-50 text-sm">Memuat data presensi...</CardDescription>
           </CardHeader>
-          <CardContent className="p-6 md:p-12">
-            <div className="flex flex-col items-center justify-center space-y-4 md:space-y-6">
-              <div className="relative">
-                <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 w-16 h-16 md:w-20 md:h-20 border-4 border-transparent border-t-cyan-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
-              </div>
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin"></div>
               <div className="text-center space-y-2">
-                <div className="text-base md:text-xl font-semibold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                <div className="text-lg font-semibold text-gray-800">
                   Sedang memuat data...
                 </div>
-                <div className="text-sm md:text-base text-gray-500">Mohon tunggu sebentar</div>
+                <div className="text-sm text-gray-500">Mohon tunggu sebentar</div>
               </div>
             </div>
           </CardContent>
@@ -378,39 +373,28 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-orange-50 p-3 md:p-6">
-      <div className="space-y-4 md:space-y-8 max-w-7xl mx-auto">
+    <div className="w-full -mx-6">
+      <div className="space-y-4">
         {/* Main Attendance Card */}
-        <Card className="shadow-lg md:shadow-2xl border-0 bg-white/80 backdrop-blur-xl rounded-2xl md:rounded-3xl overflow-hidden transform hover:scale-[1.01] transition-all duration-500">
-          <CardHeader className="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 text-white relative overflow-hidden p-4 md:p-6">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 via-rose-600/20 to-orange-600/20 animate-pulse"></div>
-            <div className="relative z-10">
-              <CardTitle className="flex items-center gap-2 md:gap-4 text-lg md:text-2xl lg:text-3xl font-bold mb-2">
-                <div className="p-2 md:p-3 bg-white/20 rounded-xl md:rounded-2xl backdrop-blur-sm">
-                  <Sparkles className="h-6 w-6 md:h-8 lg:h-10 md:w-8 lg:w-10" />
-                </div>
-                <span className="bg-gradient-to-r from-white to-red-100 bg-clip-text text-transparent">
-                  Kontrol Presensi Karyawan
-                </span>
-              </CardTitle>
-              <CardDescription className="text-red-100 text-xs md:text-sm lg:text-lg flex items-center gap-1 md:gap-2">
-                <Zap className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="line-clamp-2">Pantau presensi dan foto karyawan secara real-time dengan fitur hapus foto yang fleksibel</span>
-              </CardDescription>
-            </div>
+        <Card className="shadow-sm border-0 border-t border-b border-gray-200 rounded-none overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-red-600 to-orange-600 text-white p-4">
+            <CardTitle className="flex items-center gap-3 text-xl font-bold mb-2">
+              <Sparkles className="h-6 w-6" />
+              Kontrol Presensi Karyawan
+            </CardTitle>
+            <CardDescription className="text-red-50 text-sm">
+              Pantau presensi dan foto karyawan secara real-time
+            </CardDescription>
           </CardHeader>
-          <CardContent className="p-3 md:p-6 lg:p-8">
-            <div className="space-y-4 md:space-y-8">
+          <CardContent className="p-6">
+            <div className="space-y-4">
               {employees.length === 0 ? (
-                <div className="text-center py-12 md:py-20">
-                  <div className="relative mb-6 md:mb-8">
-                    <div className="w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
-                      <Clock className="h-8 w-8 md:h-16 md:w-16 text-white" />
-                    </div>
-                    <div className="absolute inset-0 w-20 h-20 md:w-32 md:h-32 mx-auto bg-gradient-to-br from-red-400 to-orange-400 rounded-full animate-ping opacity-20"></div>
+                <div className="text-center py-16">
+                  <div className="w-24 h-24 mx-auto bg-red-600 rounded-full flex items-center justify-center mb-6">
+                    <Clock className="h-12 w-12 text-white" />
                   </div>
-                  <p className="text-lg md:text-2xl font-bold text-gray-800 mb-2 md:mb-4">Belum ada data karyawan</p>
-                  <p className="text-sm md:text-base lg:text-lg text-gray-600">Silakan tambahkan data karyawan ke database untuk mulai menggunakan fitur ini</p>
+                  <p className="text-xl font-bold text-gray-800 mb-3">Belum ada data karyawan</p>
+                  <p className="text-base text-gray-600">Silakan tambahkan data karyawan ke database untuk mulai menggunakan fitur ini</p>
                 </div>
               ) : (
                 employees.map((employee, index) => {
@@ -428,45 +412,34 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   return (
                     <div 
                       key={employee.id} 
-                      className="group relative p-4 md:p-6 lg:p-8 border-0 rounded-2xl md:rounded-3xl bg-gradient-to-br from-white to-gray-50 hover:from-red-50 hover:to-orange-50 shadow-md md:shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-500"
-                      style={{
-                        animationDelay: `${index * 100}ms`,
-                        animation: 'slideInUp 0.6s ease-out forwards'
-                      }}
+                      className="bg-white border-t border-gray-200 first:border-t-0 p-6 hover:bg-gray-50 transition-colors duration-200"
                     >
-                      {/* Gradient Border Effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 rounded-2xl md:rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
-                      <div className="absolute inset-[1px] bg-gradient-to-br from-white to-gray-50 group-hover:from-red-50 group-hover:to-orange-50 rounded-2xl md:rounded-3xl"></div>
-                      
-                      <div className="relative z-10">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 md:gap-8 mb-4 md:mb-8">
-                          <div className="flex items-center gap-3 md:gap-6">
-                            <div className="relative flex-shrink-0">
-                              <Avatar className="h-14 w-14 md:h-16 lg:h-20 md:w-16 lg:w-20 ring-2 md:ring-4 ring-red-200 group-hover:ring-rose-400 transition-all duration-300">
+                      <div>
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-shrink-0">
+                              <Avatar className="h-16 w-16 ring-2 ring-gray-200">
                                 <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover" />
-                                <AvatarFallback className="bg-gradient-to-br from-red-500 to-orange-500 text-white text-base md:text-xl font-bold">
+                                <AvatarFallback className="bg-red-600 text-white text-lg font-bold">
                                   {employee.name
                                     .split(" ")
                                     .map((n) => n[0])
                                     .join("")}
                                 </AvatarFallback>
                               </Avatar>
-                              <div className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 w-6 h-6 md:w-8 md:h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                                <div className="w-2 h-2 md:w-3 md:h-3 bg-white rounded-full animate-pulse"></div>
-                              </div>
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="font-bold text-base md:text-xl lg:text-2xl text-gray-800 mb-1 truncate">{employee.name}</p>
-                              <p className="text-xs md:text-sm lg:text-base text-gray-600 mb-2 md:mb-3 truncate">
-                                {employee.role === "cashier" ? "💰 Kasir" : "👤 Karyawan"} • {employee.email}
+                              <p className="font-bold text-lg text-gray-800 mb-1 truncate">{employee.name}</p>
+                              <p className="text-sm text-gray-600 mb-2 truncate">
+                                {employee.email}
                               </p>
                               {latestAttendance && (
-                                <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                                <div className="flex flex-wrap items-center gap-2">
                                   {getStatusBadge(latestAttendance.status)}
                                   {latestAttendance.branches && (
-                                    <div className="flex items-center gap-1 md:gap-2 text-xs md:text-sm text-gray-600 bg-white/70 px-2 md:px-3 py-1 rounded-lg md:rounded-xl backdrop-blur-sm">
-                                      <MapPin className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                                      <span className="font-medium truncate max-w-[100px] md:max-w-none">{latestAttendance.branches.name}</span>
+                                    <div className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                                      <MapPin className="h-3 w-3 flex-shrink-0" />
+                                      <span className="font-medium truncate max-w-[150px]">{latestAttendance.branches.name}</span>
                                     </div>
                                   )}
                                 </div>
@@ -474,105 +447,119 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                             </div>
                           </div>
                           
-                          <div className="text-center lg:text-right bg-gradient-to-br from-green-100 to-emerald-100 p-3 md:p-4 lg:p-6 rounded-xl md:rounded-2xl flex-shrink-0">
-                            <p className="text-xs md:text-sm text-green-700 font-medium mb-1 md:mb-2 flex items-center justify-center lg:justify-end gap-1 md:gap-2">
-                              <TrendingUp className="h-3 w-3 md:h-4 md:w-4" />
-                              <span className="hidden md:inline">Tingkat Kehadiran</span>
-                              <span className="md:hidden">Kehadiran</span>
+                          <div className="text-center lg:text-right bg-green-50 p-4 rounded-lg border border-green-200">
+                            <p className="text-xs text-green-700 font-medium mb-2 flex items-center justify-center lg:justify-end gap-1">
+                              <TrendingUp className="h-4 w-4" />
+                              <span>Tingkat Kehadiran</span>
                             </p>
-                            <div className="flex items-center justify-center lg:justify-end gap-2 md:gap-3">
-                              <div className="text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                            <div className="flex items-center justify-center lg:justify-end gap-2">
+                              <div className="text-3xl font-bold text-green-600">
                                 {attendance.attendanceRate}%
                               </div>
-                              <CheckCircle className="h-5 w-5 md:h-6 lg:h-8 md:w-6 lg:w-8 text-green-500" />
+                              <CheckCircle className="h-6 w-6 text-green-500" />
                             </div>
                           </div>
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
-                          {[
-                            { icon: CheckCircle, label: "Hadir", value: attendance.presentDays, suffix: "hari", color: "from-green-500 to-emerald-500", bg: "from-green-50 to-emerald-50" },
-                            { icon: XCircle, label: "Terlambat", value: attendance.lateDays, suffix: "hari", color: "from-red-500 to-rose-500", bg: "from-red-50 to-rose-50" },
-                            { icon: Timer, label: "Lembur", value: attendance.overtimeHours, suffix: "jam", color: "from-blue-500 to-cyan-500", bg: "from-blue-50 to-cyan-50" },
-                            { icon: Calendar, label: "Total Hari", value: attendance.totalWorkDays, suffix: "hari", color: "from-amber-500 to-orange-500", bg: "from-amber-50 to-orange-50" }
-                          ].map((stat, statIndex) => (
-                            <div 
-                              key={statIndex}
-                              className={`relative text-center p-3 md:p-4 lg:p-6 bg-gradient-to-br ${stat.bg} rounded-xl md:rounded-2xl border-0 hover:shadow-lg transform hover:scale-105 transition-all duration-300 group/stat overflow-hidden`}
-                            >
-                              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover/stat:opacity-10 transition-opacity duration-300" style={{backgroundImage: `linear-gradient(135deg, ${stat.color})`}}></div>
-                              <div className="relative z-10">
-                                <div className="flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 mb-2 md:mb-4">
-                                  <div className={`p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-r ${stat.color} shadow-lg`}>
-                                    <stat.icon className="h-3 w-3 md:h-4 lg:h-5 md:w-4 lg:w-5 text-white" />
-                                  </div>
-                                  <span className="text-[10px] md:text-xs lg:text-sm font-semibold text-gray-700">{stat.label}</span>
-                                </div>
-                                <p className="text-xl md:text-2xl lg:text-3xl font-black text-gray-800 mb-0.5 md:mb-1">{stat.value}</p>
-                                <p className="text-[9px] md:text-[10px] lg:text-xs text-gray-500 font-medium">{stat.suffix} bulan ini</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                          <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg hover:shadow-sm transition-shadow">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <div className="p-1.5 rounded-lg bg-green-600">
+                                <CheckCircle className="h-4 w-4 text-white" />
                               </div>
+                              <span className="text-xs font-semibold text-gray-700">Hadir</span>
                             </div>
-                          ))}
+                            <p className="text-2xl font-bold text-gray-800 mb-1">{attendance.presentDays}</p>
+                            <p className="text-xs text-gray-500">hari bulan ini</p>
+                          </div>
+
+                          <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg hover:shadow-sm transition-shadow">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <div className="p-1.5 rounded-lg bg-red-600">
+                                <XCircle className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-700">Terlambat</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-800 mb-1">{attendance.lateDays}</p>
+                            <p className="text-xs text-gray-500">hari bulan ini</p>
+                          </div>
+
+                          <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:shadow-sm transition-shadow">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <div className="p-1.5 rounded-lg bg-blue-600">
+                                <Timer className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-700">Lembur</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-800 mb-1">{attendance.overtimeHours}</p>
+                            <p className="text-xs text-gray-500">jam bulan ini</p>
+                          </div>
+
+                          <div className="text-center p-4 bg-orange-50 border border-orange-200 rounded-lg hover:shadow-sm transition-shadow">
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                              <div className="p-1.5 rounded-lg bg-orange-600">
+                                <Calendar className="h-4 w-4 text-white" />
+                              </div>
+                              <span className="text-xs font-semibold text-gray-700">Total Hari</span>
+                            </div>
+                            <p className="text-2xl font-bold text-gray-800 mb-1">{attendance.totalWorkDays}</p>
+                            <p className="text-xs text-gray-500">hari bulan ini</p>
+                          </div>
                         </div>
 
                         {/* Photos Section */}
-                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl md:rounded-2xl p-4 md:p-6 lg:p-8 border-0">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-6 mb-4 md:mb-6">
-                            <p className="font-bold text-sm md:text-base lg:text-xl text-gray-800 flex items-center gap-2 md:gap-3">
-                              <Camera className="h-4 w-4 md:h-5 lg:h-6 md:w-5 lg:w-6 text-red-600" />
-                              <span className="line-clamp-1">Foto Presensi Terbaru</span>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                            <p className="font-bold text-base text-gray-800 flex items-center gap-2">
+                              <Camera className="h-5 w-5 text-red-600" />
+                              <span>Foto Presensi Terbaru</span>
                             </p>
-                            <div className="flex gap-2 md:gap-4 w-full sm:w-auto">
+                            <div className="flex gap-2 w-full sm:w-auto">
                               <Dialog>
                                 <DialogTrigger asChild>
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1 sm:flex-none gap-2 bg-white/80 backdrop-blur-sm border-red-200 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-all duration-300 rounded-lg md:rounded-xl shadow-md text-xs md:text-sm h-9 md:h-10"
+                                    className="flex-1 sm:flex-none gap-2 text-sm"
                                     onClick={() => {
                                       setSelectedEmployee(employee)
                                       loadEmployeePhotos(employee.id)
                                     }}
                                   >
-                                    <Eye className="h-3 w-3 md:h-4 md:w-4" />
+                                    <Eye className="h-4 w-4" />
                                     <span>Lihat Semua</span>
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="max-w-[95vw] md:max-w-7xl max-h-[90vh] overflow-y-auto rounded-2xl md:rounded-3xl border-0 bg-white/95 backdrop-blur-xl">
-                                  <DialogHeader className="pb-4 md:pb-6">
-                                    <DialogTitle className="text-lg md:text-2xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                                <DialogContent className="max-w-[95vw] md:max-w-6xl max-h-[90vh] overflow-y-auto">
+                                  <DialogHeader className="pb-4">
+                                    <DialogTitle className="text-xl font-bold text-gray-900">
                                       📸 Foto Presensi - {employee.name}
                                     </DialogTitle>
                                   </DialogHeader>
-                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
+                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                     {employeePhotos.map((record, photoIndex) => (
                                       <div 
                                         key={record.id} 
-                                        className="space-y-4 group/photo transform hover:scale-105 transition-all duration-300"
-                                        style={{
-                                          animationDelay: `${photoIndex * 50}ms`,
-                                          animation: 'fadeInUp 0.5s ease-out forwards'
-                                        }}
+                                        className="space-y-3 hover:shadow-md transition-shadow"
                                       >
-                                        <div className="relative aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg group-hover/photo:shadow-2xl transition-all duration-300">
+                                        <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                                           {record.check_in_photo && (
                                             <img
                                               src={record.check_in_photo || "/placeholder.svg"}
                                               alt={`Check-in ${format(new Date(record.date), "dd/MM/yyyy", { locale: id })}`}
-                                              className="w-full h-full object-cover group-hover/photo:scale-110 transition-transform duration-500"
+                                              className="w-full h-full object-cover"
                                             />
                                           )}
                                           {!record.check_in_photo && record.check_out_photo && (
                                             <img
                                               src={record.check_out_photo || "/placeholder.svg"}
                                               alt={`Check-out ${format(new Date(record.date), "dd/MM/yyyy", { locale: id })}`}
-                                              className="w-full h-full object-cover group-hover/photo:scale-110 transition-transform duration-500"
+                                              className="w-full h-full object-cover"
                                             />
                                           )}
-                                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover/photo:opacity-100 transition-opacity duration-300"></div>
                                         </div>
-                                        <div className="space-y-3 bg-white/70 backdrop-blur-sm p-4 rounded-xl">
+                                        <div className="space-y-2 bg-white p-3 rounded-lg border border-gray-200">
                                           <p className="font-bold text-lg text-gray-800">
                                             {format(new Date(record.date), "dd MMM yyyy", { locale: id })}
                                           </p>
@@ -606,49 +593,39 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                               </Dialog>
 
                               <Button
-                                size="lg"
-                                className="gap-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 rounded-xl"
+                                size="sm"
+                                className="gap-2 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white text-sm"
                                 onClick={() => handleOpenPhotoManager(employee.id, employee.name)}
                               >
-                                <Settings className="h-5 w-5" />
+                                <Settings className="h-4 w-4" />
                                 Kelola Foto
                               </Button>
                             </div>
                           </div>
                           
                           {/* Photo Grid */}
-                          <div className="grid grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {attendance.data?.slice(0, 4).map((record: AttendanceWithDetails, index: number) => (
                               <div 
                                 key={record.id || index} 
-                                className="group/thumb relative aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
-                                style={{
-                                  animationDelay: `${index * 100}ms`,
-                                  animation: 'zoomIn 0.5s ease-out forwards'
-                                }}
+                                className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow"
                               >
                                 {record.check_in_photo || record.check_out_photo ? (
                                   <>
                                     <img
                                       src={record.check_in_photo || record.check_out_photo}
                                       alt={`Presensi ${format(new Date(record.date), "dd/MM", { locale: id })}`}
-                                      className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-500"
+                                      className="w-full h-full object-cover"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300"></div>
-                                    <div className="absolute bottom-2 left-2 right-2 text-white text-xs font-bold opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute bottom-1 left-1 right-1 text-white text-xs font-semibold bg-black/50 rounded px-1 py-0.5">
                                       {format(new Date(record.date), "dd/MM", { locale: id })}
                                     </div>
                                   </>
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300 group-hover/thumb:from-red-200 group-hover/thumb:to-orange-200 transition-all duration-300">
-                                    <Camera className="h-10 w-10 text-gray-400 group-hover/thumb:text-gray-600 transition-colors duration-300" />
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                    <Camera className="h-8 w-8 text-gray-400" />
                                   </div>
                                 )}
-                                
-                                {/* Floating badge */}
-                                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-bold text-gray-700 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300">
-                                  {record.check_in_photo && record.check_out_photo ? "✅" : record.check_in_photo ? "🔸" : record.check_out_photo ? "🔹" : "📷"}
-                                </div>
                               </div>
                             ))}
                           </div>

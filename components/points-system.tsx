@@ -269,7 +269,7 @@ export function PointsSystem() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-base md:text-lg truncate">{employee.name}</h3>
-                      <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.role || "Karyawan"}</p>
+                      <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.position || "Karyawan"}</p>
                       <p className="text-xs text-muted-foreground truncate">{employee.branches?.name || "Tanpa Cabang"}</p>
                     </div>
                   </div>
@@ -331,7 +331,7 @@ export function PointsSystem() {
                       </Avatar>
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-base md:text-lg truncate">{employee.name}</p>
-                        <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.role || "Karyawan"}</p>
+                        <p className="text-muted-foreground text-xs md:text-sm truncate">{employee.position || "Karyawan"}</p>
                       </div>
                     </div>
                     <div className="text-right ml-3">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +48,10 @@ interface TransactionItem {
     name: string
     price: number
   }
+  commission_type?: 'percentage' | 'fixed'
+  commission_value?: number
+  commission_amount?: number
+  has_commission?: boolean
 }
 
 interface EditTransactionData {
@@ -112,6 +116,13 @@ export function TransactionHistory() {
   const [statuses, setStatuses] = useState<string[]>([])
   const [services, setServices] = useState<any[]>([])
 
+  // State untuk commission management
+  const [showCommissionDialog, setShowCommissionDialog] = useState(false)
+  const [selectedItemForCommission, setSelectedItemForCommission] = useState<{index: number, item: TransactionItem} | null>(null)
+  const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>('percentage')
+  const [commissionValue, setCommissionValue] = useState('')
+  const [employees, setEmployees] = useState<any[]>([])
+
   const { toast } = useToast()
 
   const fetchBranches = async () => {
@@ -135,6 +146,77 @@ export function TransactionHistory() {
       setServices(data || [])
     } catch (error) {
       console.error("Error fetching services:", error)
+    }
+  }
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, name, role, position")
+        .eq("status", "active")
+        .order("name")
+      if (error) throw error
+      setEmployees(data || [])
+    } catch (error) {
+      console.error("Error fetching employees:", error)
+    }
+  }
+
+  const loadCommissionForItems = async (items: TransactionItem[], cashierId?: string) => {
+    if (!cashierId || !items || items.length === 0) {
+      console.log('⚠️ Skipping commission load:', { cashierId, itemsCount: items?.length })
+      return items
+    }
+
+    try {
+      console.log('📊 Loading commission for cashier:', cashierId)
+      
+      // Ambil commission rules untuk cashier ini
+      const { data: commissionRules, error } = await supabase
+        .from('commission_rules')
+        .select('*')
+        .eq('user_id', cashierId)
+
+      if (error) throw error
+
+      console.log('✅ Commission rules found:', commissionRules?.length || 0)
+
+      // Map items dengan commission data
+      const itemsWithCommission = items.map(item => {
+        const rule = commissionRules?.find(r => r.service_id === item.service_id)
+        
+        if (rule) {
+          const commissionAmount = rule.commission_type === 'percentage'
+            ? (item.unit_price * rule.commission_value / 100)
+            : rule.commission_value
+
+          console.log('💰 Commission found for service:', item.service?.name, {
+            type: rule.commission_type,
+            value: rule.commission_value,
+            amount: commissionAmount * item.quantity
+          })
+
+          return {
+            ...item,
+            has_commission: true,
+            commission_type: rule.commission_type as 'percentage' | 'fixed',
+            commission_value: rule.commission_value,
+            commission_amount: commissionAmount * item.quantity
+          }
+        }
+
+        console.log('⚠️ No commission for service:', item.service?.name)
+        return {
+          ...item,
+          has_commission: false
+        }
+      })
+
+      return itemsWithCommission
+    } catch (error) {
+      console.error("❌ Error loading commission:", error)
+      return items
     }
   }
 
@@ -201,9 +283,15 @@ export function TransactionHistory() {
         .from("transactions")
         .select(`
           *,
-          branches!left(id, name),
-          cashier:users!cashier_id(id, name),
-          transaction_items(*, services(name, price))
+          branches:branches(id, name),
+          transaction_items(
+            id,
+            service_id,
+            quantity,
+            unit_price,
+            total_price,
+            services(id, name, price)
+          )
         `)
         .gte("created_at", `${startDate}T00:00:00+00:00`)
         .lte("created_at", `${endDate}T23:59:59+00:00`)
@@ -220,14 +308,47 @@ export function TransactionHistory() {
         throw new Error(`Database error: ${error.message}`)
       }
 
-      console.log("Fetched transactions:", transactionsData?.length || 0)
+      console.log("✅ Fetched transactions:", transactionsData?.length || 0)
 
       if (transactionsData && transactionsData.length > 0) {
-        const enrichedTransactions = transactionsData.map((transaction) => ({
-          ...transaction,
-          cashier: transaction.cashier ? { name: transaction.cashier.name } : null,
-          branch: transaction.branches ? { name: transaction.branches.name } : null,
-        }))
+        // Ambil data cashier secara terpisah untuk setiap transaksi
+        const userIds = [...new Set(transactionsData.map(t => t.cashier_id).filter(Boolean))]
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, name')
+          .in('id', userIds)
+        
+        const usersMap = new Map(usersData?.map(u => [u.id, u]) || [])
+
+        // Load commission data untuk setiap transaksi
+        const enrichedTransactions = await Promise.all(
+          transactionsData.map(async (transaction) => {
+            let itemsWithCommission = transaction.transaction_items || []
+            
+            // Try to load commission, but don't fail if it errors
+            try {
+              if (transaction.cashier_id && transaction.transaction_items?.length > 0) {
+                itemsWithCommission = await loadCommissionForItems(
+                  transaction.transaction_items,
+                  transaction.cashier_id
+                )
+              }
+            } catch (commError) {
+              console.warn("Failed to load commission for transaction:", transaction.id, commError)
+              // Use items without commission data
+              itemsWithCommission = transaction.transaction_items || []
+            }
+
+            const cashier = usersMap.get(transaction.cashier_id)
+
+            return {
+              ...transaction,
+              cashier: cashier ? { name: cashier.name } : null,
+              branch: transaction.branches ? { name: transaction.branches.name } : null,
+              transaction_items: itemsWithCommission
+            }
+          })
+        )
 
         setTransactions(enrichedTransactions)
       } else {
@@ -441,6 +562,7 @@ export function TransactionHistory() {
     fetchBranches()
     fetchStatuses()
     fetchServices()
+    fetchEmployees()
 
     // 🔥 GUNAKAN SETUP GLOBAL YANG BARU
     const transactionsChannel = setupTransactionsRealtime(() => {
@@ -470,16 +592,42 @@ export function TransactionHistory() {
     return () => clearInterval(interval)
   }, [dateFilter, customStartDate, customEndDate, filterBranch])
 
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesSearch =
-      transaction.transaction_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.cashier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.branch?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesBranch = filterBranch === "all" || transaction.branch_id === filterBranch
-    const matchesStatus = filterStatus === "all" || transaction.payment_status === filterStatus
-    return matchesSearch && matchesBranch && matchesStatus
-  })
+  const filteredTransactions = useMemo(() => {
+    console.log('🔍 Filtering transactions:', { 
+      total: transactions.length, 
+      searchTerm, 
+      filterBranch, 
+      filterStatus 
+    });
+    
+    const filtered = transactions.filter((transaction) => {
+      // Search filter - jika searchTerm kosong, return true
+      const matchesSearch = !searchTerm || 
+        transaction.transaction_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.cashier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.branch?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesBranch = filterBranch === "all" || transaction.branch_id === filterBranch
+      const matchesStatus = filterStatus === "all" || transaction.payment_status === filterStatus
+      
+      const result = matchesSearch && matchesBranch && matchesStatus
+      
+      if (searchTerm) {
+        console.log('Transaction:', transaction.transaction_number, {
+          matchesSearch,
+          matchesBranch,
+          matchesStatus,
+          result
+        })
+      }
+      
+      return result
+    });
+    
+    console.log('✅ Filtered transactions:', filtered.length, 'from', transactions.length);
+    return filtered;
+  }, [transactions, searchTerm, filterBranch, filterStatus])
 
   const totalRevenue = filteredTransactions
     .filter((t) => t.payment_status === "completed")
@@ -581,6 +729,79 @@ export function TransactionHistory() {
     setShowDetailModal(true)
   }
 
+  const handleOpenCommissionDialog = (index: number, item: TransactionItem) => {
+    if (!selectedTransaction?.cashier_id) {
+      toast({
+        title: "Error",
+        description: "Transaksi ini tidak memiliki kasir. Tidak dapat mengatur komisi.",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setSelectedItemForCommission({ index, item })
+    
+    // Pre-fill jika sudah ada commission
+    if (item.has_commission) {
+      setCommissionType(item.commission_type || 'percentage')
+      setCommissionValue(item.commission_value?.toString() || '')
+    } else {
+      setCommissionType('percentage')
+      setCommissionValue('')
+    }
+    
+    setShowCommissionDialog(true)
+  }
+
+  const handleSaveCommission = async () => {
+    if (!selectedTransaction || !selectedItemForCommission || !commissionValue) {
+      toast({
+        title: "Error",
+        description: "Data tidak lengkap",
+        variant: "destructive"
+      })
+      return
+    }
+
+    try {
+      const commissionRule = {
+        user_id: selectedTransaction.cashier_id,
+        service_id: selectedItemForCommission.item.service_id,
+        commission_type: commissionType,
+        commission_value: commissionType === 'percentage' 
+          ? parseFloat(commissionValue) 
+          : parseFloat(commissionValue),
+      }
+
+      const { error } = await supabase
+        .from('commission_rules')
+        .upsert(commissionRule, { onConflict: 'user_id,service_id' })
+
+      if (error) throw error
+
+      toast({
+        title: "Berhasil",
+        description: "Komisi berhasil disimpan dan akan berlaku untuk transaksi selanjutnya"
+      })
+
+      // Refresh transactions untuk update commission data
+      await fetchTransactions()
+
+      // Close dialog
+      setShowCommissionDialog(false)
+      setSelectedItemForCommission(null)
+      setCommissionValue('')
+
+    } catch (error) {
+      console.error("Error saving commission:", error)
+      toast({
+        title: "Gagal",
+        description: "Terjadi kesalahan saat menyimpan komisi",
+        variant: "destructive"
+      })
+    }
+  }
+
   return (
     <div className="space-y-4 md:space-y-6 p-3 md:p-6">
       {/* Header - Mobile Responsive */}
@@ -668,12 +889,18 @@ export function TransactionHistory() {
               <Input
                 placeholder="Cari transaksi, customer..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  console.log('🔍 Search term changed:', e.target.value)
+                  setSearchTerm(e.target.value)
+                }}
                 className="pl-9 md:pl-10 text-xs md:text-sm h-9 md:h-10"
               />
             </div>
 
-            <Select value={dateFilter} onValueChange={setDateFilter}>
+            <Select value={dateFilter} onValueChange={(value) => {
+              console.log('📅 Date filter changed:', value)
+              setDateFilter(value)
+            }}>
               <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder="Pilih Periode" />
               </SelectTrigger>
@@ -685,7 +912,10 @@ export function TransactionHistory() {
               </SelectContent>
             </Select>
 
-            <Select value={filterBranch} onValueChange={setFilterBranch} disabled={branchesLoading}>
+            <Select value={filterBranch} onValueChange={(value) => {
+              console.log('🏢 Branch filter changed:', value)
+              setFilterBranch(value)
+            }} disabled={branchesLoading}>
               <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder={branchesLoading ? "Memuat..." : "Pilih Cabang"} />
               </SelectTrigger>
@@ -699,7 +929,10 @@ export function TransactionHistory() {
               </SelectContent>
             </Select>
 
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus} onValueChange={(value) => {
+              console.log('📊 Status filter changed:', value)
+              setFilterStatus(value)
+            }}>
               <SelectTrigger className="text-xs md:text-sm h-9 md:h-10">
                 <SelectValue placeholder="Pilih Status" />
               </SelectTrigger>
@@ -831,6 +1064,93 @@ export function TransactionHistory() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Tampilan Items & Komisi */}
+                  {transaction.transaction_items && transaction.transaction_items.length > 0 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Items & Komisi:</span>
+                        {(() => {
+                          const totalCommission = transaction.transaction_items?.reduce((sum, item: any) => 
+                            sum + (item.commission_amount || 0), 0) || 0
+                          const itemsWithCommission = transaction.transaction_items?.filter((item: any) => item.has_commission).length || 0
+                          const totalItems = transaction.transaction_items?.length || 0
+                          
+                          return (
+                            <div className="flex items-center gap-2">
+                              {totalCommission > 0 ? (
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                                  💰 Total Komisi: Rp {totalCommission.toLocaleString('id-ID')}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                  ⚠️ Belum ada komisi
+                                </Badge>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {itemsWithCommission}/{totalItems} item dengan komisi
+                              </span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {transaction.transaction_items.map((item: any, idx: number) => (
+                          <div key={idx} className="text-xs p-2 bg-gray-50 rounded border">
+                            <div className="flex justify-between items-start mb-1">
+                              <span className="font-medium text-gray-800">{item.service?.name || 'Item'}</span>
+                              <span className="text-gray-600">
+                                {item.quantity}x Rp {item.unit_price?.toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                            {item.has_commission ? (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-green-700 bg-green-50 px-2 py-1 rounded flex-1">
+                                  <span className="flex items-center gap-1">
+                                    ✓ Komisi: {item.commission_type === 'percentage' 
+                                      ? `${item.commission_value}%` 
+                                      : `Rp ${item.commission_value?.toLocaleString('id-ID')}`}
+                                  </span>
+                                  <span className="font-medium">
+                                    = Rp {item.commission_amount?.toLocaleString('id-ID')}
+                                  </span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setSelectedTransaction(transaction)
+                                    handleOpenCommissionDialog(idx, item)
+                                  }}
+                                  className="h-6 px-2 text-xs ml-1"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between">
+                                <span className="text-orange-600 text-xs">
+                                  ⚠️ Komisi belum diatur
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setSelectedTransaction(transaction)
+                                    handleOpenCommissionDialog(idx, item)
+                                  }}
+                                  className="h-6 px-2 text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Atur
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -975,12 +1295,55 @@ export function TransactionHistory() {
               )}
               {selectedTransaction.transaction_items && selectedTransaction.transaction_items.length > 0 && (
                 <div>
-                  <Label className="text-sm font-medium text-gray-600">Items</Label>
+                  <Label className="text-sm font-medium text-gray-600">Items & Komisi</Label>
                   <div className="mt-2 space-y-2">
                     {selectedTransaction.transaction_items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
-                        <span>{item.services?.name || `Item ${index + 1}`}</span>
-                        <span>{item.quantity} x Rp {item.unit_price?.toLocaleString("id-ID")}</span>
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <span className="font-medium">{item.services?.name || `Item ${index + 1}`}</span>
+                            <div className="text-sm text-gray-600 mt-1">
+                              {item.quantity} x Rp {item.unit_price?.toLocaleString("id-ID")} = Rp {item.total_price?.toLocaleString("id-ID")}
+                            </div>
+                          </div>
+                        </div>
+                        {item.has_commission ? (
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <div className="text-sm">
+                                <span className="text-green-600 font-medium">✓ Komisi: </span>
+                                <span className="text-gray-700">
+                                  {item.commission_type === 'percentage' 
+                                    ? `${item.commission_value}%` 
+                                    : `Rp ${item.commission_value?.toLocaleString('id-ID')}`
+                                  } = Rp {item.commission_amount?.toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenCommissionDialog(index, item)}
+                                className="h-7 text-xs"
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Ubah
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenCommissionDialog(index, item)}
+                              className="h-7 text-xs text-orange-600 border-orange-300 hover:bg-orange-50"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Atur Komisi
+                            </Button>
+                            <span className="text-xs text-gray-500 ml-2">Belum ada komisi untuk layanan ini</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1176,6 +1539,107 @@ export function TransactionHistory() {
                 <RefreshCw className="h-4 w-4 animate-spin" />
               ) : null}
               {isEditing ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Commission Management Dialog */}
+      <Dialog open={showCommissionDialog} onOpenChange={setShowCommissionDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Atur Komisi</DialogTitle>
+            <DialogDescription>
+              Atur komisi untuk layanan: {selectedItemForCommission?.item.service?.name || 'Item'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedItemForCommission && (
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="text-sm text-blue-800">
+                  <strong>Info:</strong> Komisi yang diatur akan disimpan ke database dan berlaku untuk transaksi selanjutnya dari karyawan yang sama untuk layanan ini.
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Layanan</Label>
+                  <Input
+                    value={selectedItemForCommission.item.service?.name || 'Item'}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Harga Layanan</Label>
+                  <Input
+                    value={`Rp ${selectedItemForCommission.item.unit_price?.toLocaleString('id-ID')}`}
+                    disabled
+                    className="bg-gray-50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipe Komisi</Label>
+                <Select value={commissionType} onValueChange={(value: 'percentage' | 'fixed') => setCommissionType(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percentage">Persentase (%)</SelectItem>
+                    <SelectItem value="fixed">Nominal Tetap (Rp)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Nilai Komisi {commissionType === 'percentage' ? '(%)' : '(Rp)'}
+                </Label>
+                <Input
+                  type="number"
+                  value={commissionValue}
+                  onChange={(e) => setCommissionValue(e.target.value)}
+                  placeholder={commissionType === 'percentage' ? 'Contoh: 10' : 'Contoh: 5000'}
+                />
+              </div>
+
+              {commissionValue && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="text-sm text-green-800">
+                    <strong>Preview Komisi:</strong>
+                    <div className="mt-1">
+                      {commissionType === 'percentage' ? (
+                        <>
+                          {commissionValue}% dari Rp {selectedItemForCommission.item.unit_price?.toLocaleString('id-ID')} = 
+                          <strong className="ml-1">
+                            Rp {((selectedItemForCommission.item.unit_price * parseFloat(commissionValue)) / 100).toLocaleString('id-ID')}
+                          </strong>
+                        </>
+                      ) : (
+                        <>
+                          Komisi tetap: <strong>Rp {parseFloat(commissionValue).toLocaleString('id-ID')}</strong>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowCommissionDialog(false)
+              setSelectedItemForCommission(null)
+              setCommissionValue('')
+            }}>
+              Batal
+            </Button>
+            <Button onClick={handleSaveCommission} className="bg-green-600 hover:bg-green-700">
+              Simpan Komisi
             </Button>
           </DialogFooter>
         </DialogContent>

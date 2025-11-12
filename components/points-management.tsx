@@ -51,7 +51,7 @@ interface BonusPenaltyTransaction {
   user?: {
     name: string
     email: string
-    role: string
+    position: string
   }
 }
 
@@ -59,7 +59,7 @@ interface User {
   id: string
   name: string
   email: string
-  role: string
+  position: string
   total_bonus?: number
   total_penalty?: number
   net_amount?: number
@@ -99,7 +99,7 @@ export default function PointsManagement() {
         .from("points")
         .select(`
         *,
-        user:users!points_user_id_fkey(name, email, role)
+        user:users!points_user_id_fkey(name, email, position)
       `)
         .order("created_at", { ascending: false });
 
@@ -283,7 +283,7 @@ export default function PointsManagement() {
                   <SelectContent>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name} - {user.role} (Net: Rp {(user.net_amount || 0).toLocaleString("id-ID")})
+                        {user.name} (Net: Rp {(user.net_amount || 0).toLocaleString("id-ID")})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -434,7 +434,7 @@ export default function PointsManagement() {
                       <TableCell>
                         <div>
                           <div className="font-medium">{transaction.user?.name}</div>
-                          <div className="text-sm text-muted-foreground">{transaction.user?.role}</div>
+                          <div className="text-sm text-muted-foreground">{transaction.user?.position || "-"}</div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -512,7 +512,7 @@ export default function PointsManagement() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{user.role}</Badge>
+                          <Badge variant="outline">{user.position || "Karyawan"}</Badge>
                         </TableCell>
                         <TableCell>
                           <span className="text-green-600 font-medium">

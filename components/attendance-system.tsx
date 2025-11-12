@@ -222,7 +222,7 @@ export function AttendanceSystem() {
         const employeeList = usersData.map((user: any) => ({
           id: user.id,
           name: user.name,
-          position: user.role || "Employee",
+          position: user.position || "Karyawan",
           branch: branchNameMap.get(user.branch_id) || "Unknown Branch",
           branchId: user.branch_id,
           avatar: user.avatar,

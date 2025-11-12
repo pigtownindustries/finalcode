@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -170,11 +170,22 @@ export function PengeluaranCabang() {
     await loadData()
   }
 
-  const filteredExpenses = expenses.filter((expense) => {
-    const matchesBranch = selectedBranch === "all" || expense.branch_id === selectedBranch
-    const matchesCategory = selectedCategory === "all" || expense.category === selectedCategory
-    return matchesBranch && matchesCategory
-  })
+  const filteredExpenses = useMemo(() => {
+    console.log('🔍 Filtering expenses:', { 
+      total: expenses.length, 
+      selectedBranch, 
+      selectedCategory 
+    });
+    
+    const filtered = expenses.filter((expense) => {
+      const matchesBranch = selectedBranch === "all" || expense.branch_id === selectedBranch
+      const matchesCategory = selectedCategory === "all" || expense.category === selectedCategory
+      return matchesBranch && matchesCategory
+    });
+    
+    console.log('✅ Filtered result:', filtered.length);
+    return filtered;
+  }, [expenses, selectedBranch, selectedCategory])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -329,7 +340,7 @@ export function PengeluaranCabang() {
         <div className="flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Pengajuan Pengeluaran Outlet</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Ajukan pengeluaran harian outlet - untuk pengeluaran besar &gt;Rp 1.000.000 hubungi owner
+            Ajukan pengeluaran harian outlet
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -354,7 +365,7 @@ export function PengeluaranCabang() {
               <DialogHeader>
                 <DialogTitle className="text-lg sm:text-xl">Ajukan Pengeluaran Outlet</DialogTitle>
                 <DialogDescription className="text-sm">
-                  Ajukan pengeluaran harian outlet - untuk pengeluaran besar &gt;Rp 1.000.000 hubungi owner
+                  Ajukan pengeluaran harian outlet
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

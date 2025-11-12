@@ -299,8 +299,11 @@ function EmployeeManagement() {
         const matchesSearch =
             employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (employee.position || "").toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesStatus = filterStatus === "all" || employee.status === filterStatus
+            (employee.position || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (employee.phone || "").toLowerCase().includes(searchTerm.toLowerCase())
+        
+        const matchesStatus = filterStatus === "all" || employee.status?.toLowerCase() === filterStatus.toLowerCase()
+        
         return matchesSearch && matchesStatus
     })
 
@@ -746,15 +749,19 @@ function EmployeeManagement() {
                         />
                     </div>
                 </div>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select value={filterStatus} onValueChange={(value) => {
+                    console.log("Filter changed to:", value);
+                    setFilterStatus(value);
+                }}>
                     <SelectTrigger className="w-full sm:w-40 md:w-48">
-                        <SelectValue placeholder="Semua Status" />
+                        <SelectValue placeholder="Filter Status" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Semua Status</SelectItem>
                         <SelectItem value="active">Aktif</SelectItem>
                         <SelectItem value="inactive">Tidak Aktif</SelectItem>
                         <SelectItem value="on-leave">Cuti</SelectItem>
+                        <SelectItem value="suspended">Ditangguhkan</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -763,7 +770,7 @@ function EmployeeManagement() {
             <Tabs defaultValue="grid" className="space-y-4 md:space-y-6">
                 <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto gap-1">
                     <TabsTrigger value="grid" className="text-xs md:text-sm py-2">Grid View</TabsTrigger>
-                    <TabsTrigger value="transactions" className="text-xs md:text-sm py-2">Komisi</TabsTrigger>
+                    <TabsTrigger value="transactions" className="text-xs md:text-sm py-2">Komisi & Point</TabsTrigger>
                     <TabsTrigger value="attendance" className="text-xs md:text-sm py-2">Presensi</TabsTrigger>
                     <TabsTrigger value="payroll" className="text-xs md:text-sm py-2">Penggajian</TabsTrigger>
                 </TabsList>
@@ -827,7 +834,7 @@ function EmployeeManagement() {
                                                     <p className="font-medium">{stats.totalTransactions}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Komisi</p>
+                                                    <p className="text-muted-foreground text-[10px] md:text-xs">Komisi & Point</p>
                                                     <p className="font-medium text-xs md:text-sm truncate">{formatRupiah(stats.totalCommission || 0)}</p>
                                                 </div>
                                                 <div>
@@ -900,20 +907,16 @@ function EmployeeManagement() {
                     )}
                 </TabsContent>
 
-                <TabsContent value="transactions" className="space-y-6">
-                    <KontrolKomisi
-                        employees={employees}
-                        employeeStats={employeeStats}
-                        employeeCommissions={employeeCommissions}
-                    />
+                <TabsContent value="transactions" className="mt-6">
+                    <KontrolKomisi employees={filteredEmployees} />
                 </TabsContent>
 
-                <TabsContent value="attendance" className="space-y-6">
-                    <KontrolPresensi employees={employees} employeeAttendance={employeeAttendance} />
+                <TabsContent value="attendance" className="mt-6">
+                    <KontrolPresensi employees={filteredEmployees} employeeAttendance={employeeAttendance} />
                 </TabsContent>
 
-                <TabsContent value="payroll" className="space-y-6">
-                    <KontrolGaji employees={employees} employeeStats={employeeStats} />
+                <TabsContent value="payroll" className="mt-6">
+                    <KontrolGaji employees={filteredEmployees} employeeStats={employeeStats} />
                 </TabsContent>
             </Tabs>
 

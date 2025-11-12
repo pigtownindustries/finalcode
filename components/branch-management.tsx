@@ -362,9 +362,10 @@ export default function BranchManagement() {
 
   const filteredBranches = branches.filter((branch) => {
     const matchesSearch =
-      branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.manager.toLowerCase().includes(searchTerm.toLowerCase())
+      branch.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.manager?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.phone?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || branch.status === statusFilter
 
@@ -1631,7 +1632,7 @@ export default function BranchManagement() {
                           <div className="space-y-2 flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
                               <h4 className="font-medium text-sm md:text-base truncate">{employee.name}</h4>
-                              <Badge variant="outline" className="text-[10px] md:text-xs">{employee.role}</Badge>
+                              <Badge variant="outline" className="text-[10px] md:text-xs">{employee.position || "Karyawan"}</Badge>
                               <Badge variant={employee.isActive ? "default" : "secondary"} className="text-[10px] md:text-xs">
                                 {employee.isActive ? "Aktif" : "Nonaktif"}
                               </Badge>

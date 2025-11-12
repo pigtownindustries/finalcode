@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import {
   supabase,
   getServicesWithCategories,
@@ -186,7 +186,9 @@ export function POSSystem() {
       ])
     } catch (error) {
       console.error("Error loading initial data:", error)
-      toast({ title: "Error", description: "Gagal memuat data dari database.", variant: "destructive" })
+      toast.error("Error Memuat Data", {
+        description: "Gagal memuat data dari database.",
+      })
     } finally {
       setLoading(false)
     }
@@ -264,7 +266,9 @@ export function POSSystem() {
     if (bluetoothDevice) {
       const configKey = `printerConfig-${bluetoothDevice.id}`
       localStorage.removeItem(configKey)
-      toast({ title: "Konfigurasi Printer Dihapus", description: "Silakan hubungkan kembali untuk 'belajar' ulang." })
+      toast.success("Konfigurasi Printer Dihapus", {
+        description: "Silakan hubungkan kembali untuk 'belajar' ulang.",
+      })
       handleDisconnectBluetooth()
     }
   }
@@ -300,13 +304,17 @@ export function POSSystem() {
       setBluetoothConnected(true)
 
       setIsBluetoothOpen(false)
-      toast({ title: "Berhasil Terhubung", description: `Terhubung ke printer ${device.name}` })
+      toast.success("Berhasil Terhubung! 📱", {
+        description: `Terhubung ke printer ${device.name}`,
+      })
 
       device.addEventListener("gattserverdisconnected", () => {
         setBluetoothConnected(false)
         setBluetoothDevice(null)
         setBluetoothCharacteristic(null)
-        toast({ title: "Printer Terputus", variant: "destructive" })
+        toast.warning("Printer Terputus", {
+          description: "Koneksi Bluetooth terputus",
+        })
       })
     } catch (error) {
       console.error("Kesalahan Bluetooth:", error)
@@ -323,30 +331,251 @@ export function POSSystem() {
   const handlePrint = useCallback(() => {
     if (isPrinting) return
     setIsPrinting(true)
-    
-    setTimeout(() => {
-      window.print()
+
+    try {
+      const paperWidth = receiptTemplate?.paper_width || 80
+      const fontSize = receiptTemplate?.paper_width === 58 ? '8px' : '10px'
+
+      const buildReceiptHTML = () => {
+        if (!currentTransaction) return '<div>Tidak ada data transaksi</div>'
+
+        const headerHTML = `
+          <div style="text-align:center; margin-bottom:2mm;">
+            ${receiptTemplate?.show_logo && receiptTemplate?.logo_url ? `<img src="${receiptTemplate.logo_url}" alt="Logo" style="height:${receiptTemplate?.logo_height || 40}px; width:auto; margin:0 auto 2mm; display:block;" />` : ''}
+            ${receiptTemplate?.header_text
+              ? `<div style="white-space:pre-line; font-weight:700; font-size:${paperWidth===58?'9px':'11px'};">${receiptTemplate.header_text}</div>`
+              : `<div style="font-weight:700; font-size:${paperWidth===58?'10px':'12px'};">PIGTOWN BARBERSHOP</div>`}
+            ${receiptTemplate?.show_address && branchInfo?.address ? `<div style="font-size:${paperWidth===58?'7px':'9px'}; margin-top:1mm;">${branchInfo.address}</div>` : ''}
+            ${receiptTemplate?.show_phone && branchInfo?.phone ? `<div style="font-size:${paperWidth===58?'7px':'9px'};">Telp: ${branchInfo.phone}</div>` : ''}
+          </div>`
+
+        const infoHTML = `
+          <div style="border-top:1px dashed #000; margin:2mm 0"></div>
+          <div style="font-size:${paperWidth===58?'8px':'9px'};">
+            ${receiptTemplate?.show_date ? `<div>Tanggal: ${currentTransaction.timestamp}</div>` : ''}
+            <div>No: ${currentTransaction.receipt_number}</div>
+            ${receiptTemplate?.show_barber ? `<div>Kasir: ${currentTransaction.employeeName}</div>` : ''}
+            ${receiptTemplate?.show_customer && currentTransaction.customer_name ? `<div>Customer: ${currentTransaction.customer_name}</div>` : ''}
+          </div>
+          <div style="border-top:1px dashed #000; margin:2mm 0"></div>`
+
+        const itemsHTML = currentTransaction.items.map((item:any) => {
+          const left = `${item.quantity} x Rp ${formatRupiah(item.service.price)}`
+          const right = `Rp ${formatRupiah(item.service.price * item.quantity)}`
+          return `
+            <div style="font-size:${paperWidth===58?'8px':'9px'}; margin-bottom:1mm;">
+              <div style="font-weight:600">${item.service.name}</div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>${left}</span>
+                <span>${right}</span>
+              </div>
+            </div>`
+        }).join('')
+
+        const totalsHTML = `
+          <div style="border-top:1px dashed #000; margin:2mm 0"></div>
+          <div style="font-size:${paperWidth===58?'8px':'9px'};">
+            <div style="display:flex; justify-content:space-between; margin-bottom:0.5mm;">
+              <span>Subtotal:</span>
+              <span>Rp ${formatRupiah(currentTransaction.total_amount)}</span>
+            </div>
+            ${currentTransaction.discount_amount>0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.5mm;"><span>Diskon:</span><span>-Rp ${formatRupiah(currentTransaction.discount_amount)}</span></div>` : ''}
+            <div style="display:flex; justify-content:space-between; font-weight:700; font-size:${paperWidth===58?'10px':'11px'}; margin-top:1mm; padding-top:1mm; border-top:1px solid #ddd;">
+              <span>TOTAL:</span>
+              <span>Rp ${formatRupiah(currentTransaction.final_amount)}</span>
+            </div>
+            <div style="margin-top:1mm;">Pembayaran: ${currentTransaction.payment_method}</div>
+          </div>
+          <div style="border-top:1px dashed #000; margin:2mm 0"></div>`
+
+        const footerHTML = `
+          <div style="text-align:center; font-size:${paperWidth===58?'8px':'9px'};">
+            ${receiptTemplate?.footer_text ? `<div style="white-space:pre-line">${receiptTemplate.footer_text}</div>` : '<div>Terima kasih atas kunjungan Anda!</div>'}
+          </div>`
+
+        return headerHTML + infoHTML + itemsHTML + totalsHTML + footerHTML
+      }
+
+      const styles = `
+        @page { size: ${paperWidth}mm auto; margin: 0; }
+        html, body { width: ${paperWidth}mm; margin: 0; padding: 0; }
+        body { background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: ${fontSize}; line-height: 1.3; }
+        #root { width: ${paperWidth}mm; margin: 0; padding: ${paperWidth===58?'2mm':'3mm'}; }
+        img { max-width: 100%; }
+        .divider { border-top: 1px dashed #000; margin: 2mm 0; }
+      `
+
+      const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Struk Pembayaran</title><style>${styles}</style></head><body><div id="root">${buildReceiptHTML()}</div></body></html>`
+
+      const win = window.open('', 'PRINT', 'height=600,width=420')
+      if (!win) {
+        toast.error("Popup diblokir", { description: "Izinkan popup untuk mencetak struk" })
+        setIsPrinting(false)
+        return
+      }
+
+      win.document.open()
+      win.document.write(html)
+      win.document.close()
+      win.focus()
+
+      setTimeout(() => {
+        win.print()
+        win.close()
+        toast.success("Print via Browser 🖨️", { description: "Struk berhasil dicetak menggunakan printer browser", duration: 4000 })
+        setIsPrinting(false)
+      }, 250)
+    } catch (error) {
+      console.error('Print error', error)
+      toast.error("Gagal membuka print", { description: error instanceof Error ? error.message : String(error) })
       setIsPrinting(false)
-    }, 100)
-  }, [isPrinting])
+    }
+  }, [isPrinting, currentTransaction, receiptTemplate])
 
   const handlePrintViaBluetooth = async () => {
-    if (!bluetoothCharacteristic || !currentTransaction) {
-      toast({ title: "Printer atau Data Transaksi Tidak Siap", variant: "destructive" })
+    if (!bluetoothDevice || !bluetoothDevice.gatt?.connected || !currentTransaction) {
+      toast.error("Printer Tidak Siap", {
+        description: "Printer Bluetooth tidak terhubung atau data transaksi tidak tersedia",
+      })
       return
     }
     if (isPrinting) return
     setIsPrinting(true)
     
+    toast.loading("Mencetak via Bluetooth...", {
+      id: "bluetooth-print",
+    })
+    
     try {
+      // Get GATT server and service
+      const server = bluetoothDevice.gatt
+      const services = await server.getPrimaryServices()
+      
+      // Try to find a writable characteristic
+      let writeCharacteristic = null
+      for (const service of services) {
+        try {
+          const characteristics = await service.getCharacteristics()
+          for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+              writeCharacteristic = char
+              break
+            }
+          }
+          if (writeCharacteristic) break
+        } catch (e) {
+          continue
+        }
+      }
+      
+      if (!writeCharacteristic) {
+        throw new Error("Tidak dapat menemukan characteristic untuk menulis data")
+      }
+      
+      // Build receipt text for thermal printer
       const encoder = new TextEncoder()
-      const INIT = "\x1B\x40"
-      let receipt = INIT + "Struk Anda..."
-      await bluetoothCharacteristic.writeValueWithoutResponse(encoder.encode(recept))
-      toast({ title: "Struk Berhasil Dicetak" })
+      const ESC = "\x1B"
+      const INIT = ESC + "@" // Initialize printer
+      const ALIGN_CENTER = ESC + "a1"
+      const ALIGN_LEFT = ESC + "a0"
+      const BOLD_ON = ESC + "E1"
+      const BOLD_OFF = ESC + "E0"
+      const CUT = ESC + "i" // Cut paper
+      const LINE = "--------------------------------\n"
+      
+      let receiptText = INIT
+      
+      // Header
+      receiptText += ALIGN_CENTER + BOLD_ON
+      if (receiptTemplate?.header_text) {
+        receiptText += receiptTemplate.header_text + "\n"
+      } else {
+        receiptText += "PIGTOWN BARBERSHOP\n"
+      }
+      receiptText += BOLD_OFF
+      
+      if (receiptTemplate?.show_address && branchInfo?.address) {
+        receiptText += branchInfo.address + "\n"
+      }
+      if (receiptTemplate?.show_phone && branchInfo?.phone) {
+        receiptText += "Telp: " + branchInfo.phone + "\n"
+      }
+      
+      receiptText += LINE
+      
+      // Transaction info
+      receiptText += ALIGN_LEFT
+      if (receiptTemplate?.show_date) {
+        receiptText += "Tanggal: " + currentTransaction.timestamp + "\n"
+      }
+      receiptText += "No: " + currentTransaction.receipt_number + "\n"
+      if (receiptTemplate?.show_barber) {
+        receiptText += "Kasir: " + currentTransaction.employeeName + "\n"
+      }
+      if (receiptTemplate?.show_customer && currentTransaction.customer_name) {
+        receiptText += "Customer: " + currentTransaction.customer_name + "\n"
+      }
+      
+      receiptText += LINE
+      
+      // Items
+      for (const item of currentTransaction.items) {
+        receiptText += item.service.name + "\n"
+        receiptText += `${item.quantity} x Rp ${formatRupiah(item.service.price)}`
+        receiptText += " ".repeat(Math.max(0, 32 - (`${item.quantity} x Rp ${formatRupiah(item.service.price)}`.length + `Rp ${formatRupiah(item.service.price * item.quantity)}`.length)))
+        receiptText += `Rp ${formatRupiah(item.service.price * item.quantity)}\n`
+      }
+      
+      receiptText += LINE
+      
+      // Total
+      receiptText += `Subtotal:` + " ".repeat(Math.max(0, 32 - (`Subtotal:`.length + `Rp ${formatRupiah(currentTransaction.total_amount)}`.length)))
+      receiptText += `Rp ${formatRupiah(currentTransaction.total_amount)}\n`
+      
+      if (currentTransaction.discount_amount > 0) {
+        receiptText += `Diskon:` + " ".repeat(Math.max(0, 32 - (`Diskon:`.length + `-Rp ${formatRupiah(currentTransaction.discount_amount)}`.length)))
+        receiptText += `-Rp ${formatRupiah(currentTransaction.discount_amount)}\n`
+      }
+      
+      receiptText += BOLD_ON
+      receiptText += `TOTAL:` + " ".repeat(Math.max(0, 32 - (`TOTAL:`.length + `Rp ${formatRupiah(currentTransaction.final_amount)}`.length)))
+      receiptText += `Rp ${formatRupiah(currentTransaction.final_amount)}\n`
+      receiptText += BOLD_OFF
+      
+      receiptText += `Pembayaran: ${currentTransaction.payment_method}\n`
+      
+      receiptText += LINE
+      
+      // Footer
+      receiptText += ALIGN_CENTER
+      if (receiptTemplate?.footer_text) {
+        receiptText += receiptTemplate.footer_text + "\n"
+      } else {
+        receiptText += "Terima kasih atas kunjungan Anda!\n"
+      }
+      
+      receiptText += "\n\n\n" // Add spacing before cut
+      receiptText += CUT // Cut paper
+      
+      // Send to printer
+      const data = encoder.encode(receiptText)
+      if (writeCharacteristic.properties.writeWithoutResponse) {
+        await writeCharacteristic.writeValueWithoutResponse(data)
+      } else {
+        await writeCharacteristic.writeValue(data)
+      }
+      
+      toast.dismiss("bluetooth-print")
+      toast.success("Print via Bluetooth Berhasil! ��🖨️", {
+        description: `Struk berhasil dicetak ke printer thermal ${bluetoothDevice.name}`,
+        duration: 5000,
+      })
     } catch (error) {
       console.error("Gagal mencetak via Bluetooth:", error)
-      toast({ title: "Gagal Mencetak", description: error instanceof Error ? error.message : String(error), variant: "destructive" })
+      toast.dismiss("bluetooth-print")
+      toast.error("Gagal Print via Bluetooth", {
+        description: error instanceof Error ? error.message : String(error),
+      })
     } finally {
       setTimeout(() => setIsPrinting(false), 1000)
     }
@@ -366,7 +595,9 @@ export function POSSystem() {
         const availableStock = stockItem?.stock_quantity || 0;
 
         if (inCart >= availableStock) {
-          toast({ title: "Stok Tidak Cukup", variant: "destructive" })
+          toast.error("Stok Tidak Cukup", {
+            description: `Stok ${service.name} tidak mencukupi`,
+          })
           return;
         }
       }
@@ -380,7 +611,9 @@ export function POSSystem() {
       return [...prev, { service, quantity: 1 }]
     })
     setIsCartOpen(true)
-    toast({ title: "Ditambahkan ke Keranjang", description: `${service.name} telah ditambahkan` })
+    toast.success("Berhasil Ditambahkan", {
+      description: `${service.name} telah ditambahkan ke keranjang`,
+    })
   }
 
   const updateQuantity = (serviceId: string, newQuantity: number) => {
@@ -397,18 +630,26 @@ export function POSSystem() {
         const availableStock = stockItem?.stock_quantity || 0;
 
         if (newQuantity > availableStock) {
-          toast({ title: 'Stok Tidak Cukup', variant: 'destructive' })
+          toast.error('Stok Tidak Cukup', {
+            description: `Stok tersedia hanya ${availableStock} item`,
+          })
           return
         }
       }
     }
 
     setCart(prev => prev.map(item => item.service.id === serviceId ? { ...item, quantity: newQuantity } : item))
+    toast.success('Jumlah Diperbarui', {
+      description: `Jumlah ${service?.name || 'item'} berhasil diubah`,
+    })
   }
 
   const removeFromCart = (serviceId: string) => {
+    const item = cart.find(i => i.service.id === serviceId)
     setCart(prev => prev.filter(item => item.service.id !== serviceId))
-    toast({ title: "Dihapus dari Keranjang", description: "Item telah dihapus dari keranjang" })
+    toast.success("Item Dihapus", {
+      description: `${item?.service.name || 'Item'} telah dihapus dari keranjang`,
+    })
   }
 
   const getTotalPrice = () => cart.reduce((total, item) => total + item.service.price * item.quantity, 0)
@@ -429,13 +670,16 @@ export function POSSystem() {
 
   const handleCheckout = async () => {
     if (cart.length === 0 || !selectedBranch || !currentUser?.id || !servingEmployee) {
-      toast({
-        title: "Data Tidak Lengkap",
+      toast.error("Data Tidak Lengkap", {
         description: "Pastikan keranjang tidak kosong dan karyawan yang melayani sudah dipilih.",
-        variant: "destructive",
       })
       return
     }
+
+    toast.loading("Memproses Transaksi...", {
+      description: "Mohon tunggu sebentar",
+      id: "checkout-loading",
+    })
 
     setIsProcessing(true)
     try {
@@ -540,16 +784,19 @@ export function POSSystem() {
       setDiscountType("percentage")
       setIsCartOpen(false)
 
-      toast({ title: "Transaksi Berhasil", description: "Transaksi telah berhasil diproses" })
+      toast.dismiss("checkout-loading")
+      toast.success("Transaksi Berhasil! 🎉", {
+        description: `Transaksi #${savedTransaction.receipt_number} berhasil diproses`,
+        duration: 5000,
+      })
       loadServicesData()
       loadOutletStock(selectedBranchData.id)
 
     } catch (error) {
       console.error("Checkout error:", error)
-      toast({
-        title: "Gagal Memproses Transaksi",
+      toast.dismiss("checkout-loading")
+      toast.error("Gagal Memproses Transaksi", {
         description: error instanceof Error ? error.message : "Terjadi kesalahan",
-        variant: "destructive"
       })
     } finally {
       setIsProcessing(false)
@@ -971,43 +1218,64 @@ export function POSSystem() {
       {/* Receipt Dialog */}
       <Dialog open={isReceiptOpen} onOpenChange={setIsReceiptOpen}>
         <DialogContent className="max-w-md">
-          {/* Print-only CSS */}
+          {/* Print CSS */}
           <style>{`
             @media print {
               @page {
                 size: ${receiptTemplate?.paper_width || 80}mm auto;
                 margin: 0;
               }
-              body * { visibility: hidden !important; }
-              #receipt-print, #receipt-print * { visibility: visible !important; }
-              #receipt-print { 
-                position: absolute !important; 
-                left: 0; 
-                top: 0; 
+              
+              /* Reset body and html */
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
                 width: ${receiptTemplate?.paper_width || 80}mm !important;
-                background: white !important; 
-                margin: 0 !important; 
-                padding: 2mm 3mm !important;
-                font-family: 'Courier New', monospace !important;
-                font-size: ${receiptTemplate?.paper_width === 58 ? '8px' : '10px'} !important;
-                line-height: 1.3 !important;
+                height: auto !important;
               }
-              #receipt-print .divider {
-                border-top: 1px dashed #000 !important;
-                margin: 2mm 0 !important;
+              
+              /* Hide everything except our receipt */
+              body > *:not([data-print-root]) {
+                display: none !important;
               }
-            }
-            @media screen {
+              
+              /* Make sure receipt container is visible */
+              [data-print-root] {
+                display: block !important;
+                position: relative !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              
+              /* Style the receipt */
               #receipt-print {
-                max-width: ${receiptTemplate?.paper_width || 80}mm;
-                margin: 0 auto;
-                font-family: 'Courier New', monospace;
-                font-size: ${receiptTemplate?.paper_width === 58 ? '9px' : '11px'};
-                line-height: 1.4;
+                display: block !important;
+                width: ${receiptTemplate?.paper_width || 80}mm !important;
+                max-width: ${receiptTemplate?.paper_width || 80}mm !important;
+                margin: 0 !important;
+                padding: ${receiptTemplate?.paper_width === 58 ? '2mm' : '3mm'} !important;
+                background: white !important;
+                color: black !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: ${receiptTemplate?.paper_width === 58 ? '8px' : '9px'} !important;
+                line-height: 1.3 !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+              }
+              
+              /* Hide print button and dialog chrome */
+              .print\\:hidden,
+              button,
+              [role="dialog"] > div:first-child,
+              h2, 
+              p:has(+ [data-print-root]) {
+                display: none !important;
               }
             }
           `}</style>
-          <DialogHeader>
+          
+          <DialogHeader className="print:hidden">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" /> Struk Pembayaran
             </DialogTitle>
@@ -1016,14 +1284,17 @@ export function POSSystem() {
 
           {currentTransaction && (
             <div className="space-y-4">
-              <div 
-                className="bg-white p-3 border rounded-lg text-black" 
-                id="receipt-print"
-              >
+              {/* Container for print */}
+              <div data-print-root>
+                {/* Receipt - visible on both screen and print */}
+                <div 
+                  className="bg-white p-3 border rounded-lg text-black print:p-0 print:border-0 print:rounded-none" 
+                  id="receipt-print"
+                >
                 {/* Header */}
-                <div className="text-center mb-1">
+                <div className="text-center mb-2">
                   {receiptTemplate?.show_logo && receiptTemplate?.logo_url && (
-                    <img src={receiptTemplate.logo_url} alt="Logo" style={{ height: '40px', width: 'auto', margin: '0 auto 4px' }} />
+                    <img src={receiptTemplate.logo_url} alt="Logo" className="h-10 w-auto mx-auto mb-2" />
                   )}
                   {receiptTemplate?.header_text ? (
                     <div className="whitespace-pre-line font-bold text-xs">{receiptTemplate.header_text}</div>
@@ -1031,14 +1302,14 @@ export function POSSystem() {
                     <div className="font-bold text-sm">PIGTOWN BARBERSHOP</div>
                   )}
                   {receiptTemplate?.show_address && branchInfo?.address && (
-                    <div className="text-[10px]">{branchInfo.address}</div>
+                    <div className="text-[10px] mt-1">{branchInfo.address}</div>
                   )}
                   {receiptTemplate?.show_phone && branchInfo?.phone && (
                     <div className="text-[10px]">Telp: {branchInfo.phone}</div>
                   )}
                 </div>
 
-                <div className="divider border-t border-dashed border-gray-400 my-1" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Info */}
                 <div className="text-[10px] space-y-0.5">
@@ -1049,12 +1320,12 @@ export function POSSystem() {
                   {receiptTemplate?.show_barber && (
                     <div>Kasir: {currentTransaction.employeeName}</div>
                   )}
-                  {currentTransaction.customer_name && (
+                  {receiptTemplate?.show_customer && currentTransaction.customer_name && (
                     <div>Customer: {currentTransaction.customer_name}</div>
                   )}
                 </div>
 
-                <div className="divider border-t border-dashed border-gray-400 my-1" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Items */}
                 <div className="space-y-1">
@@ -1069,7 +1340,7 @@ export function POSSystem() {
                   ))}
                 </div>
 
-                <div className="divider border-t border-dashed border-gray-400 my-1" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Total */}
                 <div className="text-[10px] space-y-0.5">
@@ -1083,14 +1354,14 @@ export function POSSystem() {
                       <span>-Rp {formatRupiah(currentTransaction.discount_amount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-xs pt-0.5">
+                  <div className="flex justify-between font-bold text-xs pt-1 mt-1 border-t border-gray-300">
                     <span>TOTAL:</span>
                     <span>Rp {formatRupiah(currentTransaction.final_amount)}</span>
                   </div>
-                  <div className="text-[10px] mt-1">Pembayaran: {currentTransaction.payment_method}</div>
+                  <div className="mt-1">Pembayaran: {currentTransaction.payment_method}</div>
                 </div>
 
-                <div className="divider border-t border-dashed border-gray-400 my-1" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Footer */}
                 <div className="text-center text-[10px]">
@@ -1101,8 +1372,9 @@ export function POSSystem() {
                   )}
                 </div>
               </div>
+              </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 print:hidden">
                 <Button variant="outline" onClick={() => setIsReceiptOpen(false)} className="flex-1">
                   Tutup
                 </Button>

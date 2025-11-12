@@ -1836,16 +1836,27 @@ export async function getAllExpensesWithDetails() {
 
 export async function updateExpenseStatus(
   expenseId: string, 
-  status: "approved" | "rejected" | "paid"
+  status: "approved" | "rejected" | "paid",
+  rejectionReason?: string
 ) {
   try {
-    console.log("🔄 Updating expense status:", { expenseId, status });
+    console.log("🔄 Updating expense status:", { expenseId, status, rejectionReason });
     
-    // HANYA update status saja, tidak ada kolom lain
-    const updateData = {
+    // Update status dan rejection_reason jika ada
+    const updateData: any = {
       status,
       updated_at: new Date().toISOString()
     };
+
+    // Tambahkan rejection_reason jika status rejected
+    if (status === "rejected" && rejectionReason) {
+      updateData.rejection_reason = rejectionReason;
+    }
+
+    // Clear rejection_reason jika status approved/paid
+    if (status === "approved" || status === "paid") {
+      updateData.rejection_reason = null;
+    }
 
     const { data, error } = await supabase
       .from('expenses')

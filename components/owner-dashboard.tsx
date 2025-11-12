@@ -86,7 +86,6 @@ export function OwnerDashboard() {
   // Tab configuration untuk mobile responsive
   const tabsConfig = [
     { value: "overview", label: "Overview", icon: BarChart3, shortLabel: "Home" },
-    { value: "analytics", label: "Analytics", icon: BarChart3, shortLabel: "Stats" },
     { value: "employees", label: "Karyawan", icon: Users, shortLabel: "Staff" },
     { value: "branches", label: "Cabang", icon: Target, shortLabel: "Branch" },
     { value: "points", label: "Poin", icon: Award, shortLabel: "Point" },
@@ -602,21 +601,21 @@ export function OwnerDashboard() {
                   {/* Desktop Tab Navigation */}
                   <div className="hidden sm:block w-full">
                     <TabsList className="w-full h-auto p-2 bg-gradient-to-r from-white/30 via-white/20 to-white/30 dark:from-white/10 dark:via-white/5 dark:to-white/10 backdrop-blur-md border border-white/30 dark:border-white/20 rounded-2xl shadow-lg">
-                      <div className="grid grid-cols-5 lg:grid-cols-10 gap-1 w-full">
+                      <div className="flex flex-wrap justify-center gap-1 w-full">
                         {tabsConfig.map((tab, index) => (
                           <TabsTrigger
                             key={tab.value}
                             value={tab.value}
-                            className={`group relative overflow-hidden px-2 sm:px-4 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 ${activeTab === tab.value
+                            className={`group relative overflow-hidden px-3 sm:px-4 lg:px-5 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 flex-1 min-w-[80px] max-w-[140px] ${activeTab === tab.value
                                 ? 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-600 text-white shadow-xl shadow-red-500/30'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                               }`}
                             style={{ animationDelay: `${index * 100}ms` }}
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative z-10">
+                            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative z-10 justify-center">
                               <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 group-hover:rotate-12 transition-transform duration-300" />
-                              <span className="text-[10px] sm:text-xs lg:text-sm leading-none">{window.innerWidth < 640 ? tab.shortLabel : tab.label}</span>
+                              <span className="text-[10px] sm:text-xs lg:text-sm leading-none whitespace-nowrap">{window.innerWidth < 640 ? tab.shortLabel : tab.label}</span>
                             </div>
                           </TabsTrigger>
                         ))}
@@ -630,16 +629,6 @@ export function OwnerDashboard() {
                 <TabsContent value="overview" className="space-y-6 mt-0">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-blue-500/5 rounded-2xl blur-xl"></div>
-                    <OverviewAndAnalytics
-                      onRefreshData={() => testDatabaseConnection()}
-                      realTimeEnabled={realTimeEnabled}
-                    />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="analytics" className="space-y-6 mt-0">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-cyan-500/5 to-teal-500/5 rounded-2xl blur-xl"></div>
                     <OverviewAndAnalytics
                       onRefreshData={() => testDatabaseConnection()}
                       realTimeEnabled={realTimeEnabled}
