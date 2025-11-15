@@ -87,7 +87,7 @@ interface NewShift {
 interface Employee {
   id: string
   name: string
-  role: string
+  position: string
   phone: string
   email: string
   isActive: boolean
@@ -204,7 +204,7 @@ export default function BranchManagement() {
 
   const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({
     name: "",
-    role: "barber",
+    position: "barber",
     phone: "",
     email: "",
     isActive: true,
@@ -226,6 +226,9 @@ export default function BranchManagement() {
   const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     fetchBranches()
   }, [])
 
@@ -698,7 +701,7 @@ export default function BranchManagement() {
     const employee: Employee = {
       id: Date.now().toString(),
       name: newEmployee.name,
-      role: newEmployee.role || "barber",
+      position: newEmployee.position || "barber",
       phone: newEmployee.phone,
       email: newEmployee.email || "",
       isActive: true,
@@ -715,7 +718,7 @@ export default function BranchManagement() {
 
     setNewEmployee({
       name: "",
-      role: "barber",
+      position: "barber",
       phone: "",
       email: "",
       isActive: true,

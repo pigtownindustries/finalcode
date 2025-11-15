@@ -79,6 +79,9 @@ export default function KasbonManagement() {
   })
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     fetchData()
   }, [])
 
@@ -90,7 +93,7 @@ export default function KasbonManagement() {
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select("id, name, email, position")
-        .neq("role", "owner")
+        .eq("status", "active")
 
       if (usersError) throw usersError
       setUsers(usersData || [])

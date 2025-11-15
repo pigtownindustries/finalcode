@@ -80,6 +80,9 @@ export default function PointsManagement() {
   })
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     fetchData()
   }, [])
 
@@ -88,12 +91,24 @@ export default function PointsManagement() {
     try {
       setLoading(true);
 
-      // --- MULAI: PENGAMBILAN DATA PENGGUNA YANG DIOPTIMALKAN ---
-      const { data: usersWithTotals, error: usersError } = await supabase.rpc('get_users_with_point_totals')
+      // Query users langsung tanpa RPC function (RPC masih pakai kolom 'role' yang tidak ada)
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, name, email, position, status")
+        .eq("status", "active")
+        .order("name")
 
       if (usersError) throw usersError;
+      
+      // Map ke format yang dibutuhkan
+      const usersWithTotals = (usersData || []).map(user => ({
+        ...user,
+        total_bonus: 0,
+        total_penalty: 0,
+        total_points: 0
+      }))
+      
       setUsers(usersWithTotals || []);
-      // --- SELESAI: PENGAMBILAN DATA PENGGUNA YANG DIOPTIMALKAN ---
 
       const { data: transactionsData, error: transactionsError } = await supabase
         .from("points")

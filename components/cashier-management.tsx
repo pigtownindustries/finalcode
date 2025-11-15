@@ -34,6 +34,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Loader2,
+  Settings,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { supabase, getOutletStock, updateOutletStock, getLowStockAlerts, type OutletStock } from "@/lib/supabase"
@@ -82,6 +83,7 @@ interface ReceiptTemplate {
   logo_url?: string
   branch_id?: string
   is_active?: boolean
+  is_default?: boolean
   template_data?: any
   paper_size?: string
   font_size?: string
@@ -739,6 +741,18 @@ export function CashierManagement() {
   }
 
   const deleteTemplate = async (templateId: string) => {
+    // Check if template is default
+    const templateToDelete = receiptTemplates.find(t => t.id === templateId)
+    
+    if (templateToDelete?.is_default) {
+      toast({
+        title: "Tidak Dapat Menghapus",
+        description: "Template default tidak bisa dihapus. Ubah template lain sebagai default terlebih dahulu.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (!confirm("Yakin ingin menghapus template ini?")) return
 
     try {
@@ -802,6 +816,18 @@ export function CashierManagement() {
 
   const deactivateTemplate = async (templateId: string) => {
     try {
+      // Cek apakah ada template default
+      const hasDefault = receiptTemplates.some(t => t.is_default && t.id !== templateId);
+      
+      if (!hasDefault) {
+        toast({
+          title: "Peringatan",
+          description: "Harap aktifkan template default terlebih dahulu sebelum menonaktifkan template aktif ini!",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase.from("receipt_templates").update({ is_active: false }).eq("id", templateId)
 
       if (error) {
@@ -811,12 +837,80 @@ export function CashierManagement() {
 
       toast({
         title: "Berhasil",
-        description: "Template berhasil dinonaktifkan",
+        description: "Template berhasil dinonaktifkan. Template default akan digunakan.",
       })
 
       fetchReceiptTemplates()
     } catch (error) {
       console.error("[v0] Error:", error)
+    }
+  }
+
+  const toggleDefaultTemplate = async (templateId: string, currentDefaultStatus: boolean) => {
+    try {
+      if (currentDefaultStatus) {
+        // Jika sudah default, cek apakah ada template aktif lain
+        const hasActiveTemplate = receiptTemplates.some(t => t.is_active && t.id !== templateId);
+        
+        if (!hasActiveTemplate) {
+          toast({
+            title: "Tidak Dapat Menonaktifkan",
+            description: "Tidak ada template aktif lain. Harap aktifkan template lain terlebih dahulu!",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Nonaktifkan default
+        const { error } = await supabase
+          .from("receipt_templates")
+          .update({ is_default: false })
+          .eq("id", templateId);
+
+        if (error?.message) throw error;
+
+        toast({
+          title: "Berhasil",
+          description: "Template default telah dinonaktifkan",
+        });
+      } else {
+        // Cek apakah sudah ada template default lain
+        const otherDefault = receiptTemplates.find(t => t.is_default && t.id !== templateId);
+        
+        if (otherDefault) {
+          toast({
+            title: "Template Default Sudah Ada",
+            description: `Template "${otherDefault.name}" sudah menjadi default. Nonaktifkan terlebih dahulu.`,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Aktifkan sebagai default
+        const { error } = await supabase
+          .from("receipt_templates")
+          .update({ is_default: true })
+          .eq("id", templateId);
+
+        if (error?.message) throw error;
+
+        toast({
+          title: "Berhasil",
+          description: "Template berhasil diset sebagai default",
+        });
+      }
+
+      fetchReceiptTemplates();
+    } catch (error: any) {
+      // Hanya tampilkan toast jika ada error message yang valid
+      if (error?.message) {
+        toast({
+          title: "Error",
+          description: error.message || "Gagal mengubah status default template",
+          variant: "destructive"
+        });
+      }
+      // Jangan log error kosong
     }
   }
 
@@ -1680,7 +1774,13 @@ export function CashierManagement() {
               receiptTemplates.map((template) => (
                 <Card
                   key={template.id}
-                  className={`hover:shadow-lg transition-shadow ${template.is_active ? "ring-2 ring-green-500" : ""}`}
+                  className={`hover:shadow-lg transition-shadow ${
+                    template.is_active 
+                      ? "ring-2 ring-green-500" 
+                      : template.is_default 
+                      ? "ring-2 ring-blue-400" 
+                      : ""
+                  }`}
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1688,8 +1788,9 @@ export function CashierManagement() {
                         <Receipt className="h-4 w-4" />
                         {template.name}
                       </CardTitle>
-                      <div className="flex flex-col gap-1">
-                        {template.is_active && <Badge className="bg-green-100 text-green-800">Aktif</Badge>}
+                      <div className="flex flex-wrap gap-1">
+                        {template.is_active && <Badge className="bg-green-100 text-green-800 text-xs">Aktif</Badge>}
+                        {template.is_default && <Badge className="bg-blue-100 text-blue-800 text-xs">Default</Badge>}
                       </div>
                     </div>
                   </CardHeader>
@@ -1732,49 +1833,68 @@ export function CashierManagement() {
                       </div>
                     </div>
 
-                    {/* Template Actions */}
-                    <div className="flex gap-2 mt-4">
+                    {/* Toggle Default - Full Width */}
+                    <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">Template Default</span>
+                      </div>
+                      <Switch
+                        checked={template.is_default || false}
+                        onCheckedChange={() => toggleDefaultTemplate(template.id, template.is_default || false)}
+                        className="data-[state=checked]:bg-blue-600"
+                      />
+                    </div>
+
+                    {/* Template Actions - Responsive Grid Layout */}
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         onClick={() => handleEditTemplate(template)}
                         size="sm"
                         variant="outline"
-                        className="flex-1 gap-1 bg-transparent"
+                        className="w-full gap-1"
                       >
                         <Edit className="h-3 w-3" />
-                        Edit
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                       <Button
                         onClick={() => handleTestPrint(template)}
                         size="sm"
                         variant="outline"
-                        className="flex-1 gap-1 bg-transparent"
+                        className="w-full gap-1"
                       >
                         <Printer className="h-3 w-3" />
-                        Test Print
+                        <span className="hidden sm:inline">Test Print</span>
                       </Button>
                       <Button
                         onClick={() => deleteTemplate(template.id)}
                         size="sm"
                         variant="destructive"
-                        className="flex-1 gap-1"
+                        className="w-full gap-1"
+                        disabled={template.is_default}
+                        title={template.is_default ? "Template default tidak bisa dihapus" : "Hapus template"}
                       >
                         <Trash2 className="h-3 w-3" />
-                        Hapus
+                        <span className="hidden sm:inline">Hapus</span>
                       </Button>
                       {template.is_active ? (
                         <Button
                           onClick={() => deactivateTemplate(template.id)}
                           size="sm"
                           variant="outline"
-                          className="flex-1 gap-1 bg-transparent"
+                          className="w-full gap-1"
                         >
                           <X className="h-3 w-3" />
-                          Nonaktifkan
+                          <span className="hidden sm:inline">Nonaktifkan</span>
                         </Button>
                       ) : (
-                        <Button onClick={() => setActiveTemplate(template.id)} size="sm" className="flex-1 gap-1">
+                        <Button 
+                          onClick={() => setActiveTemplate(template.id)} 
+                          size="sm" 
+                          className="w-full gap-1 bg-green-600 hover:bg-green-700"
+                        >
                           <Check className="h-3 w-3" />
-                          Aktifkan
+                          <span className="hidden sm:inline">Aktifkan</span>
                         </Button>
                       )}
                     </div>

@@ -124,7 +124,6 @@ function EmployeeManagement() {
         phone: "",
         position: "",
         pin: "",
-        salary: 3000000,
         status: "active",
     })
 
@@ -264,28 +263,32 @@ function EmployeeManagement() {
     };
 
     useEffect(() => {
+        // Scroll to top when component mounts
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        
         loadEmployees()
         loadAbsentEmployees()
     }, [])
 
+    // Refresh data stats only (without reloading entire page)
     useEffect(() => {
         console.log("Setting up real-time subscription for employees")
 
-        const channel = setupEmployeeRealtime(() => {
-            console.log("Real-time update received, refreshing data...")
-            loadEmployees()
-            loadAbsentEmployees()
-            toast({
-                title: "Data Diperbarui",
-                description: "Data karyawan telah diperbarui secara real-time",
-            })
+        const channel = setupEmployeeRealtime(async () => {
+            console.log("Real-time update received, refreshing stats only...")
+            // Hanya refresh stats, tidak reload full employees
+            if (employees.length > 0) {
+                await loadEmployeeStats(employees)
+            }
+            // Refresh absent employees
+            await loadAbsentEmployees()
         })
 
         return () => {
             console.log("Cleaning up real-time subscription")
             supabase.removeChannel(channel)
         }
-    }, [])
+    }, [employees])
 
     const activeEmployees = employees.filter((e) => e.status !== "inactive").length
     const totalSalary = employees.reduce((sum, emp) => {
@@ -377,9 +380,7 @@ function EmployeeManagement() {
                 phone: newEmployee.phone,
                 position: newEmployee.position,
                 pin: newEmployee.pin,
-                baseSalary: newEmployee.salary,
                 status: newEmployee.status,
-                role: 'cashier',
             })
 
             if (error) {
@@ -403,10 +404,9 @@ function EmployeeManagement() {
             setNewEmployee({ 
                 name: "", 
                 email: "", 
-                phone: "", 
-                position: "", 
+                phone: "",
+                position: "",
                 pin: "",
-                salary: 3000000,
                 status: "active",
             })
             await loadEmployees()
@@ -446,7 +446,6 @@ function EmployeeManagement() {
                 pin: editEmployee.pin,
                 status: editEmployee.status,
                 position: editEmployee.position,
-                salary: editEmployee.salary,
             });
 
             if (error) {
@@ -621,16 +620,6 @@ function EmployeeManagement() {
                                     value={newEmployee.position}
                                     onChange={(e) => setNewEmployee({ ...newEmployee, position: e.target.value })}
                                     placeholder="Masukkan posisi"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="salary">Gaji Pokok</Label>
-                                <Input
-                                    id="salary"
-                                    type="number"
-                                    value={newEmployee.salary}
-                                    onChange={(e) => setNewEmployee({ ...newEmployee, salary: Number(e.target.value) })}
-                                    placeholder="3.000.000"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -1203,15 +1192,6 @@ function EmployeeManagement() {
                                     id="edit-position"
                                     value={editEmployee.position || ""}
                                     onChange={(e) => setEditEmployee({ ...editEmployee, position: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="edit-salary">Gaji Pokok</Label>
-                                <Input
-                                    id="edit-salary"
-                                    type="number"
-                                    value={editEmployee.salary || 3000000}
-                                    onChange={(e) => setEditEmployee({ ...editEmployee, salary: Number(e.target.value) })}
                                 />
                             </div>
                             <div className="space-y-2">

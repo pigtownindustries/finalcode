@@ -153,30 +153,45 @@ export function TransactionHistory() {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("id, name, role, position")
+        .select("id, name, position")  // ✅ Hapus 'role' - kolom tidak ada
         .eq("status", "active")
         .order("name")
-      if (error) throw error
+      
+      console.log("[transaction-history] Employees loaded:", data?.length)
+      
+      if (error && !data) {
+        throw error
+      }
+      
       setEmployees(data || [])
     } catch (error) {
       console.error("Error fetching employees:", error)
+      setEmployees([]) // Set empty array jika error
     }
   }
 
-  const loadCommissionForItems = async (items: TransactionItem[], cashierId?: string) => {
-    if (!cashierId || !items || items.length === 0) {
-      console.log('⚠️ Skipping commission load:', { cashierId, itemsCount: items?.length })
+  const loadCommissionForItems = async (items: TransactionItem[]) => {
+    if (!items || items.length === 0) {
+      console.log('⚠️ No items to load commission for')
       return items
     }
 
     try {
-      console.log('📊 Loading commission for cashier:', cashierId)
+      // Ambil semua barber_id yang ada di items
+      const barberIds = [...new Set(items.map(item => item.barber_id).filter(Boolean))]
       
-      // Ambil commission rules untuk cashier ini
+      if (barberIds.length === 0) {
+        console.log('⚠️ No barber_id found in items')
+        return items
+      }
+
+      console.log('📊 Loading commission for barbers:', barberIds)
+      
+      // Ambil semua commission rules untuk barbers ini
       const { data: commissionRules, error } = await supabase
         .from('commission_rules')
         .select('*')
-        .eq('user_id', cashierId)
+        .in('user_id', barberIds)
 
       if (error) throw error
 
@@ -184,7 +199,10 @@ export function TransactionHistory() {
 
       // Map items dengan commission data
       const itemsWithCommission = items.map(item => {
-        const rule = commissionRules?.find(r => r.service_id === item.service_id)
+        // Cari rule berdasarkan barber_id (bukan cashier_id) dan service_id
+        const rule = commissionRules?.find(r => 
+          r.user_id === item.barber_id && r.service_id === item.service_id
+        )
         
         if (rule) {
           const commissionAmount = rule.commission_type === 'percentage'
@@ -192,6 +210,7 @@ export function TransactionHistory() {
             : rule.commission_value
 
           console.log('💰 Commission found for service:', item.service?.name, {
+            barber_id: item.barber_id,
             type: rule.commission_type,
             value: rule.commission_value,
             amount: commissionAmount * item.quantity
@@ -206,7 +225,7 @@ export function TransactionHistory() {
           }
         }
 
-        console.log('⚠️ No commission for service:', item.service?.name)
+        console.log('⚠️ No commission for service:', item.service?.name, 'barber:', item.barber_id)
         return {
           ...item,
           has_commission: false
@@ -290,6 +309,11 @@ export function TransactionHistory() {
             quantity,
             unit_price,
             total_price,
+            barber_id,
+            commission_status,
+            commission_type,
+            commission_value,
+            commission_amount,
             services(id, name, price)
           )
         `)
@@ -311,39 +335,56 @@ export function TransactionHistory() {
       console.log("✅ Fetched transactions:", transactionsData?.length || 0)
 
       if (transactionsData && transactionsData.length > 0) {
-        // Ambil data cashier secara terpisah untuk setiap transaksi
-        const userIds = [...new Set(transactionsData.map(t => t.cashier_id).filter(Boolean))]
+        // Ambil data cashier dan server secara terpisah untuk setiap transaksi
+        const cashierIds = [...new Set(transactionsData.map(t => t.cashier_id).filter(Boolean))]
+        const serverIds = [...new Set(transactionsData.map(t => t.server_id).filter(Boolean))]
+        const allUserIds = [...new Set([...cashierIds, ...serverIds])]
+        
         const { data: usersData } = await supabase
           .from('users')
           .select('id, name')
-          .in('id', userIds)
+          .in('id', allUserIds)
         
         const usersMap = new Map(usersData?.map(u => [u.id, u]) || [])
 
         // Load commission data untuk setiap transaksi
         const enrichedTransactions = await Promise.all(
           transactionsData.map(async (transaction) => {
-            let itemsWithCommission = transaction.transaction_items || []
-            
-            // Try to load commission, but don't fail if it errors
-            try {
-              if (transaction.cashier_id && transaction.transaction_items?.length > 0) {
-                itemsWithCommission = await loadCommissionForItems(
-                  transaction.transaction_items,
-                  transaction.cashier_id
-                )
+            // Gunakan data komisi yang sudah ada di transaction_items dari database
+            const itemsWithCommission = (transaction.transaction_items || []).map((item: any) => {
+              // Cek apakah ada data komisi yang tersimpan
+              const hasCommissionData = item.commission_status === 'credited' && 
+                                       item.commission_amount > 0;
+              
+              if (hasCommissionData) {
+                console.log('✅ Commission data found in DB for item:', item.services?.name, {
+                  barber_id: item.barber_id,
+                  status: item.commission_status,
+                  type: item.commission_type,
+                  value: item.commission_value,
+                  amount: item.commission_amount
+                });
+              } else {
+                console.log('⚠️ No commission data for item:', item.services?.name, {
+                  status: item.commission_status,
+                  barber_id: item.barber_id
+                });
               }
-            } catch (commError) {
-              console.warn("Failed to load commission for transaction:", transaction.id, commError)
-              // Use items without commission data
-              itemsWithCommission = transaction.transaction_items || []
-            }
+
+              return {
+                ...item,
+                has_commission: hasCommissionData,
+                service: item.services // Rename untuk compatibility
+              };
+            });
 
             const cashier = usersMap.get(transaction.cashier_id)
+            const server = usersMap.get(transaction.server_id)
 
             return {
               ...transaction,
               cashier: cashier ? { name: cashier.name } : null,
+              server: server ? { name: server.name } : null, // Karyawan yang melayani
               branch: transaction.branches ? { name: transaction.branches.name } : null,
               transaction_items: itemsWithCommission
             }
@@ -605,7 +646,7 @@ export function TransactionHistory() {
       const matchesSearch = !searchTerm || 
         transaction.transaction_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.cashier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.server?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.branch?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesBranch = filterBranch === "all" || transaction.branch_id === filterBranch
@@ -764,41 +805,80 @@ export function TransactionHistory() {
     }
 
     try {
-      const commissionRule = {
-        user_id: selectedTransaction.cashier_id,
-        service_id: selectedItemForCommission.item.service_id,
-        commission_type: commissionType,
-        commission_value: commissionType === 'percentage' 
-          ? parseFloat(commissionValue) 
-          : parseFloat(commissionValue),
+      const item = selectedItemForCommission.item;
+      const value = commissionType === 'percentage' 
+        ? parseFloat(commissionValue) 
+        : parseFloat(commissionValue);
+
+      // Hitung commission_amount
+      const commissionAmount = commissionType === 'percentage'
+        ? (item.unit_price * value / 100) * item.quantity
+        : value * item.quantity;
+
+      console.log('💾 Saving commission:', {
+        item_id: item.id,
+        barber_id: item.barber_id,
+        service_id: item.service_id,
+        type: commissionType,
+        value: value,
+        amount: commissionAmount
+      });
+
+      // 1. Update transaction_items dengan data komisi
+      const { error: itemError } = await supabase
+        .from('transaction_items')
+        .update({
+          commission_status: 'credited',
+          commission_type: commissionType,
+          commission_value: value,
+          commission_amount: commissionAmount
+        })
+        .eq('id', item.id);
+
+      if (itemError) {
+        console.error('Error updating transaction_items:', itemError);
+        throw itemError;
       }
 
-      const { error } = await supabase
-        .from('commission_rules')
-        .upsert(commissionRule, { onConflict: 'user_id,service_id' })
+      // 2. Simpan juga ke commission_rules untuk transaksi selanjutnya (hanya jika ada barber_id)
+      if (item.barber_id && item.service_id) {
+        const commissionRule = {
+          user_id: item.barber_id,
+          service_id: item.service_id,
+          commission_type: commissionType,
+          commission_value: value,
+        };
 
-      if (error) throw error
+        const { error: ruleError } = await supabase
+          .from('commission_rules')
+          .upsert(commissionRule, { onConflict: 'user_id,service_id' });
+
+        if (ruleError) {
+          console.warn('Warning: Failed to save commission rule (non-critical):', ruleError);
+          // Tidak throw error karena yang penting transaction_items sudah tersimpan
+        }
+      }
 
       toast({
         title: "Berhasil",
-        description: "Komisi berhasil disimpan dan akan berlaku untuk transaksi selanjutnya"
-      })
+        description: "Komisi berhasil disimpan dan diterapkan ke transaksi ini"
+      });
 
       // Refresh transactions untuk update commission data
-      await fetchTransactions()
+      await fetchTransactions();
 
       // Close dialog
-      setShowCommissionDialog(false)
-      setSelectedItemForCommission(null)
-      setCommissionValue('')
+      setShowCommissionDialog(false);
+      setSelectedItemForCommission(null);
+      setCommissionValue('');
 
     } catch (error) {
-      console.error("Error saving commission:", error)
+      console.error("Error saving commission:", error);
       toast({
         title: "Gagal",
         description: "Terjadi kesalahan saat menyimpan komisi",
         variant: "destructive"
-      })
+      });
     }
   }
 
@@ -1051,7 +1131,7 @@ export function TransactionHistory() {
                     </div>
                     <div>
                       <span className="text-gray-600">Dilayani oleh:</span>
-                      <div className="font-medium">{transaction.cashier?.name || "N/A"}</div>
+                      <div className="font-medium">{transaction.server?.name || "N/A"}</div>
                     </div>
                     <div>
                       <span className="text-gray-600">Cabang:</span>
@@ -1254,7 +1334,7 @@ export function TransactionHistory() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Dilayani oleh</Label>
-                  <p className="font-medium mt-1">{selectedTransaction.cashier?.name || "N/A"}</p>
+                  <p className="font-medium mt-1">{selectedTransaction.server?.name || "N/A"}</p>
                 </div>
                 <div>
                   <Label className="text-sm font-medium text-gray-600">Cabang</Label>

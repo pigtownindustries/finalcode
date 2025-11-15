@@ -285,6 +285,9 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   }
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     loadAttendanceData()
 
     // Setup real-time subscription

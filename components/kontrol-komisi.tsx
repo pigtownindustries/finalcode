@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { 
     Settings, Trash2, CheckCircle, XCircle, Loader2, 
-    Users, DollarSign, AlertTriangle, RefreshCw, 
+    Users, DollarSign, AlertTriangle, 
     Sparkles, Search, Download, Eye, Edit
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -112,6 +112,8 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
 
     // Load data
     useEffect(() => {
+        // Scroll to top when component mounts
+        window.scrollTo({ top: 0, behavior: 'instant' });
         loadData();
     }, []);
 
@@ -121,6 +123,36 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
             buildEmployeeStatuses(employees, services, commissionRules);
         }
     }, [employees, services, commissionRules]);
+
+    // Setup realtime subscriptions
+    useEffect(() => {
+        const transactionChannel = supabase
+            .channel('commission-transactions')
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'transaction_items' },
+                (payload) => {
+                    console.log('📡 Transaction change detected, reloading...');
+                    loadData();
+                }
+            )
+            .subscribe();
+
+        const commissionChannel = supabase
+            .channel('commission-rules-changes')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'commission_rules' },
+                (payload) => {
+                    console.log('📡 Commission rule change detected, reloading...');
+                    loadData();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(transactionChannel);
+            supabase.removeChannel(commissionChannel);
+        };
+    }, []);
 
     const loadData = async () => {
         setLoading(true);
@@ -561,19 +593,9 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
                                 Kontrol Komisi
                             </CardTitle>
                             <CardDescription className="text-red-50 text-sm">
-                                Kelola dan pantau semua komisi transaksi
+                                Kelola dan pantau semua komisi transaksi (realtime)
                             </CardDescription>
                         </div>
-                        <Button 
-                            onClick={loadData} 
-                            disabled={loading}
-                            variant="secondary"
-                            size="sm"
-                            className="gap-2"
-                        >
-                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                            Refresh
-                        </Button>
                     </div>
                 </CardHeader>
 
@@ -729,7 +751,7 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
                                                     <p className="text-sm text-gray-600">{status.employee.email}</p>
                                                     <div className="flex items-center gap-2 mt-2">
                                                         <Badge variant="outline" className="text-xs">
-                                                            {status.employee.position || status.employee.role || 'Karyawan'}
+                                                            {status.employee.position || 'Karyawan'}
                                                         </Badge>
                                                         <Badge 
                                                             variant={status.configuredServices === status.totalServices ? "default" : "destructive"}

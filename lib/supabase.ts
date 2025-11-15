@@ -534,10 +534,26 @@ export async function getReceiptTemplate(branchId?: string) {
 }
 
 export async function getActiveReceiptTemplate(branchId?: string) {
+  // Priority 1: Try to get active template (is_active = true)
   let query = supabase.from("receipt_templates").select("*").eq("is_active", true)
   if (branchId) query = query.eq("branch_id", branchId)
-  const { data, error } = await query.single()
-  return error && error.code !== "PGRST116" ? await getReceiptTemplate(branchId) : { data, error: null }
+  const { data: activeData, error: activeError } = await query.single()
+  
+  if (activeData && !activeError) {
+    return { data: activeData, error: null }
+  }
+  
+  // Priority 2: If no active template, get default template (is_default = true)
+  let defaultQuery = supabase.from("receipt_templates").select("*").eq("is_default", true)
+  if (branchId) defaultQuery = defaultQuery.eq("branch_id", branchId)
+  const { data: defaultData, error: defaultError } = await defaultQuery.single()
+  
+  if (defaultData && !defaultError) {
+    return { data: defaultData, error: null }
+  }
+  
+  // Priority 3: Fallback to any template
+  return await getReceiptTemplate(branchId)
 }
 
 export async function getBranches() {
@@ -1071,10 +1087,9 @@ export interface EmployeeStats {
 // Employee Management Functions
 // =============================
 
-export async function getEmployees() {  // ✅ HAPUS parameter branchId
-  console.log("[MODERN] getEmployees called - no branch filter");
+export async function getEmployees() {
+  console.log("[MODERN] getEmployees called - fetching all employees including inactive");
 
-  // ✅ HAPUS query branches dan filter branch_id
   const { data: users, error: usersError } = await supabase
     .from("users")
     .select(`
@@ -1083,55 +1098,75 @@ export async function getEmployees() {  // ✅ HAPUS parameter branchId
       email,
       phone,
       position,
-      role,
       status,
       created_at,
       salary,
       commission_rate,
       max_absent_days,
-      pin
+      pin,
+      rating,
+      attendanceRate,
+      currentMonthCustomers,
+      totalCustomers,
+      presentDays,
+      totalWorkDays,
+      lateDays,
+      overtimeHours,
+      overtimeRate,
+      bonusPoints,
+      penaltyPoints,
+      kasbonBalance,
+      kasbonLimit,
+      monthlyRevenue
     `)
-    .order("name");
+    .order("name");  // Tampilkan SEMUA karyawan (aktif dan tidak aktif)
 
-  if (usersError) {
+  console.log("[MODERN] Result:", { 
+    usersCount: users?.length, 
+    hasError: !!usersError,
+    firstUser: users?.[0]
+  });
+
+  // PENTING: Hanya return error jika benar-benar ada error DAN tidak ada data
+  if (usersError && !users) {
     console.error("[MODERN] Error fetching employees:", usersError);
     return { data: [], error: usersError };
   }
 
-  // Transformasi data - tetap pertahankan field yang ada
+  // Transformasi data - gunakan data dari database
   const employees = (users || []).map((user: any) => ({
     id: user.id,
     name: user.name,
     email: user.email || '',
     phone: user.phone || '',
     position: user.position || '',
-    role: user.role || 'employee',
+    role: 'employee', // Default role karena tidak ada di database
     status: user.status || 'active',
+    salary: user.salary || 3000000, // Tambahkan salary untuk ditampilkan di kartu
     baseSalary: user.salary || 3000000,
     commissionRate: user.commission_rate || 0,
     pin: user.pin || '',
     max_absent_days: user.max_absent_days || 4,
     created_at: user.created_at,
-    // Pertahankan field lainnya dengan nilai default
     totalBonus: 0,
     totalPenalty: 0,
-    rating: 0,
-    attendanceRate: 0,
-    currentMonthCustomers: 0,
-    totalCustomers: 0,
-    presentDays: 0,
-    totalWorkDays: 0,
-    lateDays: 0,
-    overtimeHours: 0,
-    overtimeRate: 0,
-    bonusPoints: 0,
-    penaltyPoints: 0,
-    kasbonBalance: 0,
-    kasbonLimit: 0,
-    monthlyRevenue: '0'
+    rating: user.rating || 0,
+    attendanceRate: user.attendanceRate || 0,
+    currentMonthCustomers: user.currentMonthCustomers || 0,
+    totalCustomers: user.totalCustomers || 0,
+    presentDays: user.presentDays || 0,
+    totalWorkDays: user.totalWorkDays || 0,
+    lateDays: user.lateDays || 0,
+    overtimeHours: user.overtimeHours || 0,
+    overtimeRate: user.overtimeRate || 0,
+    bonusPoints: user.bonusPoints || 0,
+    penaltyPoints: user.penaltyPoints || 0,
+    kasbonBalance: user.kasbonBalance || 0,
+    kasbonLimit: user.kasbonLimit || 0,
+    monthlyRevenue: String(user.monthlyRevenue || '0')
   }));
 
-  console.log("[MODERN] Final employees list:", employees.length, "employees");
+  console.log("[MODERN] Final employees:", employees.length);
   return { data: employees, error: null };
 }
 
@@ -1180,12 +1215,50 @@ export async function updateEmployee(id: string, employee: Partial<Employee>) {
 }
 
 export async function deleteEmployee(id: string) {
-  console.log("[v11] deleteEmployee called with id:", id)
+  console.log("[deleteEmployee] Starting deletion for id:", id)
 
-  const { data, error } = await supabase.from("users").delete().eq("id", id)
+  try {
+    // Cek apakah user ada
+    const { data: existingUser, error: checkError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single()
 
-  console.log("[v11] deleteEmployee result:", { data, error })
-  return { data, error }
+    if (checkError) {
+      console.error("[deleteEmployee] Error checking user:", checkError)
+      return { data: null, error: checkError }
+    }
+
+    if (!existingUser) {
+      console.error("[deleteEmployee] User not found")
+      return { data: null, error: { message: "Karyawan tidak ditemukan" } as any }
+    }
+
+    console.log("[deleteEmployee] User exists:", existingUser)
+
+    // SOFT DELETE - ubah status jadi 'inactive' agar data tetap ada untuk transaksi
+    const { data, error } = await supabase
+      .from("users")
+      .update({ status: 'inactive' })
+      .eq("id", id)
+      .select()
+      .single()
+
+    console.log("[deleteEmployee] Soft delete response:", { data, error })
+
+    if (error) {
+      console.error("[deleteEmployee] Soft delete error:", error)
+      return { data: null, error }
+    }
+
+    console.log("[deleteEmployee] Soft delete successful - status changed to inactive")
+    return { data, error: null }
+    
+  } catch (e) {
+    console.error("[deleteEmployee] Exception:", e)
+    return { data: null, error: { message: String(e) } as any }
+  }
 }
 
 // =============================
@@ -1195,11 +1268,11 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
   console.log("[v13-FIXED] getEmployeeStats called for:", employeeId);
 
   try {
-    // 1. Hitung transaksi dan revenue
+    // 1. Hitung transaksi dan revenue - gunakan server_id (yang melayani), bukan cashier_id
     const { data: transactions, error: transactionsError } = await supabase
       .from("transactions")
       .select("total_amount, created_at")
-      .eq("cashier_id", employeeId)
+      .eq("server_id", employeeId)
       .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
 
     if (transactionsError) {
@@ -1210,30 +1283,30 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
     const totalRevenue = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0;
     const averageTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
 
-    // 2. Hitung komisi dari transaction_items - MENGGANTI employee_summary
+    // 2. Hitung komisi dari commission_amount yang sudah tersimpan di transaction_items
     let totalCommission = 0;
     try {
+      console.log("[getEmployeeStats] Calculating commission for employee:", employeeId);
+      
       const { data: commissionData, error: commissionError } = await supabase
         .from("transaction_items")
-        .select(`
-          quantity, 
-          unit_price,
-          services!inner(commission_rate),
-          transactions!inner(cashier_id)
-        `)
-        .eq("transactions.cashier_id", employeeId)
-        .gte("transactions.created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+        .select("commission_amount, commission_status")
+        .eq("barber_id", employeeId)
+        .eq("commission_status", "credited")
+        .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
 
       if (!commissionError && commissionData) {
         totalCommission = commissionData.reduce((sum, item) => {
-          const commissionRate = item.services?.commission_rate || 0;
-          return sum + (item.quantity * item.unit_price * commissionRate);
+          return sum + (item.commission_amount || 0);
         }, 0);
+        
+        console.log("[getEmployeeStats] Commission items found:", commissionData.length, "Total:", totalCommission);
+      } else if (commissionError) {
+        console.error("[v13-FIXED] Error calculating commission:", commissionError);
       }
     } catch (commissionError) {
-      console.error("[v13-FIXED] Error calculating commission:", commissionError);
-      // Fallback: hitung dari 5% total revenue jika error
-      totalCommission = totalRevenue * 0.05;
+      console.error("[v13-FIXED] Unexpected error calculating commission:", commissionError);
+      totalCommission = 0;
     }
 
     // 3. Hitung points untuk bonus/penalty
@@ -1472,7 +1545,7 @@ export async function getEmployeeAttendanceWithPhotos(userId: string, days: numb
       .from("attendance")
       .select(`
         *,
-        users:user_id ( id, name, email, role, branch_id ),
+        users:user_id ( id, name, email, position, branch_id ),
         branches:branch_id ( id, name, address )
       `)
       .eq("user_id", userId)
@@ -1483,7 +1556,8 @@ export async function getEmployeeAttendanceWithPhotos(userId: string, days: numb
 
     console.log("[getEmployeeAttendanceWithPhotos] Query result:", { dataLength: data?.length, error })
 
-    if (error) {
+    // Ignore empty error objects
+    if (error?.message) {
       console.error("[getEmployeeAttendanceWithPhotos] Error:", error)
       return {
         data: [],

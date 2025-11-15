@@ -128,7 +128,7 @@ export function ComprehensiveReports() {
       const totalTransactions = transactions?.length || 0
 
       // Get total employees
-      const { data: users, error: usersError } = await supabase.from("users").select("id").neq("role", "owner")
+      const { data: users, error: usersError } = await supabase.from("users").select("id").eq("status", "active")
 
       if (usersError) {
         console.log("[v0] Users error:", usersError)
@@ -233,7 +233,7 @@ export function ComprehensiveReports() {
             .from("users")
             .select("id")
             .eq("branch_id", branch.id)
-            .neq("role", "owner")
+            .eq("status", "active")
 
           const revenue = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
           const transactionCount = transactions?.length || 0
@@ -319,7 +319,7 @@ export function ComprehensiveReports() {
           branch_id,
           branches:branch_id (name)
         `)
-        .neq("role", "owner")
+        .eq("status", "active")
 
       if (usersError) {
         console.log("[v0] Employee users error:", usersError)
@@ -390,7 +390,7 @@ export function ComprehensiveReports() {
         console.log("[v0] Today attendance error:", todayError)
       }
 
-      // Get users and branches for mapping
+      // Get users and branches for mapping (ambil semua termasuk inactive untuk mapping transaksi lama)
       const { data: usersData } = await supabase.from("users").select("id, name")
       const { data: branchesData } = await supabase.from("branches").select("id, name")
 

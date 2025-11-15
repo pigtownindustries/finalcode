@@ -148,7 +148,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
 
       const [transactionsRes, usersRes, branchesRes, pointsRes] = await Promise.all([
         supabase.from("transactions").select("*").order("created_at", { ascending: false }),
-        supabase.from("users").select("*").eq("role", "employee").order("name"),
+        supabase.from("users").select("*").eq("status", "active").order("name"),
         supabase.from("branches").select("*").eq("status", "active").order("name"),
         supabase.from("points").select("*").order("created_at", { ascending: false })
       ])

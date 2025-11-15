@@ -80,6 +80,8 @@ export function POSSystem() {
   const [selectedBranch, setSelectedBranch] = useState("")
   const [servingEmployee, setServingEmployee] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("cash")
+  const [cashAmount, setCashAmount] = useState("")
+  const [changeAmount, setChangeAmount] = useState(0)
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
   const [isReceiptOpen, setIsReceiptOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -170,7 +172,8 @@ export function POSSystem() {
       console.error("Users error:", error)
     } else if (data && data.length > 0) {
       setEmployees(data)
-      if (!currentUser) setCurrentUser(data.find(u => u.role === 'cashier') || data[0])
+      // Set current user ke user pertama yang ada (karena tidak ada role cashier di database)
+      if (!currentUser) setCurrentUser(data[0])
     }
   }, [currentUser])
 
@@ -339,29 +342,37 @@ export function POSSystem() {
       const buildReceiptHTML = () => {
         if (!currentTransaction) return '<div>Tidak ada data transaksi</div>'
 
+        // Default values when no template
+        const showLogo = receiptTemplate?.show_logo ?? false
+        const showAddress = receiptTemplate?.show_address ?? true
+        const showPhone = receiptTemplate?.show_phone ?? true
+        const showDate = receiptTemplate?.show_date ?? true
+        const showBarber = receiptTemplate?.show_barber ?? true
+        const showCustomer = receiptTemplate?.show_customer ?? true
+
         const headerHTML = `
           <div style="text-align:center; margin-bottom:2mm;">
-            ${receiptTemplate?.show_logo && receiptTemplate?.logo_url ? `<img src="${receiptTemplate.logo_url}" alt="Logo" style="height:${receiptTemplate?.logo_height || 40}px; width:auto; margin:0 auto 2mm; display:block;" />` : ''}
+            ${showLogo && receiptTemplate?.logo_url ? `<img src="${receiptTemplate.logo_url}" alt="Logo" style="height:${receiptTemplate?.logo_height || 40}px; width:auto; margin:0 auto 2mm; display:block;" />` : ''}
             ${receiptTemplate?.header_text
               ? `<div style="white-space:pre-line; font-weight:700; font-size:${paperWidth===58?'9px':'11px'};">${receiptTemplate.header_text}</div>`
               : `<div style="font-weight:700; font-size:${paperWidth===58?'10px':'12px'};">PIGTOWN BARBERSHOP</div>`}
-            ${receiptTemplate?.show_address && branchInfo?.address ? `<div style="font-size:${paperWidth===58?'7px':'9px'}; margin-top:1mm;">${branchInfo.address}</div>` : ''}
-            ${receiptTemplate?.show_phone && branchInfo?.phone ? `<div style="font-size:${paperWidth===58?'7px':'9px'};">Telp: ${branchInfo.phone}</div>` : ''}
+            ${showAddress && branchInfo?.address ? `<div style="font-size:${paperWidth===58?'7px':'9px'}; margin-top:1mm;">${branchInfo.address}</div>` : ''}
+            ${showPhone && branchInfo?.phone ? `<div style="font-size:${paperWidth===58?'7px':'9px'};">Telp: ${branchInfo.phone}</div>` : ''}
           </div>`
 
         const infoHTML = `
           <div style="border-top:1px dashed #000; margin:2mm 0"></div>
           <div style="font-size:${paperWidth===58?'8px':'9px'};">
-            ${receiptTemplate?.show_date ? `<div>Tanggal: ${currentTransaction.timestamp}</div>` : ''}
+            ${showDate ? `<div>Tanggal: ${currentTransaction.timestamp}</div>` : ''}
             <div>No: ${currentTransaction.receipt_number}</div>
-            ${receiptTemplate?.show_barber ? `<div>Kasir: ${currentTransaction.employeeName}</div>` : ''}
-            ${receiptTemplate?.show_customer && currentTransaction.customer_name ? `<div>Customer: ${currentTransaction.customer_name}</div>` : ''}
+            ${showBarber ? `<div>Kasir: ${currentTransaction.employeeName}</div>` : ''}
+            ${showCustomer && currentTransaction.customer_name ? `<div>Customer: ${currentTransaction.customer_name}</div>` : ''}
           </div>
           <div style="border-top:1px dashed #000; margin:2mm 0"></div>`
 
         const itemsHTML = currentTransaction.items.map((item:any) => {
-          const left = `${item.quantity} x Rp ${formatRupiah(item.service.price)}`
-          const right = `Rp ${formatRupiah(item.service.price * item.quantity)}`
+          const left = `${item.quantity} x Rp ${formatRupiah(item.service.price.toString())}`
+          const right = `Rp ${formatRupiah((item.service.price * item.quantity).toString())}`
           return `
             <div style="font-size:${paperWidth===58?'8px':'9px'}; margin-bottom:1mm;">
               <div style="font-weight:600">${item.service.name}</div>
@@ -382,9 +393,19 @@ export function POSSystem() {
             ${currentTransaction.discount_amount>0 ? `<div style="display:flex; justify-content:space-between; margin-bottom:0.5mm;"><span>Diskon:</span><span>-Rp ${formatRupiah(currentTransaction.discount_amount)}</span></div>` : ''}
             <div style="display:flex; justify-content:space-between; font-weight:700; font-size:${paperWidth===58?'10px':'11px'}; margin-top:1mm; padding-top:1mm; border-top:1px solid #ddd;">
               <span>TOTAL:</span>
-              <span>Rp ${formatRupiah(currentTransaction.final_amount)}</span>
+              <span>Rp ${formatRupiah(currentTransaction.final_amount.toString())}</span>
             </div>
             <div style="margin-top:1mm;">Pembayaran: ${currentTransaction.payment_method}</div>
+            ${currentTransaction.payment_method === 'cash' && currentTransaction.cash_amount ? `
+              <div style="display:flex; justify-content:space-between; margin-top:0.5mm;">
+                <span>Uang Diterima:</span>
+                <span>Rp ${formatRupiah(currentTransaction.cash_amount.toString())}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:0.5mm;">
+                <span>Kembalian:</span>
+                <span>Rp ${formatRupiah((currentTransaction.change_amount || 0).toString())}</span>
+              </div>
+            ` : ''}
           </div>
           <div style="border-top:1px dashed #000; margin:2mm 0"></div>`
 
@@ -483,6 +504,13 @@ export function POSSystem() {
       const CUT = ESC + "i" // Cut paper
       const LINE = "--------------------------------\n"
       
+      // Default values when no template
+      const showAddress = receiptTemplate?.show_address ?? true
+      const showPhone = receiptTemplate?.show_phone ?? true
+      const showDate = receiptTemplate?.show_date ?? true
+      const showBarber = receiptTemplate?.show_barber ?? true
+      const showCustomer = receiptTemplate?.show_customer ?? true
+      
       let receiptText = INIT
       
       // Header
@@ -494,10 +522,10 @@ export function POSSystem() {
       }
       receiptText += BOLD_OFF
       
-      if (receiptTemplate?.show_address && branchInfo?.address) {
+      if (showAddress && branchInfo?.address) {
         receiptText += branchInfo.address + "\n"
       }
-      if (receiptTemplate?.show_phone && branchInfo?.phone) {
+      if (showPhone && branchInfo?.phone) {
         receiptText += "Telp: " + branchInfo.phone + "\n"
       }
       
@@ -505,14 +533,14 @@ export function POSSystem() {
       
       // Transaction info
       receiptText += ALIGN_LEFT
-      if (receiptTemplate?.show_date) {
+      if (showDate) {
         receiptText += "Tanggal: " + currentTransaction.timestamp + "\n"
       }
       receiptText += "No: " + currentTransaction.receipt_number + "\n"
-      if (receiptTemplate?.show_barber) {
+      if (showBarber) {
         receiptText += "Kasir: " + currentTransaction.employeeName + "\n"
       }
-      if (receiptTemplate?.show_customer && currentTransaction.customer_name) {
+      if (showCustomer && currentTransaction.customer_name) {
         receiptText += "Customer: " + currentTransaction.customer_name + "\n"
       }
       
@@ -521,9 +549,9 @@ export function POSSystem() {
       // Items
       for (const item of currentTransaction.items) {
         receiptText += item.service.name + "\n"
-        receiptText += `${item.quantity} x Rp ${formatRupiah(item.service.price)}`
-        receiptText += " ".repeat(Math.max(0, 32 - (`${item.quantity} x Rp ${formatRupiah(item.service.price)}`.length + `Rp ${formatRupiah(item.service.price * item.quantity)}`.length)))
-        receiptText += `Rp ${formatRupiah(item.service.price * item.quantity)}\n`
+        receiptText += `${item.quantity} x Rp ${formatRupiah(item.service.price.toString())}`
+        receiptText += " ".repeat(Math.max(0, 32 - (`${item.quantity} x Rp ${formatRupiah(item.service.price.toString())}`.length + `Rp ${formatRupiah((item.service.price * item.quantity).toString())}`.length)))
+        receiptText += `Rp ${formatRupiah((item.service.price * item.quantity).toString())}\n`
       }
       
       receiptText += LINE
@@ -538,11 +566,17 @@ export function POSSystem() {
       }
       
       receiptText += BOLD_ON
-      receiptText += `TOTAL:` + " ".repeat(Math.max(0, 32 - (`TOTAL:`.length + `Rp ${formatRupiah(currentTransaction.final_amount)}`.length)))
-      receiptText += `Rp ${formatRupiah(currentTransaction.final_amount)}\n`
+      receiptText += `TOTAL:` + " ".repeat(Math.max(0, 32 - (`TOTAL:`.length + `Rp ${formatRupiah(currentTransaction.final_amount.toString())}`.length)))
+      receiptText += `Rp ${formatRupiah(currentTransaction.final_amount.toString())}\n`
       receiptText += BOLD_OFF
       
       receiptText += `Pembayaran: ${currentTransaction.payment_method}\n`
+      
+      // Cash details for cash payment
+      if (currentTransaction.payment_method === 'cash' && currentTransaction.cash_amount) {
+        receiptText += `Uang Diterima: Rp ${formatRupiah(currentTransaction.cash_amount.toString())}\n`
+        receiptText += `Kembalian: Rp ${formatRupiah((currentTransaction.change_amount || 0).toString())}\n`
+      }
       
       receiptText += LINE
       
@@ -668,12 +702,53 @@ export function POSSystem() {
 
   const getFinalTotal = () => Math.max(0, getTotalPrice() - getDiscountAmount())
 
+  const formatRupiah = (value: string | number) => {
+    const stringValue = typeof value === 'number' ? value.toString() : value
+    const number = stringValue.replace(/\D/g, "")
+    return number ? parseInt(number).toLocaleString("id-ID") : ""
+  }
+
+  const parseRupiah = (value: string) => {
+    return parseInt(value.replace(/\D/g, "") || "0")
+  }
+
+  const handleCashAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCashAmount(formatRupiah(value))
+    const numericValue = parseRupiah(value)
+    const finalTotal = getFinalTotal()
+    // Allow negative to show warning, not capped at 0
+    setChangeAmount(numericValue - finalTotal)
+  }
+
   const handleCheckout = async () => {
     if (cart.length === 0 || !selectedBranch || !currentUser?.id || !servingEmployee) {
       toast.error("Data Tidak Lengkap", {
         description: "Pastikan keranjang tidak kosong dan karyawan yang melayani sudah dipilih.",
       })
       return
+    }
+
+    // Validate cash payment - cash amount is REQUIRED for cash payment
+    if (paymentMethod === "cash") {
+      if (!cashAmount || cashAmount.trim() === "") {
+        toast.error("Input Uang Tunai Wajib!", {
+          description: "Silakan input jumlah uang yang diterima dari pelanggan.",
+          duration: 5000,
+        })
+        return
+      }
+
+      const numericCashAmount = parseRupiah(cashAmount)
+      const finalTotal = getFinalTotal()
+      
+      if (numericCashAmount < finalTotal) {
+        toast.error("Uang Tidak Cukup!", {
+          description: `Uang yang diterima kurang Rp ${(finalTotal - numericCashAmount).toLocaleString("id-ID")}. Silakan input ulang nominal yang sesuai.`,
+          duration: 5000,
+        })
+        return
+      }
     }
 
     toast.loading("Memproses Transaksi...", {
@@ -691,12 +766,13 @@ export function POSSystem() {
         branch_id: selectedBranchData.id,
         branch_name: selectedBranchData.name,
         cashier_id: currentUser.id,
+        server_id: servingEmployee, // Karyawan yang melayani pelanggan
         total_amount: getTotalPrice(),
         discount_amount: getDiscountAmount(),
         final_amount: getFinalTotal(),
         payment_method: paymentMethod,
-        customer_name: customerName || null,
-        notes: discountReason || null,
+        customer_name: customerName || undefined,
+        notes: discountReason || undefined,
       }
 
       const { data: savedTransaction, error: transactionError } = await createTransaction(transactionData)
@@ -712,12 +788,21 @@ export function POSSystem() {
           }
 
           if (item.service.type === 'service') {
-            const { data: rule } = await supabase
+            console.log('🔍 Checking commission for:', {
+              service_id: item.service.id,
+              service_name: item.service.name,
+              user_id: servingEmployee,
+              employee_name: employees.find(e => e.id === servingEmployee)?.name
+            });
+
+            const { data: rule, error: ruleError } = await supabase
               .from('commission_rules')
               .select('commission_type, commission_value')
               .eq('service_id', item.service.id)
               .eq('user_id', servingEmployee)
               .single()
+
+            console.log('📋 Commission rule result:', { rule, ruleError });
 
             if (rule) {
               const price = item.service.price
@@ -731,8 +816,11 @@ export function POSSystem() {
                 commission_value: Number(rule.commission_value),
                 commission_amount: commissionAmount * item.quantity,
               }
+              
+              console.log('✅ Commission applied:', commissionData);
             } else {
               commissionData.commission_status = 'pending_rule'
+              console.log('⚠️ No commission rule found - status set to pending_rule');
             }
           }
 
@@ -764,7 +852,10 @@ export function POSSystem() {
         timestamp: new Date().toLocaleString("id-ID"),
         discount_amount: getDiscountAmount(),
         discount_reason: discountReason,
-        discount_type: discountType
+        discount_type: discountType,
+        // Cash info for receipt display only (not saved to database)
+        cash_amount: paymentMethod === "cash" && cashAmount ? parseRupiah(cashAmount) : null,
+        change_amount: paymentMethod === "cash" && cashAmount ? changeAmount : null
       })
 
       // 🔥 BROADCAST EVENT KE SEMUA KOMPONEN
@@ -783,6 +874,8 @@ export function POSSystem() {
       setDiscountReason("")
       setDiscountType("percentage")
       setIsCartOpen(false)
+      setCashAmount("")
+      setChangeAmount(0)
 
       toast.dismiss("checkout-loading")
       toast.success("Transaksi Berhasil! 🎉", {
@@ -855,15 +948,15 @@ export function POSSystem() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Services Grid */}
-        <div className="flex-1 overflow-auto p-2 md:p-4">
+        <div className="flex-1 overflow-auto p-3 md:p-4">
           <div className="max-w-7xl mx-auto w-full">
-            <div className="flex gap-1 md:gap-2 overflow-x-auto pb-2 md:pb-4">
+            <div className="flex gap-2 overflow-x-auto pb-3 md:pb-4 scrollbar-hide">
               <Button
                 variant={selectedCategory === "semua" ? "default" : "outline"}
-                className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === "semua" ? "" : "bg-transparent"}`}
+                className={`flex items-center gap-1.5 md:gap-2 whitespace-nowrap text-xs md:text-sm h-9 md:h-10 px-3 md:px-4 ${selectedCategory === "semua" ? "" : "bg-transparent"}`}
                 onClick={() => setSelectedCategory("semua")}
               >
-                <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
+                <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 Semua
               </Button>
               {/* Filter duplikat berdasarkan category.name */}
@@ -877,17 +970,17 @@ export function POSSystem() {
                     <Button
                       key={category.id}
                       variant={selectedCategory === category.name ? "default" : "outline"}
-                      className={`flex items-center gap-1 md:gap-2 whitespace-nowrap text-xs md:text-sm ${selectedCategory === category.name ? "" : "bg-transparent"}`}
+                      className={`flex items-center gap-1.5 md:gap-2 whitespace-nowrap text-xs md:text-sm h-9 md:h-10 px-3 md:px-4 ${selectedCategory === category.name ? "" : "bg-transparent"}`}
                       onClick={() => setSelectedCategory(category.name)}
                     >
-                      <IconComponent className="h-3 w-3 md:h-4 md:w-4" />
+                      <IconComponent className="h-3.5 w-3.5 md:h-4 md:w-4" />
                       {category.name}
                     </Button>
                   )
                 })}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4 mt-2 md:mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 mt-3 md:mt-4">
               {filteredServices.map((service) => {
                 const categoryName = service.service_categories?.name || "Lainnya"
                 const IconComponent = categoryIcons[categoryName as keyof typeof categoryIcons] || Scissors
@@ -899,60 +992,55 @@ export function POSSystem() {
                 return (
                   <Card
                     key={service.id}
-                    className={`h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+                    className={`min-h-[140px] md:min-h-[180px] flex flex-col hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/20 ${service.type === "product" && availableStock <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}
                     onClick={() => {
                       if (service.type === "product" && availableStock <= 0) return
                       addToCart(service)
                     }}
                   >
-                    <CardHeader className="pb-2 md:pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 md:gap-3">
-                          <div className="w-8 h-8 md:w-10 md:h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                            <IconComponent className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-sm md:text-lg">{service.name}</CardTitle>
-                            <CardDescription className="text-xs md:text-sm">{service.description}</CardDescription>
-                          </div>
+                    <CardHeader className="p-3 md:p-4 pb-2">
+                      <div className="flex items-start gap-2">
+                        <div className="w-8 h-8 md:w-10 md:h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <IconComponent className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-xs md:text-base font-semibold truncate">{service.name}</CardTitle>
+                          <CardDescription className="text-[10px] md:text-xs line-clamp-1">{service.description}</CardDescription>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="mt-auto">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-lg md:text-2xl font-bold text-primary">{formatPrice(service.price)}</p>
-                          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
-                            {service.duration && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span>{service.duration} menit</span>
-                              </div>
-                            )}
-                            {service.type === "product" && (
-                              <div className={`flex items-center gap-1 ${availableStock <= 0 ? "text-red-500" : availableStock <= minStock ? "text-orange-500" : "text-green-600"}`}>
-                                <Package className="h-3 w-3" />
-                                <span>{availableStock <= 0 ? "Habis" : `Stok: ${availableStock}`}</span>
-                                {availableStock <= minStock && availableStock > 0 && (
-                                  <AlertTriangle className="h-3 w-3 text-orange-500" />
-                                )}
-                              </div>
-                            )}
-                          </div>
+                    <CardContent className="p-3 md:p-4 pt-0 mt-auto">
+                      <div className="space-y-2">
+                        <p className="text-base md:text-xl font-bold text-primary truncate">{formatPrice(service.price)}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-muted-foreground">
+                          {service.duration && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                              <span className="whitespace-nowrap">{service.duration}m</span>
+                            </div>
+                          )}
+                          {service.type === "product" && (
+                            <div className={`flex items-center gap-1 ${availableStock <= 0 ? "text-red-500" : availableStock <= minStock ? "text-orange-500" : "text-green-600"}`}>
+                              <Package className="h-3 w-3 flex-shrink-0" />
+                              <span className="whitespace-nowrap">{availableStock <= 0 ? "Habis" : `${availableStock}`}</span>
+                              {availableStock <= minStock && availableStock > 0 && (
+                                <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+                              )}
+                            </div>
+                          )}
                         </div>
                         <Button
                           size="sm"
-                          className="gap-1 text-xs md:text-sm"
+                          className="w-full gap-1 text-xs h-8"
                           disabled={service.type === "product" && availableStock <= 0}
                           onClick={(e) => {
-                            // Hindari trigger onClick Card agar tidak double
                             e.stopPropagation()
                             if (service.type === "product" && availableStock <= 0) return
                             addToCart(service)
                           }}
                         >
                           <Plus className="h-3 w-3" />
-                          {service.type === "product" && availableStock <= 0 ? "Habis" : "Tambah"}
+                          <span className="truncate">{service.type === "product" && availableStock <= 0 ? "Habis" : "Tambah"}</span>
                         </Button>
                       </div>
                     </CardContent>
@@ -1180,6 +1268,50 @@ export function POSSystem() {
               </Select>
             </div>
 
+            {/* Cash Input for Cash Payment */}
+            {paymentMethod === "cash" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Uang Diterima</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const exactAmount = getFinalTotal()
+                      setCashAmount(formatRupiah(exactAmount.toString()))
+                      setChangeAmount(0)
+                    }}
+                    className="text-xs h-7 px-2 font-bold text-green-600 border-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                  >
+                    PASS BROO!!!
+                  </Button>
+                </div>
+                <Input
+                  type="text"
+                  placeholder="Rp 0"
+                  value={cashAmount}
+                  onChange={handleCashAmountChange}
+                  className="text-right font-mono"
+                />
+                {changeAmount > 0 && (
+                  <div className="text-sm text-muted-foreground bg-green-50 dark:bg-green-950/20 p-2 rounded border border-green-200 dark:border-green-800">
+                    <div className="flex justify-between items-center">
+                      <span>Kembalian:</span>
+                      <span className="font-bold text-green-600 dark:text-green-400">
+                        {formatPrice(changeAmount)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {changeAmount < 0 && cashAmount && (
+                  <div className="text-sm text-red-600 dark:text-red-400">
+                    Uang yang diterima kurang dari total pembayaran
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="bg-muted/50 p-4 rounded-lg space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Subtotal:</span>
@@ -1293,7 +1425,7 @@ export function POSSystem() {
                 >
                 {/* Header */}
                 <div className="text-center mb-2">
-                  {receiptTemplate?.show_logo && receiptTemplate?.logo_url && (
+                  {(receiptTemplate?.show_logo ?? false) && receiptTemplate?.logo_url && (
                     <img src={receiptTemplate.logo_url} alt="Logo" className="h-10 w-auto mx-auto mb-2" />
                   )}
                   {receiptTemplate?.header_text ? (
@@ -1301,10 +1433,10 @@ export function POSSystem() {
                   ) : (
                     <div className="font-bold text-sm">PIGTOWN BARBERSHOP</div>
                   )}
-                  {receiptTemplate?.show_address && branchInfo?.address && (
+                  {(receiptTemplate?.show_address ?? true) && branchInfo?.address && (
                     <div className="text-[10px] mt-1">{branchInfo.address}</div>
                   )}
-                  {receiptTemplate?.show_phone && branchInfo?.phone && (
+                  {(receiptTemplate?.show_phone ?? true) && branchInfo?.phone && (
                     <div className="text-[10px]">Telp: {branchInfo.phone}</div>
                   )}
                 </div>
@@ -1313,14 +1445,14 @@ export function POSSystem() {
 
                 {/* Info */}
                 <div className="text-[10px] space-y-0.5">
-                  {receiptTemplate?.show_date && (
+                  {(receiptTemplate?.show_date ?? true) && (
                     <div>Tanggal: {currentTransaction.timestamp}</div>
                   )}
                   <div>No: {currentTransaction.receipt_number}</div>
-                  {receiptTemplate?.show_barber && (
+                  {(receiptTemplate?.show_barber ?? true) && (
                     <div>Kasir: {currentTransaction.employeeName}</div>
                   )}
-                  {receiptTemplate?.show_customer && currentTransaction.customer_name && (
+                  {(receiptTemplate?.show_customer ?? true) && currentTransaction.customer_name && (
                     <div>Customer: {currentTransaction.customer_name}</div>
                   )}
                 </div>
@@ -1333,8 +1465,8 @@ export function POSSystem() {
                     <div key={index} className="text-[10px]">
                       <div className="font-medium">{item.service.name}</div>
                       <div className="flex justify-between">
-                        <span>{item.quantity} x Rp {formatRupiah(item.service.price)}</span>
-                        <span>Rp {formatRupiah(item.service.price * item.quantity)}</span>
+                        <span>{item.quantity} x Rp {formatRupiah(item.service.price.toString())}</span>
+                        <span>Rp {formatRupiah((item.service.price * item.quantity).toString())}</span>
                       </div>
                     </div>
                   ))}
@@ -1359,6 +1491,18 @@ export function POSSystem() {
                     <span>Rp {formatRupiah(currentTransaction.final_amount)}</span>
                   </div>
                   <div className="mt-1">Pembayaran: {currentTransaction.payment_method}</div>
+                  {currentTransaction.payment_method === 'cash' && currentTransaction.cash_amount && (
+                    <>
+                      <div className="flex justify-between mt-0.5">
+                        <span>Uang Diterima:</span>
+                        <span>Rp {formatRupiah(currentTransaction.cash_amount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Kembalian:</span>
+                        <span>Rp {formatRupiah(currentTransaction.change_amount || 0)}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div className="border-t border-dashed border-gray-400 my-2" />

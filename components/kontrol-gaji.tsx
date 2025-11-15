@@ -153,15 +153,21 @@ export function KontrolGaji() {
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select(`
-          id, name, email, role, position, salary, branch_id, phone, status, created_at,
+          id, name, email, position, salary, branch_id, phone, status, created_at,
           branches:branch_id (id, name)
         `)
         .order('name')
         .eq('status', 'active');
 
-      if (usersError) {
-        console.error('❌ Users error:', usersError);
+      // Ignore empty error objects, only throw if there's a real error message
+      if (usersError?.message) {
         throw new Error(`Database error: ${usersError.message}`);
+      }
+
+      if (!users || users.length === 0) {
+        console.warn('⚠️ No active users found');
+      } else {
+        console.log(`✅ Loaded ${users.length} active users`);
       }
 
       const { data: commissionRules, error: commissionError } = await supabase
@@ -229,7 +235,7 @@ export function KontrolGaji() {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.position || user.role || 'Karyawan',
+          position: user.position || 'Karyawan',
           position: user.position,
           baseSalary: user.salary,
           commissions: userCommissions,
@@ -271,6 +277,9 @@ export function KontrolGaji() {
   }, [toast]);
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    
     fetchData(true);
     fetchBonusPenaltyData();
     
@@ -580,7 +589,7 @@ export function KontrolGaji() {
                       <p className="text-xs md:text-sm text-gray-500 truncate">{employee.email}</p>
                       <div className="flex flex-wrap gap-1 md:gap-2 mt-1">
                         <Badge variant="outline" className="text-[10px] md:text-xs border-red-200 text-red-700">
-                          {employee.position || employee.role || 'Karyawan'}
+                          {employee.position || 'Karyawan'}
                         </Badge>
                         {employee.branch && (
                           <Badge variant="outline" className="text-[10px] md:text-xs border-blue-200 text-blue-700 truncate max-w-[120px]">
@@ -812,7 +821,7 @@ export function KontrolGaji() {
                           <div className="space-y-1">
                               <p className="truncate"><span className="text-gray-600">Nama:</span> <span className="font-semibold">{selectedEmployee.name}</span></p>
                               <p className="truncate"><span className="text-gray-600">Email:</span> <span className="font-semibold">{selectedEmployee.email}</span></p>
-                              <p className="truncate"><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.position || selectedEmployee.role || 'Karyawan'}</span></p>
+                              <p className="truncate"><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.position || 'Karyawan'}</span></p>
                               <p className="truncate"><span className="text-gray-600">Cabang:</span> <span className="font-semibold">{selectedEmployee.branch}</span></p>
                           </div>
                           <div className="text-left sm:text-right space-y-1">
