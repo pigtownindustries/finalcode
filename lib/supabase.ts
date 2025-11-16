@@ -35,7 +35,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export const testSupabaseConnection = async () => {
   try {
-    const { data, error } = await supabase.from("points").select('*, users!inner(name, branch_id, branches(name))')
+    const { data, error } = await supabase.from("points").select('*, users!inner(name, branch_id, branches:branch_id(name))')
     if (error) {
       console.error("Supabase connection test failed:", error)
       return false
@@ -76,7 +76,7 @@ export interface User {
   id: string
   email?: string
   name: string
-  role?: string
+  position?: string
   branch_id?: string
   phone?: string
   address?: string
@@ -288,7 +288,11 @@ export interface Kasbon {
 }
 
 export interface KasbonWithUser extends Kasbon {
-  users?: User
+  user?: User
+  approver?: {
+    id: string
+    name: string
+  }
 }
 
 export interface UserWithKasbon extends User {
@@ -492,15 +496,34 @@ export async function getServiceCategories() {
 
 export async function createTransaction(transactionData: Partial<TransactionWithItems>) {
   const transactionNumber = await generateTransactionNumber()
-  let { cashier_id, branch_id } = transactionData
+  let { cashier_id, branch_id, server_id } = transactionData
+
+  // Get cashier, branch, server data untuk snapshot
+  let cashierName = 'Unknown'
+  let branchName = 'Unknown'
+  let serverName: string | undefined
 
   if (!cashier_id) {
-    const { data: users } = await supabase.from("users").select("id").limit(1).single()
+    const { data: users } = await supabase.from("users").select("id, name").limit(1).single()
     cashier_id = users?.id
+    cashierName = users?.name || 'Unknown'
+  } else {
+    const { data: cashier } = await supabase.from("users").select("name").eq("id", cashier_id).single()
+    cashierName = cashier?.name || 'Unknown'
   }
+
   if (!branch_id) {
-    const { data: branches } = await supabase.from("branches").select("id").limit(1).single()
+    const { data: branches } = await supabase.from("branches").select("id, name").limit(1).single()
     branch_id = branches?.id
+    branchName = branches?.name || 'Unknown'
+  } else {
+    const { data: branch } = await supabase.from("branches").select("name").eq("id", branch_id).single()
+    branchName = branch?.name || 'Unknown'
+  }
+
+  if (server_id) {
+    const { data: server } = await supabase.from("users").select("name").eq("id", server_id).single()
+    serverName = server?.name
   }
 
   const transactionToInsert = {
@@ -508,7 +531,11 @@ export async function createTransaction(transactionData: Partial<TransactionWith
     transaction_number: transactionNumber,
     receipt_number: transactionNumber,
     cashier_id,
+    cashier_name: cashierName,
     branch_id,
+    branch_name: branchName,
+    server_id,
+    server_name: serverName,
     subtotal: transactionData.subtotal || transactionData.total_amount || 0,
     payment_status: transactionData.payment_status || "completed",
     payment_method: transactionData.payment_method || "cash",
@@ -522,7 +549,26 @@ export async function createTransaction(transactionData: Partial<TransactionWith
 }
 
 export async function createTransactionItems(items: Partial<TransactionItem>[]) {
-  const { data, error } = await supabase.from("transaction_items").insert(items).select()
+  // Enrich items dengan snapshot data dari services
+  const enrichedItems = await Promise.all(items.map(async (item) => {
+    if (item.service_id) {
+      const { data: service } = await supabase
+        .from("services")
+        .select("name, type, service_categories(name)")
+        .eq("id", item.service_id)
+        .single()
+      
+      return {
+        ...item,
+        service_name: service?.name || 'Unknown Service',
+        service_type: service?.type,
+        service_category: service?.service_categories?.name
+      }
+    }
+    return item
+  }))
+
+  const { data, error } = await supabase.from("transaction_items").insert(enrichedItems).select()
   return error ? { data: [], error } : { data: data || [], error: null }
 }
 
@@ -624,7 +670,7 @@ export async function updateServiceStock(serviceId: string, newStock: number) {
 export async function getUsersWithPoints(branchId?: string) {
   console.log("[v1] getUsersWithPoints called with branchId:", branchId);
 
-  let usersQuery = supabase.from("users").select("*, branches(name)").order("name");
+  let usersQuery = supabase.from("users").select("*, branches:branch_id(name)").order("name");
   if (branchId && branchId !== "all") {
     usersQuery = usersQuery.eq("branch_id", branchId);
   }
@@ -695,34 +741,97 @@ export async function getPointsStatistics(branchId?: string) {
 export async function getPointTransactions(branchId?: string, limit = 50) {
   console.log("[v3 Final] getPointTransactions called with branchId:", branchId);
 
-  let query = supabase
-    .from("points")
-    .select(`
-      *,
-      users (
-        id,
-        name,
-        branches (
-          id,
-          name
-        )
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  try {
+    // First, get point transactions
+    let query = supabase
+      .from("points")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
 
-  if (branchId && branchId !== "all") {
-    query = query.eq("users.branch_id", branchId);
+    if (branchId && branchId !== "all") {
+      // Filter by user's branch_id
+      const { data: usersInBranch, error: usersError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("branch_id", branchId);
+      
+      if (usersError) {
+        console.error("Error fetching users in branch:", usersError);
+        return { data: [], error: usersError };
+      }
+      
+      if (usersInBranch && usersInBranch.length > 0) {
+        const userIds = usersInBranch.map(u => u.id);
+        query = query.in("user_id", userIds);
+      } else {
+        // No users in this branch, return empty
+        console.log("No users found in branch:", branchId);
+        return { data: [], error: null };
+      }
+    }
+
+    const { data: pointsData, error } = await query;
+
+    if (error) {
+      console.error("Error fetching point transactions:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      return { data: [], error };
+    }
+
+    if (!pointsData || pointsData.length === 0) {
+      console.log("No point transactions found");
+      return { data: [], error: null };
+    }
+
+    // Get user details for all points
+    const userIds = [...new Set(pointsData.map(p => p.user_id).filter(Boolean))];
+    let usersMap: Record<string, any> = {};
+    
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, name, branch_id")
+        .in("id", userIds);
+      
+      if (users) {
+        usersMap = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+      }
+    }
+
+    // Get all unique branch_ids
+    const branchIds = [...new Set(Object.values(usersMap).map((u: any) => u.branch_id).filter(Boolean))];
+    
+    // Fetch branch details
+    let branchesMap: Record<string, any> = {};
+    if (branchIds.length > 0) {
+      const { data: branches } = await supabase
+        .from("branches")
+        .select("id, name")
+        .in("id", branchIds);
+      
+      if (branches) {
+        branchesMap = branches.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
+      }
+    }
+
+    // Merge user and branch info into points
+    const enrichedData = pointsData?.map(point => ({
+      ...point,
+      users: point.user_id ? {
+        ...usersMap[point.user_id],
+        branches: usersMap[point.user_id]?.branch_id ? branchesMap[usersMap[point.user_id].branch_id] : null
+      } : null
+    }));
+
+    console.log("Point transactions fetched successfully:", enrichedData?.length || 0, "records");
+    return { data: enrichedData || [], error: null };
+  } catch (error) {
+    console.error("Unexpected error in getPointTransactions:", error);
+    return { data: [], error: error as any };
   }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("Error fetching point transactions:", error);
-    return { data: [], error };
-  }
-
-  return { data: data || [], error: null };
 }
 
 export async function addPointTransaction(pointData: {
@@ -761,52 +870,170 @@ export async function getUserPoints(userId: string) {
 export async function getKasbonRequests(branchId?: string, statusFilter?: string) {
   console.log("[v0] getKasbonRequests called with:", { branchId, statusFilter })
 
-  let query = supabase
-    .from("kasbon")
-    .select(`*,
-      users:user_id (
-        id,
-        name,
-        email,
-        role,
-        branch_id
-      )
-    `)
-    .order("created_at", { ascending: false })
+  try {
+    // First, get kasbon requests
+    let query = supabase
+      .from("kasbon")
+      .select("*")
+      .order("created_at", { ascending: false })
 
-  if (branchId && branchId !== "all") {
-    query = query.eq("users.branch_id", branchId)
+    if (branchId && branchId !== "all") {
+      // Filter by user's branch_id
+      const { data: usersInBranch, error: usersError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("branch_id", branchId);
+      
+      if (usersError) {
+        console.error("Error fetching users in branch:", usersError);
+        return { data: [], error: usersError };
+      }
+      
+      if (usersInBranch && usersInBranch.length > 0) {
+        const userIds = usersInBranch.map(u => u.id);
+        query = query.in("user_id", userIds);
+      } else {
+        console.log("No users found in branch:", branchId);
+        return { data: [], error: null };
+      }
+    }
+
+    if (statusFilter && statusFilter !== "all") {
+      query = query.eq("status", statusFilter)
+    }
+
+    const { data: kasbonData, error } = await query
+
+    if (error) {
+      console.error("[v0] Kasbon requests error:", error)
+      return { data: [], error }
+    }
+
+    if (!kasbonData || kasbonData.length === 0) {
+      console.log("[v0] No kasbon requests found")
+      return { data: [], error: null }
+    }
+
+    // Get user details
+    const userIds = [...new Set(kasbonData.map(k => k.user_id).filter(Boolean))];
+    let usersMap: Record<string, any> = {};
+    
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, name, email, position, branch_id")
+        .in("id", userIds);
+      
+      if (users) {
+        usersMap = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+      }
+    }
+
+    // Get approver details
+    const approverIds = [...new Set(kasbonData.map(k => k.approved_by).filter(Boolean))];
+    let approversMap: Record<string, any> = {};
+    
+    if (approverIds.length > 0) {
+      const { data: approvers } = await supabase
+        .from("users")
+        .select("id, name")
+        .in("id", approverIds);
+      
+      if (approvers) {
+        approversMap = approvers.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+      }
+    }
+
+    // Merge user and approver info
+    const enrichedData = kasbonData.map(kasbon => ({
+      ...kasbon,
+      user: kasbon.user_id ? usersMap[kasbon.user_id] : null,
+      approver: kasbon.approved_by ? approversMap[kasbon.approved_by] : null
+    }));
+
+    console.log("[v0] Kasbon requests result:", enrichedData?.length || 0, "records")
+    return { data: enrichedData || [], error: null }
+  } catch (error) {
+    console.error("[v0] Unexpected error in getKasbonRequests:", error);
+    return { data: [], error: error as any };
   }
-
-  if (statusFilter && statusFilter !== "all") {
-    query = query.eq("status", statusFilter)
-  }
-
-  const { data, error } = await query
-
-  console.log("[v0] Kasbon requests result:", { data, error })
-  return error ? { data: [], error } : { data: data || [], error: null }
 }
 
 export async function getKasbonStatistics(branchId?: string) {
   console.log("[v0] getKasbonStatistics called with branchId:", branchId)
 
-  let query = supabase.from("kasbon").select("amount, status")
+  try {
+    let query = supabase.from("kasbon").select("amount, status, user_id")
 
-  if (branchId && branchId !== "all") {
-    query = supabase
-      .from("kasbon")
-      .select(`amount,
-        status,
-        users:user_id!inner (branch_id)
-      `)
-      .eq("users.branch_id", branchId)
-  }
+    if (branchId && branchId !== "all") {
+      // Filter by user's branch_id
+      const { data: usersInBranch, error: usersError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("branch_id", branchId);
+      
+      if (usersError) {
+        console.error("Error fetching users in branch:", usersError);
+        return {
+          data: {
+            pendingAmount: 0,
+            approvedAmount: 0,
+            totalPaid: 0,
+            activeEmployees: 0,
+          },
+          error: usersError,
+        }
+      }
+      
+      if (usersInBranch && usersInBranch.length > 0) {
+        const userIds = usersInBranch.map(u => u.id);
+        query = query.in("user_id", userIds);
+      } else {
+        return {
+          data: {
+            pendingAmount: 0,
+            approvedAmount: 0,
+            totalPaid: 0,
+            activeEmployees: 0,
+          },
+          error: null,
+        }
+      }
+    }
 
-  const { data, error } = await query
+    const { data, error } = await query
 
-  if (error) {
-    console.log("[v0] Error fetching kasbon statistics:", error)
+    if (error) {
+      console.log("[v0] Error fetching kasbon statistics:", error)
+      return {
+        data: {
+          pendingAmount: 0,
+          approvedAmount: 0,
+          totalPaid: 0,
+          activeEmployees: 0,
+        },
+        error,
+      }
+    }
+
+    const pendingAmount = data?.filter((k) => k.status === "pending").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
+    const approvedAmount = data?.filter((k) => k.status === "approved").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
+    const totalPaid = data?.filter((k) => k.status === "paid").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
+
+    const { data: usersData } = await supabase.from("users").select("id").eq("status", "active")
+    const activeEmployees = usersData?.length || 0
+
+    const statistics = {
+      pendingAmount,
+      approvedAmount,
+      totalPaid,
+      activeEmployees,
+    }
+
+    console.log("[v0] Kasbon statistics result:", statistics)
+    return { data: statistics, error: null }
+  } catch (error) {
+    console.error("[v0] Unexpected error in getKasbonStatistics:", error);
     return {
       data: {
         pendingAmount: 0,
@@ -814,26 +1041,9 @@ export async function getKasbonStatistics(branchId?: string) {
         totalPaid: 0,
         activeEmployees: 0,
       },
-      error,
+      error: error as any,
     }
   }
-
-  const pendingAmount = data?.filter((k) => k.status === "pending").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
-  const approvedAmount = data?.filter((k) => k.status === "approved").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
-  const totalPaid = data?.filter((k) => k.status === "paid").reduce((sum, k) => sum + (k.amount || 0), 0) || 0
-
-  const { data: usersData } = await supabase.from("users").select("id").eq("status", "active")
-  const activeEmployees = usersData?.length || 0
-
-  const statistics = {
-    pendingAmount,
-    approvedAmount,
-    totalPaid,
-    activeEmployees,
-  }
-
-  console.log("[v0] Kasbon statistics result:", statistics)
-  return { data: statistics, error: null }
 }
 
 export async function getUsersWithKasbon(branchId?: string) {
@@ -942,7 +1152,6 @@ export interface Employee {
   email: string
   phone?: string
   position?: string
-  role: string
   status?: string
   avatar?: string
   rating?: number
@@ -1140,7 +1349,6 @@ export async function getEmployees() {
     email: user.email || '',
     phone: user.phone || '',
     position: user.position || '',
-    role: 'employee', // Default role karena tidak ada di database
     status: user.status || 'active',
     salary: user.salary || 3000000, // Tambahkan salary untuk ditampilkan di kartu
     baseSalary: user.salary || 3000000,
@@ -1179,7 +1387,6 @@ export async function addEmployee(employee: Partial<Employee>) {
     name: employee.name,
     email: employee.email,
     phone: employee.phone || null,
-    role: employee.role || "cashier",
     status: employee.status || "active",
     pin: employee.pin,
     position: employee.position,
@@ -1200,7 +1407,6 @@ export async function updateEmployee(id: string, employee: Partial<Employee>) {
     name: employee.name,
     email: employee.email,
     phone: employee.phone,
-    role: employee.role,
     status: employee.status,
     pin: employee.pin,
     position: employee.position,
@@ -1467,7 +1673,7 @@ export async function getEmployeePhotos(userId: string) {
       .from("attendance")
       .select(`
         *,
-        users:user_id ( id, name, email, role, branch_id ),
+        users:user_id ( id, name, email, position, branch_id ),
         branches:branch_id ( id, name, address )
       `)
       .eq("user_id", userId)
@@ -1504,7 +1710,7 @@ export async function getEmployeePhotos(userId: string) {
         id: record.users.id,
         name: record.users.name,
         email: record.users.email,
-        role: record.users.role,
+        position: record.users.position,
         branch_id: record.users.branch_id,
         created_at: record.users.created_at || new Date().toISOString()
       } : undefined,
@@ -1591,7 +1797,7 @@ export async function getEmployeeAttendanceWithPhotos(userId: string, days: numb
         id: record.users.id,
         name: record.users.name,
         email: record.users.email,
-        role: record.users.role,
+        position: record.users.position,
         branch_id: record.users.branch_id,
         created_at: record.users.created_at || new Date().toISOString()
       } : undefined,
@@ -1684,7 +1890,7 @@ async function getAuthUserProfile(userId: string) {
         email: authData.user.email || "",
         name: authData.user.email?.split('@')[0] || "User",
         pin: "",
-        role: "employee",
+        position: "employee",
         status: "active",
         created_at: new Date().toISOString()
       };
@@ -1715,7 +1921,7 @@ async function createUserProfileFromAuth(userId: string) {
         id: authData.user.id,
         email: authData.user.email,
         name: authData.user.email?.split('@')[0] || 'User',
-        role: 'employee',
+        position: 'employee',
         status: 'active',
         created_at: new Date().toISOString()
       })
@@ -1891,7 +2097,7 @@ export async function getAllExpensesWithDetails() {
       .from('expenses')
       .select(`
         *,
-        branches (*)
+        branches:branch_id (*)
       `)
       .order('created_at', { ascending: false });
 
@@ -2017,7 +2223,7 @@ export async function getExpensesByStatus(status: string, branchId?: string) {
       .from('expenses')
       .select(`
         *,
-        branches (*),
+        branches:branch_id (*),
         users:requested_by (*)
       `)
       .eq('status', status)
@@ -2080,8 +2286,7 @@ export async function getAbsentEmployeesToday(): Promise<Employee[]> {
       name: user.name,
       email: user.email || "",
       phone: user.phone || "",
-      role: user.role || "employee",
-      position: user.role || "employee",
+      position: user.position || "employee",
       status: user.status || "active",
       avatar: `/placeholder.svg?height=40&width=40&query=${encodeURIComponent(user.name)}`,
       rating: 4.5,
@@ -2123,7 +2328,7 @@ export async function getDetailedAttendanceRecords(date?: string) {
         id,
         name,
         email,
-        role,
+        position,
         branch_id
       ),
       branches:branch_id (
@@ -2172,11 +2377,7 @@ export const getOutletStock = async (outletId: string): Promise<{ data: OutletSt
   try {
     const { data, error } = await supabase
       .from('outlet_stock')
-      .select(`
-        *,
-        service:services(*, service_categories(*)),
-        branch:branches(*)
-      `)
+      .select('*')
       .eq('outlet_id', outletId)
       .order('created_at', { ascending: false });
 
@@ -2192,26 +2393,27 @@ export const getOutletStock = async (outletId: string): Promise<{ data: OutletSt
   }
 };
 
-// 🔥 UPDATE stock per outlet
+// 🔥 UPDATE stock per outlet (with UPSERT)
 export const updateOutletStock = async (
   outletId: string, 
   serviceId: string, 
   newStock: number
 ): Promise<{ data: OutletStock | null; error: any }> => {
   try {
+    // Use upsert to create if not exists, update if exists
     const { data, error } = await supabase
       .from('outlet_stock')
-      .update({ 
+      .upsert({ 
+        outlet_id: outletId,
+        service_id: serviceId,
         stock_quantity: newStock,
+        is_active: true,
+        min_stock_threshold: 5, // default value
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'outlet_id,service_id'
       })
-      .eq('outlet_id', outletId)
-      .eq('service_id', serviceId)
-      .select(`
-        *,
-        service:services(*, service_categories(*)),
-        branch:branches(*)
-      `)
+      .select()
       .single();
 
     if (error) {
@@ -2229,14 +2431,10 @@ export const updateOutletStock = async (
 // 🔥 GET low stock alerts (FIXED VERSION)
 export const getLowStockAlerts = async (): Promise<{ data: OutletStock[] | null; error: any }> => {
   try {
-    // First get all outlet stock
+    // Get all outlet stock (no joins needed)
     const { data: allStock, error: fetchError } = await supabase
       .from('outlet_stock')
-      .select(`
-        *,
-        service:services(*, service_categories(*)),
-        branch:branches(*)
-      `)
+      .select('*')
       .eq('is_active', true);
 
     if (fetchError) {
@@ -2291,7 +2489,7 @@ export const reduceOutletStock = async (
       .select(`
         *,
         service:services(*, service_categories(*)),
-        branch:branches(*)
+        branch:outlet_id(*)
       `)
       .single();
 
@@ -2532,7 +2730,7 @@ export async function getApprovedExpenses() {
       .from('expenses')
       .select(`
         *,
-        branches (*)
+        branches:branch_id (*)
       `)
       .in('status', ['approved', 'paid'])
       .order('created_at', { ascending: false });
@@ -2555,7 +2753,7 @@ export const getOwnerPin = async (): Promise<string> => {
     const { data, error } = await supabase
       .from('users')
       .select('pin')
-      .eq('role', 'owner')
+      .eq('position', 'owner')
       .single();
 
     if (error || !data) {

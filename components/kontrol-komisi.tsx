@@ -45,7 +45,6 @@ interface Employee {
     id: string;
     name: string;
     email: string;
-    role?: string;
     position?: string;
 }
 
@@ -179,13 +178,12 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
             console.log('[loadData] Commission rules loaded:', rulesData?.length);
             setCommissionRules(rulesData || []);
 
-            // Load recent transactions
+            // Load recent transactions - gunakan snapshot data
             const { data: transactionsData, error: transactionsError } = await supabase
                 .from('transaction_items')
                 .select(`
                     *,
-                    users:barber_id(name),
-                    services:service_id(name, price)
+                    users:barber_id(name)
                 `)
                 .order('created_at', { ascending: false })
                 .limit(100);
@@ -203,7 +201,7 @@ export function KontrolKomisi({ employees = [] }: { employees?: Employee[] }) {
                     commission_amount: item.commission_amount,
                     created_at: item.created_at,
                     barber_name: item.users?.name || 'Unknown',
-                    service_name: item.services?.name || 'Unknown'
+                    service_name: item.service_name || 'Unknown' // Gunakan snapshot
                 }));
                 console.log('[loadData] Transactions loaded:', formattedTransactions.length);
                 setTransactions(formattedTransactions);

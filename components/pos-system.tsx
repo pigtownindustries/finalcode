@@ -75,6 +75,7 @@ const parseNominal = (value: string): number => {
 
 export function POSSystem() {
   const [selectedCategory, setSelectedCategory] = useState("semua")
+  const [selectedType, setSelectedType] = useState<"all" | "service" | "product">("all")
   const [cart, setCart] = useState < CartItem[] > ([])
   const [customerName, setCustomerName] = useState("")
   const [selectedBranch, setSelectedBranch] = useState("")
@@ -172,7 +173,7 @@ export function POSSystem() {
       console.error("Users error:", error)
     } else if (data && data.length > 0) {
       setEmployees(data)
-      // Set current user ke user pertama yang ada (karena tidak ada role cashier di database)
+      // Set current user ke user pertama yang ada
       if (!currentUser) setCurrentUser(data[0])
     }
   }, [currentUser])
@@ -615,7 +616,19 @@ export function POSSystem() {
     }
   }
 
-  const filteredServices = services.filter(service => selectedCategory === "semua" || service.service_categories?.name === selectedCategory)
+  // Filter services: active status, type, and category
+  const filteredServices = services.filter(service => {
+    // Must be active
+    if (service.status !== "active") return false;
+    
+    // Filter by type
+    if (selectedType !== "all" && service.type !== selectedType) return false;
+    
+    // Filter by category
+    if (selectedCategory !== "semua" && service.service_categories?.name !== selectedCategory) return false;
+    
+    return true;
+  })
 
   const formatPrice = (price: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price)
 
@@ -727,6 +740,33 @@ export function POSSystem() {
         description: "Pastikan keranjang tidak kosong dan karyawan yang melayani sudah dipilih.",
       })
       return
+    }
+
+    // Validate stock for ALL products before checkout
+    const selectedBranchData = branches.find(b => b.name === selectedBranch);
+    if (selectedBranchData) {
+      for (const item of cart) {
+        if (item.service.type === "product") {
+          const stockItem = outletStock.find(os => os.service_id === item.service.id && os.outlet_id === selectedBranchData.id);
+          const availableStock = stockItem?.stock_quantity || 0;
+
+          if (item.quantity > availableStock) {
+            toast.error("Stok Tidak Cukup!", {
+              description: `${item.service.name} - Stok tersedia: ${availableStock}, Diminta: ${item.quantity}. Silakan kurangi jumlah atau hapus dari keranjang.`,
+              duration: 6000,
+            });
+            return;
+          }
+
+          if (availableStock <= 0) {
+            toast.error("Produk Habis!", {
+              description: `${item.service.name} sudah habis. Silakan hapus dari keranjang.`,
+              duration: 6000,
+            });
+            return;
+          }
+        }
+      }
     }
 
     // Validate cash payment - cash amount is REQUIRED for cash payment
@@ -950,6 +990,41 @@ export function POSSystem() {
         {/* Services Grid */}
         <div className="flex-1 overflow-auto p-3 md:p-4">
           <div className="max-w-7xl mx-auto w-full">
+            {/* Filter Tipe */}
+            <div className="mb-3 flex gap-2">
+              <Button
+                variant={selectedType === "all" ? "default" : "outline"}
+                className={`flex-1 ${selectedType === "all" ? "" : "bg-transparent"}`}
+                onClick={() => {
+                  setSelectedType("all")
+                  setSelectedCategory("semua")
+                }}
+              >
+                Semua Menu
+              </Button>
+              <Button
+                variant={selectedType === "service" ? "default" : "outline"}
+                className={`flex-1 ${selectedType === "service" ? "" : "bg-transparent"}`}
+                onClick={() => {
+                  setSelectedType("service")
+                  setSelectedCategory("semua")
+                }}
+              >
+                💈 Layanan
+              </Button>
+              <Button
+                variant={selectedType === "product" ? "default" : "outline"}
+                className={`flex-1 ${selectedType === "product" ? "" : "bg-transparent"}`}
+                onClick={() => {
+                  setSelectedType("product")
+                  setSelectedCategory("semua")
+                }}
+              >
+                📦 Produk
+              </Button>
+            </div>
+
+            {/* Filter Kategori */}
             <div className="flex gap-2 overflow-x-auto pb-3 md:pb-4 scrollbar-hide">
               <Button
                 variant={selectedCategory === "semua" ? "default" : "outline"}
@@ -957,13 +1032,20 @@ export function POSSystem() {
                 onClick={() => setSelectedCategory("semua")}
               >
                 <ShoppingCart className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                Semua
+                Semua Kategori
               </Button>
-              {/* Filter duplikat berdasarkan category.name */}
+              {/* Filter categories based on selected type */}
               {categories
-                .filter((category, index, self) =>
-                  index === self.findIndex((c) => c.name === category.name)
-                )
+                .filter((category, index, self) => {
+                  // Remove duplicates
+                  const isDuplicate = index !== self.findIndex((c) => c.name === category.name);
+                  if (isDuplicate) return false;
+                  
+                  // Filter by type
+                  if (selectedType !== "all" && category.type !== selectedType) return false;
+                  
+                  return true;
+                })
                 .map((category) => {
                   const IconComponent = categoryIcons[category.name as keyof typeof categoryIcons] || Scissors
                   return (
@@ -1171,28 +1253,57 @@ export function POSSystem() {
                   <p>Keranjang masih kosong</p>
                 </div>
               ) : (
-                cart.map((item) => (
-                  <div key={item.service.id} className="flex items-center justify-between p-2 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{item.service.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatPrice(item.service.price)} × {item.quantity}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.service.id, item.quantity - 1)}>
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm">{item.quantity}</span>
-                        <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.service.id, item.quantity + 1)}>
-                          <Plus className="h-3 w-3" />
+                cart.map((item) => {
+                  const branch = branches.find(b => b.name === selectedBranch);
+                  const stockItem = branch ? outletStock.find(os => os.service_id === item.service.id && os.outlet_id === branch.id) : null;
+                  const availableStock = stockItem?.stock_quantity || 0;
+                  const isOutOfStock = item.service.type === "product" && availableStock <= 0;
+                  const isOverStock = item.service.type === "product" && item.quantity > availableStock;
+
+                  return (
+                    <div key={item.service.id} className={`flex items-center justify-between p-2 border rounded-lg ${isOutOfStock || isOverStock ? 'border-red-500 bg-red-50' : ''}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{item.service.name}</p>
+                          {item.service.type === "product" && (
+                            <span className="text-xs text-gray-500">Stok: {availableStock}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">{formatPrice(item.service.price)} × {item.quantity}</p>
+                        {isOutOfStock && (
+                          <p className="text-xs text-red-600 font-medium flex items-center gap-1 mt-1">
+                            <AlertTriangle className="h-3 w-3" /> Stok habis!
+                          </p>
+                        )}
+                        {isOverStock && !isOutOfStock && (
+                          <p className="text-xs text-red-600 font-medium flex items-center gap-1 mt-1">
+                            <AlertTriangle className="h-3 w-3" /> Stok tidak cukup! (Maks: {availableStock})
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="outline" className="h-6 w-6" onClick={() => updateQuantity(item.service.id, item.quantity - 1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-6 text-center text-sm">{item.quantity}</span>
+                          <Button 
+                            size="icon" 
+                            variant="outline" 
+                            className="h-6 w-6" 
+                            onClick={() => updateQuantity(item.service.id, item.quantity + 1)}
+                            disabled={item.service.type === "product" && item.quantity >= availableStock}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => removeFromCart(item.service.id)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => removeFromCart(item.service.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1227,6 +1338,27 @@ export function POSSystem() {
             </Button>
             <Button
               onClick={() => {
+                // Check stock issues before opening checkout
+                const branch = branches.find(b => b.name === selectedBranch);
+                if (branch) {
+                  const hasStockIssue = cart.some(item => {
+                    if (item.service.type === "product") {
+                      const stockItem = outletStock.find(os => os.service_id === item.service.id && os.outlet_id === branch.id);
+                      const availableStock = stockItem?.stock_quantity || 0;
+                      return item.quantity > availableStock || availableStock <= 0;
+                    }
+                    return false;
+                  });
+
+                  if (hasStockIssue) {
+                    toast.error("Periksa Stok!", {
+                      description: "Ada produk dengan stok tidak mencukupi. Silakan sesuaikan jumlah atau hapus dari keranjang.",
+                      duration: 5000,
+                    });
+                    return;
+                  }
+                }
+
                 setIsCartOpen(false)
                 setIsCheckoutOpen(true)
               }}

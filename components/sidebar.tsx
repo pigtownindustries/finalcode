@@ -8,7 +8,7 @@ import { LayoutDashboard, ShoppingCart, Camera, TrendingDown, LogOut, ChevronLef
 
 interface User {
   email: string
-  role: string
+  position: string
 }
 
 interface SidebarProps {

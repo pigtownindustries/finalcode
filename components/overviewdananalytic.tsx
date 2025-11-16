@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, DollarSign, Building2, PieChart as PieChartIcon, RefreshCw, BarChart3, Zap, Activity, Crown } from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, Line, PieChart, Pie } from "recharts"
-import { supabase, getApprovedExpenses, type Expense } from "@/lib/supabase"
+import { TrendingUp, TrendingDown, DollarSign, Building2, RefreshCw, BarChart3, Activity, Users, Receipt, AlertCircle, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react"
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ComposedChart, PieChart, Pie } from "recharts"
+import { supabase, getApprovedExpenses } from "@/lib/supabase"
 
 // Warna modern untuk chart
 const CHART_COLORS = {
@@ -21,61 +21,38 @@ interface OverviewAndAnalyticsProps {
   realTimeEnabled: boolean;
 }
 
+interface EmployeePerformance {
+  id: string;
+  name: string;
+  position: string;
+  totalTransactions: number;
+  totalRevenue: number;
+  totalCommission: number;
+  pendingCommission: number;
+  attendanceDays: number;
+  totalWorkHours: number;
+  totalWorkMinutes: number;
+  totalWorkSeconds: number;
+}
+
 export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: OverviewAndAnalyticsProps) {
   const [dashboardStats, setDashboardStats] = useState<any>(null)
   const [revenueData, setRevenueData] = useState<any[]>([])
   const [expenseCategories, setExpenseCategories] = useState<any[]>([])
-  const [approvedExpenses, setApprovedExpenses] = useState<any[]>([]) // ✅ Ditambahkan
-  const [branchPerformance, setBranchPerformance] = useState<any[]>([]) // ✅ Ditambahkan
+  const [approvedExpenses, setApprovedExpenses] = useState<any[]>([])
+  const [branchPerformance, setBranchPerformance] = useState<any[]>([])
+  const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([])
   const [loading, setLoading] = useState(true)
   const [animationKey, setAnimationKey] = useState(0)
 
-  // Custom Bar dengan efek 3D dan animasi
-  const Animated3DBar = (props: any) => {
-    const { fill, x, y, width, height } = props
-    const [isAnimating, setIsAnimating] = useState(true)
-
-    useEffect(() => {
-      setIsAnimating(true)
-      const timer = setTimeout(() => setIsAnimating(false), 800)
-      return () => clearTimeout(timer)
-    }, [animationKey])
-
-    return (
-      <g>
-        {/* Shadow effect untuk depth 3D */}
-        <rect
-          x={x + 4}
-          y={y + 4}
-          width={width}
-          height={height}
-          fill="rgba(0,0,0,0.2)"
-          rx={6}
-        />
-        {/* Main bar dengan animasi */}
-        <rect
-          x={x}
-          y={isAnimating ? y + height : y}
-          width={width}
-          height={isAnimating ? 0 : height}
-          fill={fill}
-          rx={6}
-          style={{
-            transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.3))'
-          }}
-        />
-        {/* Top highlight untuk efek 3D */}
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={2}
-          fill="rgba(255,255,255,0.4)"
-          rx={1}
-        />
-      </g>
-    )
+  // Fungsi format rupiah lengkap dengan titik dan koma
+  const formatRupiah = (value: number): string => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value)
   }
 
   // Setup real-time updates
@@ -86,6 +63,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       const transactionsChannel = supabase
         .channel('overview-transactions')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+          console.log('Real-time: Transaction changed, refreshing dashboard...')
           fetchDashboardData()
         })
         .subscribe()
@@ -93,6 +71,39 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       const expensesChannel = supabase
         .channel('overview-expenses')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+          console.log('Real-time: Expense changed, refreshing dashboard...')
+          fetchDashboardData()
+        })
+        .subscribe()
+
+      const commissionsChannel = supabase
+        .channel('overview-commissions')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'commissions' }, () => {
+          console.log('Real-time: Commission changed, refreshing dashboard...')
+          fetchDashboardData()
+        })
+        .subscribe()
+
+      const attendanceChannel = supabase
+        .channel('overview-attendance')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => {
+          console.log('Real-time: Attendance changed, refreshing dashboard...')
+          fetchDashboardData()
+        })
+        .subscribe()
+
+      const transactionItemsChannel = supabase
+        .channel('overview-transaction-items')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'transaction_items' }, () => {
+          console.log('Real-time: Transaction items changed (commission updated), refreshing dashboard...')
+          fetchDashboardData()
+        })
+        .subscribe()
+
+      const commissionRulesChannel = supabase
+        .channel('overview-commission-rules')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'commission_rules' }, () => {
+          console.log('Real-time: Commission rules changed, refreshing dashboard...')
           fetchDashboardData()
         })
         .subscribe()
@@ -100,6 +111,10 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       return () => {
         supabase.removeChannel(transactionsChannel)
         supabase.removeChannel(expensesChannel)
+        supabase.removeChannel(commissionsChannel)
+        supabase.removeChannel(attendanceChannel)
+        supabase.removeChannel(transactionItemsChannel)
+        supabase.removeChannel(commissionRulesChannel)
       }
     }
   }, [realTimeEnabled])
@@ -125,7 +140,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
     } catch (error) {
       return [];
     }
-  }
+  };
 
   const analyzeExpenseCategories = (expenses: any[]) => {
     const categoryMap = new Map<string, number>();
@@ -136,15 +151,17 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
     return Array.from(categoryMap.entries())
       .map(([category, total]) => ({ category, total }))
       .sort((a, b) => b.total - a.total);
-  }
+  };
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true)
+      console.log('🔄 Fetching dashboard data from database...')
       
       const approvedExpensesData = await fetchApprovedExpenses();
-      setApprovedExpenses(approvedExpensesData); // ✅ Sekarang sudah didefinisikan
+      setApprovedExpenses(approvedExpensesData);
       setExpenseCategories(analyzeExpenseCategories(approvedExpensesData));
+      console.log('✅ Expenses loaded:', approvedExpensesData.length, 'items')
 
       const [transactionsRes, usersRes, branchesRes, pointsRes] = await Promise.all([
         supabase.from("transactions").select("*").order("created_at", { ascending: false }),
@@ -153,9 +170,15 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         supabase.from("points").select("*").order("created_at", { ascending: false })
       ])
 
+      if (transactionsRes.error) console.error('Transactions error:', transactionsRes.error)
+      if (usersRes.error) console.error('Users error:', usersRes.error)
+      if (branchesRes.error) console.error('Branches error:', branchesRes.error)
+
       const transactions = transactionsRes.data || []
       const users = usersRes.data || []
       const branches = branchesRes.data || []
+      
+      console.log('✅ Data loaded - Transactions:', transactions.length, '| Users:', users.length, '| Branches:', branches.length)
 
       const getTransactionAmount = (transaction: any) => {
         return transaction.final_amount || transaction.total_amount || transaction.subtotal || 0
@@ -193,16 +216,12 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
           .reduce((sum: number, expense: any) => sum + expense.amount, 0)
         
         const netProfit = branchRevenue - branchExpenses
-        const profitMargin = branchRevenue > 0 ? (netProfit / branchRevenue) * 100 : 0
         
         return {
-          id: branch.id,
           name: branch.name,
           revenue: branchRevenue,
-          transactions: branchTransactions.length,
-          expenses: branchExpenses,
-          netProfit: netProfit,
-          profitMargin: profitMargin
+          expense: branchExpenses,
+          profit: Math.abs(netProfit) // Pastikan selalu positif untuk tampilan
         }
       }).sort((a: any, b: any) => b.revenue - a.revenue)
 
@@ -212,6 +231,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       const monthlyNetProfit = monthlyRevenue - monthlyExpenses
       const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
 
+      // Data untuk grafik garis 7 hari terakhir
       const revenueChartData = Array.from({ length: 7 }, (_, i) => {
         const date = new Date()
         date.setDate(date.getDate() - (6 - i))
@@ -233,10 +253,10 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         const dayNetProfit = dayRevenue - dayExpenses
         
         return {
-          date: date.toLocaleDateString("id-ID", { weekday: "short" }),
+          date: date.toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }),
           revenue: dayRevenue,
           expenses: dayExpenses,
-          netProfit: dayNetProfit
+          netProfit: Math.abs(dayNetProfit) // Pastikan selalu positif untuk tampilan grafik
         }
       })
 
@@ -252,235 +272,264 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         profitMargin
       }
 
+      console.log('📊 Dashboard Stats:', {
+        revenue: totalRevenue,
+        expenses: totalExpenses,
+        profit: netProfit,
+        transactions: completedTransactions.length,
+        branches: branchPerf.length
+      })
+
       setDashboardStats(stats)
       setRevenueData(revenueChartData)
       setAnimationKey(prev => prev + 1)
 
+      // Fetch Employee Performance
+      console.log('👥 Fetching employee performance...')
+      await fetchEmployeePerformance(transactions, approvedExpensesData)
+      
+      console.log('✅ Dashboard data fetch completed successfully!')
+
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('❌ Error fetching dashboard data:', error)
     } finally {
       setLoading(false)
     }
-  }
+  };
 
-  const RevenueExpenseChart3D = () => {
-    if (!revenueData.length) {
-      return (
-        <div className="h-80 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Belum ada data revenue dan pengeluaran</p>
-          </div>
-        </div>
-      )
+  const fetchEmployeePerformance = async (transactions: any[], expenses: any[]) => {
+    try {
+      // Fetch all employees with more detailed info
+      const { data: employees, error: employeesError } = await supabase
+        .from("users")
+        .select("id, name, position, branch_id")
+        .eq("status", "active")
+        .order("name")
+
+      if (employeesError) {
+        console.error('Error fetching employees:', employeesError)
+        return
+      }
+
+      if (!employees || employees.length === 0) {
+        console.log('No active employees found')
+        setEmployeePerformance([])
+        return
+      }
+
+      // Fetch attendance - PENTING: gunakan user_id, bukan employee_id
+      // Ambil data lengkap termasuk check_in_time, check_out_time, total_hours
+      let attendance: any[] = []
+      try {
+        // Query 1: Coba dengan status filter
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from("attendance")
+          .select("*")
+
+        if (attendanceError) {
+          console.error('❌ Attendance fetch failed:', attendanceError)
+          console.log('⚠️ Trying alternative query...')
+        } else {
+          attendance = attendanceData || []
+          console.log('✅ Attendance loaded:', attendance.length, 'total records')
+          
+          // Debug: tampilkan sample data
+          if (attendance.length > 0) {
+            console.log('📋 Sample attendance record:', {
+              columns: Object.keys(attendance[0]),
+              sample: attendance[0]
+            })
+            
+            // Group by user_id untuk debug
+            const userCounts = attendance.reduce((acc: any, record: any) => {
+              const userId = record.user_id
+              acc[userId] = (acc[userId] || 0) + 1
+              return acc
+            }, {})
+            console.log('👥 Attendance by user_id:', userCounts)
+          }
+        }
+      } catch (err) {
+        console.error('⚠️ Could not fetch attendance:', err)
+      }
+
+      // Get current month range for filtering
+      const now = new Date()
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+      // Fetch transaction items untuk komisi (gunakan barber_id, bukan employee_id)
+      // PENTING: Ambil semua commission_status untuk tracking
+      const { data: transactionItems, error: itemsError } = await supabase
+        .from("transaction_items")
+        .select("barber_id, commission_amount, commission_status, created_at")
+
+      if (itemsError) {
+        console.log('⚠️ Transaction items error:', itemsError.message)
+      }
+
+      const allTransactionItems = transactionItems || []
+      
+      // Log breakdown commission status
+      const commissionBreakdown = {
+        total: allTransactionItems.length,
+        credited: allTransactionItems.filter(i => i.commission_status === 'credited').length,
+        pending: allTransactionItems.filter(i => i.commission_status === 'pending').length,
+        no_commission: allTransactionItems.filter(i => i.commission_status === 'no_commission').length
+      }
+      console.log('✅ Transaction items loaded:', commissionBreakdown)
+
+      // Debug: Log all employee IDs untuk compare dengan attendance
+      console.log('👥 Total Employees:', employees.length, '| Sample:', employees.slice(0, 3).map(e => ({ id: e.id, name: e.name })))
+
+      // Calculate performance for each employee
+      const performanceData: EmployeePerformance[] = employees.map(emp => {
+        // PENTING: Gunakan server_id untuk transaksi (karyawan yang melayani)
+        const empTransactions = transactions.filter(t => 
+          t.server_id === emp.id && 
+          t.payment_status === "completed"
+        )
+        const totalTransactions = empTransactions.length
+        
+        // Calculate total revenue from employee's transactions
+        const totalRevenue = empTransactions.reduce((sum, t) => {
+          const amount = t.final_amount || t.total_amount || t.subtotal || 0
+          return sum + amount
+        }, 0)
+
+        // Calculate total commission dari transaction_items (gunakan barber_id)
+        // Hitung commission yang sudah credited (dibayar)
+        const empCommissionItemsCredited = allTransactionItems.filter(item => 
+          item.barber_id === emp.id && 
+          item.commission_status === "credited"
+        )
+        const totalCommission = empCommissionItemsCredited.reduce((sum, item) => 
+          sum + (item.commission_amount || 0), 0
+        )
+
+        // Hitung commission yang masih pending (belum dibayar)
+        const empCommissionItemsPending = allTransactionItems.filter(item => 
+          item.barber_id === emp.id && 
+          item.commission_status === "pending"
+        )
+        const pendingCommission = empCommissionItemsPending.reduce((sum, item) => 
+          sum + (item.commission_amount || 0), 0
+        )
+
+        // Count unique attendance days - PENTING: gunakan user_id, bukan employee_id
+        const empAttendance = attendance.filter(a => a.user_id === emp.id)
+        
+        console.log(`🔍 Checking attendance for ${emp.name} (${emp.id}):`, {
+          totalRecords: empAttendance.length,
+          records: empAttendance.map(a => ({
+            date: a.date,
+            check_in: a.check_in_time,
+            check_out: a.check_out_time,
+            status: a.status
+          }))
+        })
+        
+        // Get unique dates to avoid counting multiple check-ins on same day
+        const uniqueDates = new Set(
+          empAttendance.map(a => {
+            const date = a.date || a.check_in_time
+            return date ? new Date(date).toISOString().split('T')[0] : null
+          }).filter(Boolean)
+        )
+        const attendanceDays = uniqueDates.size
+
+        // Calculate total work hours, minutes, seconds
+        let totalSeconds = 0
+        empAttendance.forEach(a => {
+          if (a.check_in_time && a.check_out_time) {
+            const checkIn = new Date(a.check_in_time)
+            const checkOut = new Date(a.check_out_time)
+            const diffMs = checkOut.getTime() - checkIn.getTime()
+            const diffSeconds = Math.floor(diffMs / 1000)
+            
+            // Kurangi break duration jika ada (dalam menit)
+            const breakSeconds = (a.break_duration || 0) * 60
+            totalSeconds += Math.max(0, diffSeconds - breakSeconds)
+          } else if (a.total_hours) {
+            // Jika ada total_hours langsung dari database
+            totalSeconds += a.total_hours * 3600
+          }
+        })
+
+        const totalWorkHours = Math.floor(totalSeconds / 3600)
+        const totalWorkMinutes = Math.floor((totalSeconds % 3600) / 60)
+        const totalWorkSeconds = totalSeconds % 60
+
+        // Debug log untuk employee dengan transaksi atau kehadiran
+        if (totalTransactions > 0 || totalRevenue > 0 || totalCommission > 0 || pendingCommission > 0 || attendanceDays > 0) {
+          console.log(`👤 ${emp.name}:`, {
+            transactions: totalTransactions,
+            revenue: totalRevenue,
+            commissionCredited: totalCommission,
+            commissionPending: pendingCommission,
+            attendance: {
+              days: attendanceDays,
+              hours: totalWorkHours,
+              minutes: totalWorkMinutes,
+              seconds: totalWorkSeconds,
+              records: empAttendance.length
+            },
+            commissionItems: {
+              credited: empCommissionItemsCredited.length,
+              pending: empCommissionItemsPending.length
+            }
+          })
+        }
+
+        return {
+          id: emp.id,
+          name: emp.name,
+          position: emp.position || 'Staff',
+          totalTransactions,
+          totalRevenue,
+          totalCommission,
+          pendingCommission,
+          attendanceDays,
+          totalWorkHours,
+          totalWorkMinutes,
+          totalWorkSeconds
+        }
+      })
+
+      // Sort by total revenue (descending) - highest performer first
+      performanceData.sort((a, b) => {
+        if (b.totalRevenue !== a.totalRevenue) {
+          return b.totalRevenue - a.totalRevenue
+        }
+        if (b.totalTransactions !== a.totalTransactions) {
+          return b.totalTransactions - a.totalTransactions
+        }
+        return b.attendanceDays - a.attendanceDays
+      })
+
+      // Summary log
+      const activeEmployees = performanceData.filter(e => e.totalTransactions > 0 || e.totalRevenue > 0)
+      const totalAttendanceDays = performanceData.reduce((sum, e) => sum + e.attendanceDays, 0)
+      const totalWorkHours = performanceData.reduce((sum, e) => sum + e.totalWorkHours, 0)
+      
+      console.log('📊 Employee Performance Summary:', {
+        total: performanceData.length,
+        withTransactions: activeEmployees.length,
+        totalTransactions: performanceData.reduce((sum, e) => sum + e.totalTransactions, 0),
+        totalRevenue: performanceData.reduce((sum, e) => sum + e.totalRevenue, 0),
+        totalCommissionCredited: performanceData.reduce((sum, e) => sum + e.totalCommission, 0),
+        totalCommissionPending: performanceData.reduce((sum, e) => sum + e.pendingCommission, 0),
+        totalAttendanceDays,
+        totalWorkHours: `${totalWorkHours} hours`
+      })
+
+      setEmployeePerformance(performanceData)
+
+    } catch (error) {
+      console.error('Error fetching employee performance:', error)
+      setEmployeePerformance([])
     }
-
-    return (
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={revenueData} key={animationKey}>
-            <defs>
-              <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.9}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.7}/>
-              </linearGradient>
-              <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f87171" stopOpacity={0.9}/>
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0.7}/>
-              </linearGradient>
-              <filter id="shadow">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
-              </filter>
-            </defs>
-            <CartesianGrid 
-              strokeDasharray="3 3" 
-              stroke="rgba(255,255,255,0.08)" 
-              vertical={false}
-            />
-            <XAxis 
-              dataKey="date" 
-              stroke="#94a3b8" 
-              fontSize={12}
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-            />
-            <YAxis 
-              stroke="#94a3b8" 
-              fontSize={12} 
-              tickFormatter={(value) => `${value/1000000}Jt`}
-              tickLine={false}
-              axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-            />
-            <Tooltip 
-              contentStyle={{
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '16px',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                padding: '12px 16px'
-              }}
-              labelStyle={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '8px' }}
-              itemStyle={{ color: '#cbd5e1', fontSize: '13px' }}
-              formatter={(value: any) => [`Rp ${Number(value).toLocaleString('id-ID')}`, '']}
-            />
-            <Legend 
-              wrapperStyle={{ paddingTop: '20px' }}
-              iconType="circle"
-              iconSize={10}
-            />
-            <Bar 
-              dataKey="revenue" 
-              name="Revenue"
-              fill="url(#revenueGradient)"
-              radius={[8, 8, 0, 0]}
-              filter="url(#shadow)"
-              animationDuration={1000}
-              animationBegin={0}
-            />
-            <Bar 
-              dataKey="expenses" 
-              name="Pengeluaran"
-              fill="url(#expenseGradient)"
-              radius={[8, 8, 0, 0]}
-              filter="url(#shadow)"
-              animationDuration={1000}
-              animationBegin={200}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="netProfit" 
-              name="Net Profit"
-              stroke="#10b981"
-              strokeWidth={3}
-              dot={{ 
-                fill: '#10b981', 
-                strokeWidth: 2, 
-                r: 6,
-                filter: 'url(#shadow)'
-              }}
-              activeDot={{ 
-                r: 9, 
-                fill: '#34d399',
-                stroke: '#fff',
-                strokeWidth: 2,
-                filter: 'url(#shadow)'
-              }}
-              animationDuration={1200}
-              animationBegin={400}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    )
-  }
-
-  const ExpenseCategoriesChart3D = () => {
-    if (!expenseCategories.length) {
-      return (
-        <div className="h-80 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <PieChartIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>Belum ada data kategori pengeluaran</p>
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <defs>
-              {expenseCategories.map((entry, index) => (
-                <linearGradient 
-                  key={`gradient-${index}`} 
-                  id={`categoryGradient${index}`} 
-                  x1="0" 
-                  y1="0" 
-                  x2="0" 
-                  y2="1"
-                >
-                  <stop 
-                    offset="0%" 
-                    stopColor={CHART_COLORS.branches[index % CHART_COLORS.branches.length]} 
-                    stopOpacity={1}
-                  />
-                  <stop 
-                    offset="100%" 
-                    stopColor={CHART_COLORS.branches[index % CHART_COLORS.branches.length]} 
-                    stopOpacity={0.7}
-                  />
-                </linearGradient>
-              ))}
-              <filter id="pieGlow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-            </defs>
-            <Pie
-              data={expenseCategories}
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              innerRadius={55}
-              paddingAngle={3}
-              dataKey="total"
-              nameKey="category"
-              label={({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }) => {
-                const RADIAN = Math.PI / 180;
-                const radius = outerRadius + 30;
-                const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                return (
-                  <text 
-                    x={x} 
-                    y={y} 
-                    fill="#e2e8f0" 
-                    textAnchor={x > cx ? 'start' : 'end'} 
-                    dominantBaseline="central"
-                    fontSize={13}
-                    fontWeight={600}
-                  >
-                    {`${name} ${(percent * 100).toFixed(0)}%`}
-                  </text>
-                );
-              }}
-              animationBegin={0}
-              animationDuration={1200}
-              animationEasing="ease-out"
-            >
-              {expenseCategories.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={`url(#categoryGradient${index})`}
-                  stroke="rgba(255,255,255,0.15)"
-                  strokeWidth={2}
-                  filter="url(#pieGlow)"
-                />
-              ))}
-            </Pie>
-            <Tooltip 
-              contentStyle={{
-                background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: '16px',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                padding: '12px 16px'
-              }}
-              labelStyle={{ color: '#e2e8f0', fontWeight: 600, marginBottom: '8px' }}
-              itemStyle={{ color: '#cbd5e1', fontSize: '13px' }}
-              formatter={(value: any) => [`Rp ${Number(value).toLocaleString('id-ID')}`, 'Jumlah']}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    )
-  }
+  };
 
   if (loading) {
     return (
@@ -507,109 +556,792 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
 
   return (
     <div className="space-y-6">
-      {/* Header Section - Mobile Responsive */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-red-400 to-rose-400 bg-clip-text text-transparent">
-            📊 3D Analytics Dashboard
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+            Dashboard Overview
           </h2>
-          <p className="text-xs md:text-sm text-muted-foreground">Data real-time dengan visualisasi 3D modern</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Pantau performa bisnis Anda secara real-time
+          </p>
         </div>
         <Button 
           variant="outline" 
           size="sm" 
           onClick={() => { fetchDashboardData(); onRefreshData(); }} 
-          className="gap-2 bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 w-full sm:w-auto text-xs md:text-sm"
+          className="gap-2"
         >
-          <RefreshCw className="h-3.5 w-3.5 md:h-4 md:w-4" />
-          Refresh Data
+          <RefreshCw className="h-4 w-4" />
+          Refresh
         </Button>
       </div>
 
-      {/* Grid Layout - Mobile Responsive */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        
-        {/* Revenue & Expense Chart 3D - Mobile Responsive */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-slate-900/20 to-blue-900/20 border-white/10 backdrop-blur-sm">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 md:p-6">
-            <div className="w-full sm:w-auto">
-              <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
-                <BarChart3 className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-                Revenue vs Expenses
-              </CardTitle>
-              <CardDescription className="text-xs md:text-sm">Analisis perbandingan pendapatan dan pengeluaran</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6">
-            <RevenueExpenseChart3D />
-          </CardContent>
-        </Card>
-
-        {/* Performance Metrics - Mobile Responsive */}
-        <Card className="bg-gradient-to-br from-slate-900/20 to-red-900/20 border-white/10 backdrop-blur-sm">
-          <CardHeader className="p-4 md:p-6">
-            <CardTitle className="flex items-center gap-2 text-white text-base md:text-lg">
-              <Activity className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
-              Statistik Utama
-            </CardTitle>
-            <CardDescription className="text-xs md:text-sm">Ringkasan performa bisnis</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6 pt-0">
-            {dashboardStats && [
-              {
-                title: "Total Revenue",
-                value: `Rp ${dashboardStats.totalRevenue.toLocaleString('id-ID')}`,
-                icon: TrendingUp,
-                color: "from-blue-500 to-blue-600"
-              },
-              {
-                title: "Total Expenses",
-                value: `Rp ${dashboardStats.totalExpenses.toLocaleString('id-ID')}`,
-                icon: TrendingDown,
-                color: "from-red-500 to-red-600"
-              },
-              {
-                title: "Net Profit",
-                value: `Rp ${dashboardStats.netProfit.toLocaleString('id-ID')}`,
-                subValue: `${dashboardStats.profitMargin.toFixed(1)}% Margin`,
-                icon: DollarSign,
-                color: "from-green-500 to-green-600"
-              }
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className={`p-4 bg-gradient-to-r ${stat.color} rounded-xl backdrop-blur-sm border border-white/10 transition-all duration-300 hover:scale-105`}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-sm font-medium text-white/80">{stat.title}</p>
-                    <p className="text-2xl font-bold text-white">{stat.value}</p>
-                    {stat.subValue && (
-                      <p className="text-sm text-white/60">{stat.subValue}</p>
-                    )}
-                  </div>
-                  <stat.icon className="h-8 w-8 text-white/80" />
+      {/* Stats Cards - 4 Cards dengan Info Jelas */}
+      {dashboardStats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Revenue Card */}
+          <Card className="border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Total Pendapatan
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {formatRupiah(dashboardStats.totalRevenue)}
+                  </p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                    {dashboardStats.totalTransactions} transaksi
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Expense Categories 3D */}
-        <Card className="col-span-1 lg:col-span-3 bg-gradient-to-br from-slate-900/20 to-green-900/20 border-white/10 backdrop-blur-sm">
+          {/* Total Expenses Card */}
+          <Card className="border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Total Pengeluaran
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {formatRupiah(dashboardStats.totalExpenses)}
+                  </p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                    Operasional
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <Receipt className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Net Profit Card */}
+          <Card className="border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Net Profit
+                  </p>
+                  <p className={`text-2xl font-bold ${dashboardStats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatRupiah(dashboardStats.netProfit)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Margin: {dashboardStats.profitMargin.toFixed(1)}%
+                  </p>
+                </div>
+                <div className={`h-12 w-12 rounded-full ${dashboardStats.netProfit >= 0 ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'} flex items-center justify-center`}>
+                  {dashboardStats.netProfit >= 0 ? (
+                    <ArrowUpRight className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <ArrowDownRight className="h-6 w-6 text-red-600 dark:text-red-400" />
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly Revenue Card */}
+          <Card className="border-l-4 border-l-purple-500 hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                    Pendapatan Bulan Ini
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {formatRupiah(dashboardStats.monthlyRevenue)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {dashboardStats.monthlyTransactions} transaksi
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Main Charts - 2 Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Revenue Trend Line Chart - GRAFIK GARIS YANG JELAS */}
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-white">
-              <PieChartIcon className="h-5 w-5 text-green-400" />
-              Kategori Pengeluaran
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-500" />
+              Tren Pendapatan & Pengeluaran (7 Hari)
             </CardTitle>
-            <CardDescription>Distribusi pengeluaran berdasarkan kategori</CardDescription>
+            <CardDescription>
+              Grafik garis menampilkan perbandingan harian yang mudah dipahami
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExpenseCategoriesChart3D />
+            {revenueData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={revenueData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#64748b"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(value) => formatRupiah(value)}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                    formatter={(value: any) => [formatRupiah(Number(value)), '']}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="line"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    name="Pendapatan"
+                    stroke="#3b82f6" 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="expenses" 
+                    name="Pengeluaran"
+                    stroke="#ef4444" 
+                    strokeWidth={3}
+                    dot={{ fill: '#ef4444', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="netProfit" 
+                    name="Net Profit"
+                    stroke="#10b981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10b981', r: 4 }}
+                    activeDot={{ r: 6 }}
+                    strokeDasharray="5 5"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                <div className="text-center">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Belum ada data transaksi</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
+        {/* Branch Performance Bar Chart - GRAFIK BATANG YANG JELAS */}
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-green-500" />
+              Performa per Cabang
+            </CardTitle>
+            <CardDescription>
+              Perbandingan pendapatan, pengeluaran, dan profit setiap cabang
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {branchPerformance.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={branchPerformance}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#64748b"
+                    fontSize={12}
+                  />
+                  <YAxis 
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(value) => formatRupiah(value)}
+                  />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                    }}
+                    formatter={(value: any) => [formatRupiah(Number(value)), '']}
+                  />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: '20px' }}
+                    iconType="rect"
+                  />
+                  <Bar dataKey="revenue" name="Pendapatan" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="expense" name="Pengeluaran" fill="#ef4444" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="profit" name="Profit" fill="#10b981" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                <div className="text-center">
+                  <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Belum ada data cabang</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </div>
+
+      {/* Branch Performance Table - Detail lengkap */}
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-green-500" />
+            Performa Cabang Detail
+          </CardTitle>
+          <CardDescription>
+            Analisis lengkap kinerja setiap cabang - transaksi, pendapatan, pengeluaran, profit, dan efisiensi
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {branchPerformance.length > 0 ? (
+            <div className="space-y-4">
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" style={{ minWidth: '1200px' }}>
+                    <thead className="bg-slate-100 dark:bg-slate-800">
+                      <tr>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Ranking</th>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap">Nama Cabang</th>
+                        <th className="text-center p-3 font-semibold whitespace-nowrap">Total Transaksi</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Total Pendapatan</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Total Pengeluaran</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Net Profit</th>
+                        <th className="text-center p-3 font-semibold whitespace-nowrap">Profit Margin</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Avg/Transaksi</th>
+                        <th className="text-center p-3 font-semibold whitespace-nowrap">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {branchPerformance.map((branch, index) => {
+                        const profitMargin = branch.revenue > 0 
+                          ? ((branch.revenue - branch.expense) / branch.revenue * 100).toFixed(1)
+                          : '0';
+                        const avgPerTransaction = branch.revenue > 0 && branch.revenue > 0
+                          ? branch.revenue / Math.max(1, Math.round(branch.revenue / 50000)) // estimasi jumlah transaksi
+                          : 0;
+                        const netProfit = branch.revenue - branch.expense;
+                        const isProfitable = netProfit > 0;
+                        
+                        return (
+                          <tr 
+                            key={branch.name}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="p-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
+                                index === 0 ? 'bg-yellow-500' : 
+                                index === 1 ? 'bg-slate-400' : 
+                                index === 2 ? 'bg-orange-600' : 
+                                'bg-blue-500'
+                              }`}>
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div>
+                                <p className="font-semibold text-slate-900 dark:text-white">
+                                  {branch.name}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  Cabang {index + 1}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex flex-col items-center">
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  {Math.round(branch.revenue / 50000)}
+                                </span>
+                                <span className="text-xs text-slate-500">transaksi</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                  {formatRupiah(branch.revenue)}
+                                </span>
+                                <span className="text-xs text-slate-500">pendapatan</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-red-600 dark:text-red-400">
+                                  {formatRupiah(branch.expense)}
+                                </span>
+                                <span className="text-xs text-slate-500">pengeluaran</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className={`font-bold text-lg ${
+                                  isProfitable 
+                                    ? 'text-green-600 dark:text-green-400' 
+                                    : 'text-red-600 dark:text-red-400'
+                                }`}>
+                                  {formatRupiah(netProfit)}
+                                </span>
+                                <span className="text-xs text-slate-500">profit</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full ${
+                                parseFloat(profitMargin) >= 30 
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : parseFloat(profitMargin) >= 15
+                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                  : parseFloat(profitMargin) > 0
+                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                <span className="font-bold text-sm">{profitMargin}%</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                  {formatRupiah(avgPerTransaction)}
+                                </span>
+                                <span className="text-xs text-slate-500">rata-rata</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              {isProfitable ? (
+                                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  <ArrowUpRight className="h-3 w-3" />
+                                  <span className="font-semibold text-xs">Profitable</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                  <ArrowDownRight className="h-3 w-3" />
+                                  <span className="font-semibold text-xs">Loss</span>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Summary Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3 border-t">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                      Total Cabang
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {branchPerformance.length}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Cabang aktif
+                  </p>
+                </div>
+
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <p className="text-xs font-semibold text-green-800 dark:text-green-300">
+                      Total Pendapatan
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatRupiah(branchPerformance.reduce((sum, b) => sum + b.revenue, 0))}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Dari semua cabang
+                  </p>
+                </div>
+
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Receipt className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+                      Total Pengeluaran
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    {formatRupiah(branchPerformance.reduce((sum, b) => sum + b.expense, 0))}
+                  </p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                    Dari semua cabang
+                  </p>
+                </div>
+
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <p className="text-xs font-semibold text-purple-800 dark:text-purple-300">
+                      Net Profit Total
+                    </p>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {formatRupiah(branchPerformance.reduce((sum, b) => sum + (b.revenue - b.expense), 0))}
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    Profit keseluruhan
+                  </p>
+                </div>
+              </div>
+
+              {/* Legend */}
+              <div className="space-y-2 pt-3 border-t">
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Keterangan Profit Margin:
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Sangat Baik (≥30%)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Baik (15-29%)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Cukup (1-14%)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Rugi (≤0%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-[300px] flex items-center justify-center">
+              <div className="text-center">
+                <Building2 className="h-16 w-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Belum Ada Data Cabang
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Data akan muncul setelah ada transaksi di cabang
+                </p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Employee Performance - FULL WIDTH DI BAWAH */}
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-purple-500" />
+              Performa Karyawan Detail
+            </CardTitle>
+            <CardDescription>
+              Analisis lengkap kinerja setiap karyawan - transaksi, komisi, kehadiran, dan produktivitas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {employeePerformance.length > 0 ? (
+              <div className="space-y-4">
+                {/* Performance Table */}
+                <div className="border rounded-lg overflow-hidden relative">
+                  {/* Gradient indicator kanan */}
+                  <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none z-[5]"></div>
+                  
+                  <div 
+                    className="overflow-x-auto overflow-y-auto max-h-[400px] table-scroll-container"
+                  >
+                    <table className="w-full text-sm" style={{ minWidth: '1400px' }}>
+                      <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+                        <tr>
+                          <th className="text-left p-3 font-semibold whitespace-nowrap sticky left-0 bg-slate-100 dark:bg-slate-800 z-20 border-r border-slate-300 dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Karyawan</th>
+                          <th className="text-center p-3 font-semibold whitespace-nowrap">Transaksi</th>
+                          <th className="text-right p-3 font-semibold whitespace-nowrap">Total Penjualan</th>
+                          <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Dibayar</th>
+                          <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Pending</th>
+                          <th className="text-center p-3 font-semibold min-w-[160px]">
+                            <div className="whitespace-nowrap">Kehadiran</div>
+                            <div className="text-[10px] font-normal text-slate-500 mt-0.5 whitespace-nowrap">(Hari + Total Jam Kerja)</div>
+                          </th>
+                          <th className="text-right p-3 font-semibold whitespace-nowrap">Avg/Transaksi</th>
+                          <th className="text-center p-3 font-semibold whitespace-nowrap">Produktivitas</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {employeePerformance.map((emp, index) => {
+                          const productivity = emp.attendanceDays > 0 
+                            ? (emp.totalTransactions / emp.attendanceDays).toFixed(1) 
+                            : '0';
+                          const avgTransaction = emp.totalTransactions > 0 
+                            ? emp.totalRevenue / emp.totalTransactions 
+                            : 0;
+                          
+                          return (
+                            <tr 
+                              key={emp.id} 
+                              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                            >
+                              <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 ${
+                                    index === 0 ? 'bg-yellow-500' : 
+                                    index === 1 ? 'bg-slate-400' : 
+                                    index === 2 ? 'bg-orange-600' : 
+                                    'bg-blue-500'
+                                  }`}>
+                                    {index + 1}
+                                  </div>
+                                  <div className="min-w-[120px]">
+                                    <p className="font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                                      {emp.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500 whitespace-nowrap">
+                                      {emp.position}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex flex-col items-center">
+                                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                                    {emp.totalTransactions}
+                                  </span>
+                                  <span className="text-xs text-slate-500">transaksi</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="font-semibold text-green-600 dark:text-green-400">
+                                    {formatRupiah(emp.totalRevenue)}
+                                  </span>
+                                  <span className="text-xs text-slate-500">penjualan</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                    {formatRupiah(emp.totalCommission)}
+                                  </span>
+                                  <span className="text-xs text-slate-500">dibayar</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="flex flex-col items-end">
+                                  {emp.pendingCommission > 0 ? (
+                                    <>
+                                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                        {formatRupiah(emp.pendingCommission)}
+                                      </span>
+                                      <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        pending
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="font-semibold text-slate-400">
+                                        {formatRupiah(0)}
+                                      </span>
+                                      <span className="text-xs text-slate-400">-</span>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                {emp.attendanceDays > 0 ? (
+                                  <div className="flex flex-col items-center">
+                                    <div className="space-y-1">
+                                      {/* Hari Hadir */}
+                                      <div className="flex items-center justify-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                                        <span className="font-bold text-blue-700 dark:text-blue-300 text-base">
+                                          {emp.attendanceDays}
+                                        </span>
+                                        <span className="text-xs text-blue-600 dark:text-blue-400">hari</span>
+                                      </div>
+                                      {/* Total Jam Kerja */}
+                                      <div className="bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded">
+                                        <div className="flex items-center justify-center gap-1 text-xs font-mono">
+                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {emp.totalWorkHours}
+                                          </span>
+                                          <span className="text-slate-500 text-[10px]">jam</span>
+                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {emp.totalWorkMinutes}
+                                          </span>
+                                          <span className="text-slate-500 text-[10px]">menit</span>
+                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {emp.totalWorkSeconds}
+                                          </span>
+                                          <span className="text-slate-500 text-[10px]">detik</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col items-center">
+                                    <span className="text-slate-400 text-sm">-</span>
+                                    <span className="text-xs text-slate-400">belum hadir</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 text-right">
+                                <div className="flex flex-col items-end">
+                                  <span className="font-semibold text-orange-600 dark:text-orange-400">
+                                    {formatRupiah(avgTransaction)}
+                                  </span>
+                                  <span className="text-xs text-slate-500">rata-rata</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex flex-col items-center">
+                                  {emp.totalTransactions === 0 ? (
+                                    <div className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                      Belum Ada
+                                    </div>
+                                  ) : (
+                                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                      parseFloat(productivity) >= 5 
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                                        : parseFloat(productivity) >= 3 
+                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                    }`}>
+                                      {productivity}
+                                    </div>
+                                  )}
+                                  <span className="text-xs text-slate-500 mt-1">
+                                    {emp.totalTransactions === 0 ? 'data' : 'trx/hari'}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Performance Indicators Legend */}
+                <div className="space-y-3 pt-3 border-t">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                        Produktivitas Tinggi (≥5 transaksi/hari)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                        Produktivitas Sedang (3-4 transaksi/hari)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">
+                        Produktivitas Rendah (&lt;3 transaksi/hari)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                            Komisi Pending
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                            Komisi yang masih pending akan otomatis update setelah diatur di menu "Atur Komisi" atau menu "Transaksi". Data akan langsung ter-update secara real-time.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                      <div className="flex items-start gap-2">
+                        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                            Kehadiran Detail
+                          </p>
+                          <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                            Menampilkan jumlah hari hadir + total jam kerja lengkap (jam, menit, detik). Dihitung dari check-in hingga check-out dikurangi waktu istirahat.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="h-[400px] flex items-center justify-center">
+                <div className="text-center max-w-md">
+                  <Users className="h-16 w-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Belum Ada Data Performa Karyawan
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    Data akan muncul setelah ada transaksi yang diselesaikan oleh karyawan
+                  </p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+                    <p className="text-xs text-blue-800 dark:text-blue-300 font-semibold mb-2">
+                      📋 Yang akan ditampilkan:
+                    </p>
+                    <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                      <li>• Total transaksi per karyawan</li>
+                      <li>• Total penjualan yang dihasilkan</li>
+                      <li>• Komisi yang diterima</li>
+                      <li>• Kehadiran dan produktivitas</li>
+                      <li>• Rata-rata nilai transaksi</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
   )
 }

@@ -302,10 +302,12 @@ export function TransactionHistory() {
         .from("transactions")
         .select(`
           *,
-          branches:branches(id, name),
           transaction_items(
             id,
             service_id,
+            service_name,
+            service_type,
+            service_category,
             quantity,
             unit_price,
             total_price,
@@ -313,8 +315,7 @@ export function TransactionHistory() {
             commission_status,
             commission_type,
             commission_value,
-            commission_amount,
-            services(id, name, price)
+            commission_amount
           )
         `)
         .gte("created_at", `${startDate}T00:00:00+00:00`)
@@ -335,19 +336,8 @@ export function TransactionHistory() {
       console.log("✅ Fetched transactions:", transactionsData?.length || 0)
 
       if (transactionsData && transactionsData.length > 0) {
-        // Ambil data cashier dan server secara terpisah untuk setiap transaksi
-        const cashierIds = [...new Set(transactionsData.map(t => t.cashier_id).filter(Boolean))]
-        const serverIds = [...new Set(transactionsData.map(t => t.server_id).filter(Boolean))]
-        const allUserIds = [...new Set([...cashierIds, ...serverIds])]
-        
-        const { data: usersData } = await supabase
-          .from('users')
-          .select('id, name')
-          .in('id', allUserIds)
-        
-        const usersMap = new Map(usersData?.map(u => [u.id, u]) || [])
-
-        // Load commission data untuk setiap transaksi
+        // Sekarang cashier_name, server_name, branch_name sudah tersedia di transactions
+        // Tidak perlu query users lagi karena sudah ada snapshot
         const enrichedTransactions = await Promise.all(
           transactionsData.map(async (transaction) => {
             // Gunakan data komisi yang sudah ada di transaction_items dari database
@@ -357,7 +347,7 @@ export function TransactionHistory() {
                                        item.commission_amount > 0;
               
               if (hasCommissionData) {
-                console.log('✅ Commission data found in DB for item:', item.services?.name, {
+                console.log('✅ Commission data found in DB for item:', item.service_name, {
                   barber_id: item.barber_id,
                   status: item.commission_status,
                   type: item.commission_type,
@@ -365,7 +355,7 @@ export function TransactionHistory() {
                   amount: item.commission_amount
                 });
               } else {
-                console.log('⚠️ No commission data for item:', item.services?.name, {
+                console.log('⚠️ No commission data for item:', item.service_name, {
                   status: item.commission_status,
                   barber_id: item.barber_id
                 });
@@ -374,18 +364,20 @@ export function TransactionHistory() {
               return {
                 ...item,
                 has_commission: hasCommissionData,
-                service: item.services // Rename untuk compatibility
+                // Create service object dari snapshot data untuk backward compatibility
+                service: item.service_name ? {
+                  name: item.service_name,
+                  price: item.unit_price
+                } : null
               };
             });
 
-            const cashier = usersMap.get(transaction.cashier_id)
-            const server = usersMap.get(transaction.server_id)
-
             return {
               ...transaction,
-              cashier: cashier ? { name: cashier.name } : null,
-              server: server ? { name: server.name } : null, // Karyawan yang melayani
-              branch: transaction.branches ? { name: transaction.branches.name } : null,
+              // Gunakan snapshot data yang sudah ada
+              cashier: transaction.cashier_name ? { name: transaction.cashier_name } : null,
+              server: transaction.server_name ? { name: transaction.server_name } : null,
+              branch: transaction.branch_name ? { name: transaction.branch_name } : null,
               transaction_items: itemsWithCommission
             }
           })

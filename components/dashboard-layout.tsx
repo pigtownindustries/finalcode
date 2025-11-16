@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile"
 
 interface User {
   email: string
-  role: string
+  position: string
   loginTime: string
   name?: string
   [key: string]: any

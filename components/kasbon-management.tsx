@@ -98,14 +98,10 @@ export default function KasbonManagement() {
       if (usersError) throw usersError
       setUsers(usersData || [])
 
-      // Fetch kasbon requests
+      // Fetch kasbon requests (using snapshot columns: user_name, approved_by_name)
       const { data: kasbonData, error: kasbonError } = await supabase
         .from("kasbon")
-        .select(`
-          *,
-          user:users!kasbon_user_id_fkey(name, email, position),
-          approver:users!kasbon_approved_by_fkey(name)
-        `)
+        .select("*")
         .order("created_at", { ascending: false })
 
       if (kasbonError) throw kasbonError
@@ -712,7 +708,7 @@ export default function KasbonManagement() {
                       <TableRow key={kasbon.id}>
                         <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
                         <TableCell>
-                          <div className="font-medium">{kasbon.user?.name}</div>
+                          <div className="font-medium">{kasbon.user?.name || 'N/A'}</div>
                         </TableCell>
                         <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
                         <TableCell>{kasbon.reason}</TableCell>
@@ -775,7 +771,7 @@ export default function KasbonManagement() {
                     <TableRow key={kasbon.id}>
                       <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{kasbon.user?.name}</div>
+                        <div className="font-medium">{kasbon.user?.name || 'N/A'}</div>
                       </TableCell>
                       <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
                       <TableCell>
@@ -869,7 +865,7 @@ export default function KasbonManagement() {
               Tolak Pengajuan Kasbon
             </DialogTitle>
             <DialogDescription>
-              Berikan alasan penolakan untuk pengajuan kasbon dari {rejectingKasbon?.user?.name}
+              Berikan alasan penolakan untuk pengajuan kasbon dari {rejectingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
           
@@ -878,7 +874,7 @@ export default function KasbonManagement() {
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Karyawan:</span>
-                  <span className="font-medium">{rejectingKasbon.user?.name}</span>
+                  <span className="font-medium">{rejectingKasbon.user?.name || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Jumlah:</span>
@@ -942,7 +938,7 @@ export default function KasbonManagement() {
               Pembayaran Kasbon
             </DialogTitle>
             <DialogDescription>
-              Proses pembayaran kasbon untuk {payingKasbon?.user?.name}
+              Proses pembayaran kasbon untuk {payingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
 
@@ -952,7 +948,7 @@ export default function KasbonManagement() {
                 <div className="bg-blue-50 p-4 rounded-lg space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Karyawan:</span>
-                    <span className="font-medium">{payingKasbon.user?.name}</span>
+                    <span className="font-medium">{payingKasbon.user?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Total Kasbon:</span>
@@ -1064,7 +1060,7 @@ export default function KasbonManagement() {
               Perpanjang Jatuh Tempo
             </DialogTitle>
             <DialogDescription>
-              Ubah tanggal jatuh tempo kasbon untuk {extendingKasbon?.user?.name}
+              Ubah tanggal jatuh tempo kasbon untuk {extendingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1074,7 +1070,7 @@ export default function KasbonManagement() {
                 <div className="bg-purple-50 p-4 rounded-lg space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Karyawan:</span>
-                    <span className="font-medium">{extendingKasbon.user?.name}</span>
+                    <span className="font-medium">{extendingKasbon.user?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Jumlah Kasbon:</span>

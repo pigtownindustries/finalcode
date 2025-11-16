@@ -367,13 +367,13 @@ export function PointsSystem() {
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <Badge className={`text-xs md:text-sm ${getPointTypeColor(transaction.type || '')}`}>
-                        {getPointTypeText(transaction.type)}
+                      <Badge className={`text-xs md:text-sm ${getPointTypeColor(transaction.points_type || '')}`}>
+                        {getPointTypeText(transaction.points_type)}
                       </Badge>
                       <p
-                        className={`font-bold text-base md:text-lg ${transaction.type === "penalty" || transaction.type === "deducted" ? "text-red-600" : "text-green-600"}`}
+                        className={`font-bold text-base md:text-lg ${transaction.points_type === "penalty" || transaction.points_type === "deducted" ? "text-red-600" : "text-green-600"}`}
                       >
-                        {transaction.type === "penalty" || transaction.type === "deducted" ? "-" : "+"}
+                        {transaction.points_type === "penalty" || transaction.points_type === "deducted" ? "-" : "+"}
                         {transaction.points_earned} poin
                       </p>
                     </div>

@@ -91,7 +91,7 @@ export default function PointsManagement() {
     try {
       setLoading(true);
 
-      // Query users langsung tanpa RPC function (RPC masih pakai kolom 'role' yang tidak ada)
+      // Query users langsung tanpa RPC function
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select("id, name, email, position, status")
@@ -110,12 +110,10 @@ export default function PointsManagement() {
       
       setUsers(usersWithTotals || []);
 
+      // Fetch points (using snapshot column: user_name)
       const { data: transactionsData, error: transactionsError } = await supabase
         .from("points")
-        .select(`
-        *,
-        user:users!points_user_id_fkey(name, email, position)
-      `)
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (transactionsError) throw transactionsError;
@@ -129,7 +127,7 @@ export default function PointsManagement() {
         description: t.description,
         status: "approved" as const,
         created_at: t.created_at,
-        user: t.user,
+        user_name: t.user_name, // Use snapshot column
       }));
 
       setTransactions(mappedTransactions);
@@ -448,8 +446,8 @@ export default function PointsManagement() {
                       <TableCell>{new Date(transaction.created_at).toLocaleDateString("id-ID")}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{transaction.user?.name}</div>
-                          <div className="text-sm text-muted-foreground">{transaction.user?.position || "-"}</div>
+                          <div className="font-medium">{transaction.user_name}</div>
+                          <div className="text-sm text-muted-foreground">-</div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -508,7 +506,7 @@ export default function PointsManagement() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Karyawan</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>Posisi</TableHead>
                     <TableHead>Total Bonus</TableHead>
                     <TableHead>Total Penalty</TableHead>
                     <TableHead>Net Amount</TableHead>

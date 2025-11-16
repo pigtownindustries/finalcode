@@ -34,7 +34,6 @@ interface Employee {
   id: string
   name: string
   email: string
-  role?: string
   position?: string
   baseSalary?: number
   commissions?: CommissionRule[] 

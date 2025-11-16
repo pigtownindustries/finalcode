@@ -27,6 +27,61 @@ import {
 import { FileText, Users, MapPin, DollarSign, Clock, Award, CreditCard, Loader2, Trophy, Coffee, LogOut, XCircle } from "lucide-react"
 import { supabase, getBranches } from "@/lib/supabase"
 
+// Helper function to get date range based on filter
+const getDateRange = (dateRange: string, startDate?: string, endDate?: string) => {
+  const now = new Date()
+  let start: Date
+  let end: Date = now
+
+  switch (dateRange) {
+    case "today":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+      break
+    case "yesterday":
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59)
+      break
+    case "thisWeek":
+      const dayOfWeek = now.getDay()
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek)
+      break
+    case "lastWeek":
+      const lastWeekDay = now.getDay()
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - lastWeekDay - 7)
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - lastWeekDay - 1, 23, 59, 59)
+      break
+    case "thisMonth":
+      start = new Date(now.getFullYear(), now.getMonth(), 1)
+      break
+    case "lastMonth":
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+      break
+    case "last3Months":
+      start = new Date(now.getFullYear(), now.getMonth() - 3, 1)
+      break
+    case "thisYear":
+      start = new Date(now.getFullYear(), 0, 1)
+      break
+    case "custom":
+      if (startDate && endDate) {
+        start = new Date(startDate)
+        end = new Date(new Date(endDate).setHours(23, 59, 59))
+      } else {
+        start = new Date(now.getFullYear(), now.getMonth(), 1)
+      }
+      break
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), 1)
+  }
+
+  return {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  }
+}
+
 interface RevenueData {
   month: string
   revenue: number
@@ -53,6 +108,7 @@ interface EmployeePerformance {
   transactions: number
   rating: number
   branch: string
+  position: string
 }
 
 interface DashboardStats {
@@ -62,6 +118,37 @@ interface DashboardStats {
   activeBranches: number
   revenueGrowth: string
   transactionGrowth: string
+}
+
+interface FinancialDetail {
+  totalRevenue: number
+  totalExpenses: number
+  totalCommissions: number
+  totalKasbon: number
+  netProfit: number
+  profitMargin: number
+  cashPayments: number
+  qrisPayments: number
+  transferPayments: number
+}
+
+interface BranchFinancialDetail {
+  branchId: string
+  branchName: string
+  totalRevenue: number
+  totalExpenses: number
+  totalCommissions: number
+  totalKasbon: number
+  netProfit: number
+  profitMargin: number
+  transactions: number
+  employees: number
+  avgTransactionValue: number
+  revenuePerEmployee: number
+  transactionPerEmployee: number
+  cashPayments: number
+  qrisPayments: number
+  transferPayments: number
 }
 
 export function ComprehensiveReports() {
@@ -84,6 +171,18 @@ export function ComprehensiveReports() {
   const [serviceData, setServiceData] = useState<ServiceData[]>([])
   const [employeePerformance, setEmployeePerformance] = useState<EmployeePerformance[]>([])
   const [branches, setBranches] = useState<any[]>([])
+  const [financialDetail, setFinancialDetail] = useState<FinancialDetail>({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    totalCommissions: 0,
+    totalKasbon: 0,
+    netProfit: 0,
+    profitMargin: 0,
+    cashPayments: 0,
+    qrisPayments: 0,
+    transferPayments: 0,
+  })
+  const [branchFinancialDetails, setBranchFinancialDetails] = useState<BranchFinancialDetail[]>([])
   const [attendanceStats, setAttendanceStats] = useState({
     averageHours: "08:12:00",
     attendanceRate: 94.5,
@@ -114,11 +213,23 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching dashboard stats...")
 
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
       // Get total revenue and transactions
-      const { data: transactions, error: transError } = await supabase
+      let transactionQuery = supabase
         .from("transactions")
-        .select("total_amount, created_at")
+        .select("total_amount, created_at, branch_id")
         .eq("payment_status", "completed")
+        .gte("created_at", start)
+        .lte("created_at", end)
+
+      // Apply branch filter if not "all"
+      if (selectedBranch !== "all") {
+        transactionQuery = transactionQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: transactions, error: transError } = await transactionQuery
 
       if (transError) {
         console.log("[v0] Transaction error:", transError)
@@ -128,7 +239,14 @@ export function ComprehensiveReports() {
       const totalTransactions = transactions?.length || 0
 
       // Get total employees
-      const { data: users, error: usersError } = await supabase.from("users").select("id").eq("status", "active")
+      let employeeQuery = supabase.from("users").select("id, branch_id").eq("status", "active")
+
+      // Apply branch filter for employees if not "all"
+      if (selectedBranch !== "all") {
+        employeeQuery = employeeQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: users, error: usersError } = await employeeQuery
 
       if (usersError) {
         console.log("[v0] Users error:", usersError)
@@ -136,14 +254,17 @@ export function ComprehensiveReports() {
 
       const totalEmployees = users?.length || 0
 
-      // Get active branches
-      const { data: branchesData, error: branchError } = await getBranches()
-
-      if (branchError) {
-        console.log("[v0] Branches error:", branchError)
+      // Get active branches (filter if specific branch selected)
+      let activeBranches = 0
+      if (selectedBranch === "all") {
+        const { data: branchesData, error: branchError } = await getBranches()
+        if (branchError) {
+          console.log("[v0] Branches error:", branchError)
+        }
+        activeBranches = branchesData?.length || 0
+      } else {
+        activeBranches = 1 // Single branch selected
       }
-
-      const activeBranches = branchesData?.length || 0
 
       setDashboardStats({
         totalRevenue,
@@ -169,11 +290,23 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching revenue data...")
 
-      const { data: transactions, error } = await supabase
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
+      let revenueQuery = supabase
         .from("transactions")
-        .select("total_amount, created_at")
+        .select("total_amount, created_at, branch_id")
         .eq("payment_status", "completed")
+        .gte("created_at", start)
+        .lte("created_at", end)
         .order("created_at", { ascending: true })
+
+      // Apply branch filter if not "all"
+      if (selectedBranch !== "all") {
+        revenueQuery = revenueQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: transactions, error } = await revenueQuery
 
       if (error) {
         console.log("[v0] Revenue data error:", error)
@@ -212,6 +345,9 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching branch performance...")
 
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
       const { data: branchesData, error: branchError } = await getBranches()
 
       if (branchError) {
@@ -219,14 +355,21 @@ export function ComprehensiveReports() {
         return
       }
 
+      // Filter branches if specific branch selected
+      const filteredBranches = selectedBranch !== "all" 
+        ? branchesData.filter((b: any) => b.id === selectedBranch)
+        : branchesData
+
       const branchStats = await Promise.all(
-        branchesData.map(async (branch: any) => {
-          // Get transactions for this branch
+        filteredBranches.map(async (branch: any) => {
+          // Get transactions for this branch with date filter
           const { data: transactions } = await supabase
             .from("transactions")
-            .select("total_amount")
+            .select("total_amount, created_at")
             .eq("branch_id", branch.id)
             .eq("payment_status", "completed")
+            .gte("created_at", start)
+            .lte("created_at", end)
 
           // Get employees for this branch
           const { data: employees } = await supabase
@@ -259,6 +402,9 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching service data...")
 
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
       const { data: services, error: servicesError } = await supabase.from("services").select("id, name")
 
       if (servicesError) {
@@ -266,19 +412,49 @@ export function ComprehensiveReports() {
         return
       }
 
+      // Get transaction items with date filter through transactions join
+      const { data: transactions, error: transError } = await supabase
+        .from("transactions")
+        .select("id, branch_id, created_at")
+        .eq("payment_status", "completed")
+        .gte("created_at", start)
+        .lte("created_at", end)
+
+      if (transError) {
+        console.log("[v0] Transactions error:", transError)
+        return
+      }
+
+      // Apply branch filter
+      const filteredTransactionIds = selectedBranch !== "all"
+        ? transactions?.filter(t => t.branch_id === selectedBranch).map(t => t.id) || []
+        : transactions?.map(t => t.id) || []
+
+      if (filteredTransactionIds.length === 0) {
+        setServiceData([])
+        return
+      }
+
       const { data: transactionItems, error: itemsError } = await supabase
         .from("transaction_items")
-        .select("service_id, quantity")
+        .select("service_id, service_name, quantity, transaction_id")
+        .in("transaction_id", filteredTransactionIds)
 
       if (itemsError) {
         console.log("[v0] Transaction items error:", itemsError)
         return
       }
 
-      // Count service usage
+      // Count service usage - gunakan service_name dari snapshot jika service_id tidak valid
       const serviceCounts: { [key: string]: number } = {}
+      const serviceNames: { [key: string]: string } = {}
+      
       transactionItems?.forEach((item) => {
-        serviceCounts[item.service_id] = (serviceCounts[item.service_id] || 0) + (item.quantity || 1)
+        const key = item.service_id || item.service_name || 'unknown'
+        serviceCounts[key] = (serviceCounts[key] || 0) + (item.quantity || 1)
+        if (item.service_name) {
+          serviceNames[key] = item.service_name
+        }
       })
 
       const totalCount = Object.values(serviceCounts).reduce((sum, count) => sum + count, 0)
@@ -292,13 +468,14 @@ export function ComprehensiveReports() {
             const percentage = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0
 
             return {
-              name: service.name,
+              name: service.name.toUpperCase(), // Huruf kapital semua
               value: percentage,
               count,
               color: colors[index % colors.length],
             }
           })
-          .filter((item: any) => item.count > 0) || []
+          .filter((item: any) => item.count > 0)
+          .sort((a: any, b: any) => b.value - a.value) || [] // Urutkan dari tertinggi ke terendah
 
       setServiceData(chartData)
       console.log("[v0] Service data updated:", chartData)
@@ -311,15 +488,26 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching employee performance...")
 
-      const { data: users, error: usersError } = await supabase
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
+      let userQuery = supabase
         .from("users")
         .select(`
           id,
           name,
           branch_id,
+          position,
           branches:branch_id (name)
         `)
         .eq("status", "active")
+
+      // Apply branch filter if not "all"
+      if (selectedBranch !== "all") {
+        userQuery = userQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: users, error: usersError } = await userQuery
 
       if (usersError) {
         console.log("[v0] Employee users error:", usersError)
@@ -328,22 +516,33 @@ export function ComprehensiveReports() {
 
       const employeeStats = await Promise.all(
         users?.map(async (user: any) => {
-          // Get transactions handled by this employee (as cashier)
+          // Get transactions handled by this employee (as cashier) with date filter
           const { data: transactions } = await supabase
             .from("transactions")
-            .select("total_amount")
+            .select("total_amount, created_at")
             .eq("cashier_id", user.id)
             .eq("payment_status", "completed")
+            .gte("created_at", start)
+            .lte("created_at", end)
 
           const revenue = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
           const transactionCount = transactions?.length || 0
 
+          // Determine display position
+          let displayPosition = user.position || "Staff"
+          if (displayPosition === "employee") displayPosition = "Karyawan"
+          if (displayPosition === "cashier") displayPosition = "Kasir"
+          if (displayPosition === "owner") displayPosition = "Owner"
+          if (displayPosition === "barber") displayPosition = "Barber"
+          if (displayPosition === "manager") displayPosition = "Manager"
+          
           return {
             name: user.name,
             revenue,
             transactions: transactionCount,
             rating: 4.5 + Math.random() * 0.5, // Random rating for demo
             branch: user.branches?.name || "Unknown Branch",
+            position: displayPosition,
           }
         }) || [],
       )
@@ -362,10 +561,15 @@ export function ComprehensiveReports() {
     try {
       console.log("[v0] Fetching attendance stats...")
 
+      // Get date range based on filter
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+
       const today = new Date().toISOString().split("T")[0]
 
-      // Get ALL attendance records for historical stats
-      const { data: allAttendance, error: allError } = await supabase.from("attendance").select(`
+      // Get attendance records within date range
+      let attendanceQuery = supabase
+        .from("attendance")
+        .select(`
           total_hours,
           status,
           date,
@@ -374,7 +578,16 @@ export function ComprehensiveReports() {
           total_break_minutes,
           user_id,
           branch_id
-        `) as { data: any[] | null; error: any }
+        `)
+        .gte("date", start.split("T")[0])
+        .lte("date", end.split("T")[0])
+
+      // Apply branch filter if not "all"
+      if (selectedBranch !== "all") {
+        attendanceQuery = attendanceQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: allAttendance, error: allError } = await attendanceQuery as { data: any[] | null; error: any }
 
       if (allError) {
         console.log("[v0] Attendance error:", allError)
@@ -382,30 +595,53 @@ export function ComprehensiveReports() {
       }
 
       // Get TODAY's attendance for real-time data
-      const { data: todayAttendance, error: todayError} = await supabase
+      let todayQuery = supabase
         .from("attendance")
-        .select(`*`) as { data: any[] | null; error: any }
+        .select(`*`)
+        .eq("date", today)
+
+      if (selectedBranch !== "all") {
+        todayQuery = todayQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: todayAttendance, error: todayError} = await todayQuery as { data: any[] | null; error: any }
 
       if (todayError) {
         console.log("[v0] Today attendance error:", todayError)
       }
 
-      // Get users and branches for mapping (ambil semua termasuk inactive untuk mapping transaksi lama)
-      const { data: usersData } = await supabase.from("users").select("id, name")
+      // Get users and branches for mapping
+      let userQuery = supabase.from("users").select("id, name, branch_id")
+      if (selectedBranch !== "all") {
+        userQuery = userQuery.eq("branch_id", selectedBranch)
+      }
+
+      const { data: usersData } = await userQuery
       const { data: branchesData } = await supabase.from("branches").select("id, name")
 
       const userMap = new Map(usersData?.map((u: any) => [u.id, u.name]) || [])
       const branchMap = new Map(branchesData?.map((b: any) => [b.id, b.name]) || [])
 
-      // Calculate per-employee stats
+      // Calculate per-employee stats - Initialize ALL users first
       const employeeStats: {
         [key: string]: {
           totalMinutes: number
           daysWorked: number
           checkedOutDays: number
           todayRecord?: any
+          userId?: string
         }
       } = {}
+
+      // Initialize ALL users from database
+      usersData?.forEach((user: any) => {
+        employeeStats[user.name] = {
+          totalMinutes: 0,
+          daysWorked: 0,
+          checkedOutDays: 0,
+          userId: user.id
+        }
+      })
 
       // Process all historical attendance
       allAttendance?.forEach((a: any) => {
@@ -502,13 +738,8 @@ export function ComprehensiveReports() {
           }
         })
         .sort((a, b) => {
-          // Sort by today's working hours first (active employees on top), then by total minutes
-          if (a.currentStatus !== "absent" && b.currentStatus === "absent") return -1
-          if (a.currentStatus === "absent" && b.currentStatus !== "absent") return 1
-          if (a.currentStatus !== "absent" && b.currentStatus !== "absent") {
-            return b.todayWorkingHours! - a.todayWorkingHours!
-          }
-          return b.totalMinutes - a.totalMinutes
+          // Sort by attendance rate (best to worst)
+          return b.attendanceRate - a.attendanceRate
         })
 
       setEmployeeAttendanceList(employeeList)
@@ -568,6 +799,145 @@ export function ComprehensiveReports() {
     }
   }
 
+  const fetchFinancialDetails = async () => {
+    try {
+      console.log("[v0] Fetching financial details...")
+      
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+      
+      // Get branches for filtering
+      const { data: branchesData } = await getBranches()
+      const filteredBranches = selectedBranch !== "all" 
+        ? branchesData?.filter((b: any) => b.id === selectedBranch) || []
+        : branchesData || []
+
+      // Fetch all financial data in parallel
+      const branchFinancials = await Promise.all(
+        filteredBranches.map(async (branch: any) => {
+          // 1. Get transactions (revenue & payment methods)
+          const { data: transactions } = await supabase
+            .from("transactions")
+            .select("total_amount, payment_method, created_at")
+            .eq("branch_id", branch.id)
+            .eq("payment_status", "completed")
+            .gte("created_at", start)
+            .lte("created_at", end)
+
+          const totalRevenue = transactions?.reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+          const transactionCount = transactions?.length || 0
+
+          // Payment method breakdown
+          const cashPayments = transactions?.filter(t => t.payment_method === "cash").reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+          const qrisPayments = transactions?.filter(t => t.payment_method === "qris").reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+          const transferPayments = transactions?.filter(t => t.payment_method === "transfer").reduce((sum, t) => sum + (t.total_amount || 0), 0) || 0
+
+          // 2. Get expenses
+          const { data: expenses } = await supabase
+            .from("expenses")
+            .select("amount, created_at")
+            .eq("branch_id", branch.id)
+            .gte("created_at", start)
+            .lte("created_at", end)
+
+          const totalExpenses = expenses?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0
+
+          // 3. Get commissions
+          const { data: commissions } = await supabase
+            .from("commissions")
+            .select("amount, created_at, branch_id")
+            .eq("branch_id", branch.id)
+            .gte("created_at", start)
+            .lte("created_at", end)
+
+          const totalCommissions = commissions?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0
+
+          // 4. Get kasbon
+          const { data: kasbonData } = await supabase
+            .from("kasbon")
+            .select("amount, created_at, branch_id, status")
+            .eq("branch_id", branch.id)
+            .eq("status", "approved")
+            .gte("created_at", start)
+            .lte("created_at", end)
+
+          const totalKasbon = kasbonData?.reduce((sum, k) => sum + (k.amount || 0), 0) || 0
+
+          // 5. Get employees
+          const { data: employees } = await supabase
+            .from("users")
+            .select("id")
+            .eq("branch_id", branch.id)
+            .eq("status", "active")
+
+          const employeeCount = employees?.length || 0
+
+          // Calculate net profit and metrics
+          const netProfit = totalRevenue - totalExpenses - totalCommissions
+          const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+          const avgTransactionValue = transactionCount > 0 ? totalRevenue / transactionCount : 0
+          const revenuePerEmployee = employeeCount > 0 ? totalRevenue / employeeCount : 0
+          const transactionPerEmployee = employeeCount > 0 ? transactionCount / employeeCount : 0
+
+          return {
+            branchId: branch.id,
+            branchName: branch.name,
+            totalRevenue,
+            totalExpenses,
+            totalCommissions,
+            totalKasbon,
+            netProfit,
+            profitMargin,
+            transactions: transactionCount,
+            employees: employeeCount,
+            avgTransactionValue,
+            revenuePerEmployee,
+            transactionPerEmployee,
+            cashPayments,
+            qrisPayments,
+            transferPayments,
+          }
+        })
+      )
+
+      setBranchFinancialDetails(branchFinancials)
+
+      // Calculate totals
+      const totals = branchFinancials.reduce(
+        (acc, branch) => ({
+          totalRevenue: acc.totalRevenue + branch.totalRevenue,
+          totalExpenses: acc.totalExpenses + branch.totalExpenses,
+          totalCommissions: acc.totalCommissions + branch.totalCommissions,
+          totalKasbon: acc.totalKasbon + branch.totalKasbon,
+          netProfit: acc.netProfit + branch.netProfit,
+          cashPayments: acc.cashPayments + branch.cashPayments,
+          qrisPayments: acc.qrisPayments + branch.qrisPayments,
+          transferPayments: acc.transferPayments + branch.transferPayments,
+        }),
+        {
+          totalRevenue: 0,
+          totalExpenses: 0,
+          totalCommissions: 0,
+          totalKasbon: 0,
+          netProfit: 0,
+          cashPayments: 0,
+          qrisPayments: 0,
+          transferPayments: 0,
+        }
+      )
+
+      const profitMargin = totals.totalRevenue > 0 ? (totals.netProfit / totals.totalRevenue) * 100 : 0
+
+      setFinancialDetail({
+        ...totals,
+        profitMargin,
+      })
+
+      console.log("[v0] Financial details updated:", { totals, branchCount: branchFinancials.length })
+    } catch (error) {
+      console.error("[v0] Error fetching financial details:", error)
+    }
+  }
+
   const generatePDFReport = async () => {
     setGenerating(true)
 
@@ -581,14 +951,39 @@ export function ComprehensiveReports() {
         minute: "2-digit",
       })
 
-      const periodText =
-        {
-          today: "Hari Ini",
-          thisWeek: "Minggu Ini",
-          thisMonth: "Bulan Ini",
-          thisYear: "Tahun Ini",
-          custom: "Custom Range",
-        }[dateRange] || dateRange
+      // Generate dynamic period text with actual dates
+      const { startDate: start, endDate: end } = getDateRange(dateRange, startDate, endDate)
+      const startDateObj = new Date(start)
+      const endDateObj = new Date(end)
+      
+      const monthNames = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ]
+      
+      let periodText = ""
+      
+      if (dateRange === "thisMonth") {
+        periodText = `Bulan ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()}`
+      } else if (dateRange === "lastMonth") {
+        periodText = `Bulan ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()}`
+      } else if (dateRange === "thisYear") {
+        periodText = `Tahun ${startDateObj.getFullYear()}`
+      } else if (dateRange === "today") {
+        periodText = `Hari Ini (${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()})`
+      } else if (dateRange === "yesterday") {
+        periodText = `Kemarin (${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()})`
+      } else if (dateRange === "thisWeek") {
+        periodText = `Minggu Ini (${startDateObj.getDate()} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()})`
+      } else if (dateRange === "lastWeek") {
+        periodText = `Minggu Lalu (${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()})`
+      } else if (dateRange === "last3Months") {
+        periodText = `3 Bulan Terakhir (${monthNames[startDateObj.getMonth()]} - ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()})`
+      } else if (dateRange === "custom") {
+        periodText = `${startDateObj.getDate()} ${monthNames[startDateObj.getMonth()]} ${startDateObj.getFullYear()} - ${endDateObj.getDate()} ${monthNames[endDateObj.getMonth()]} ${endDateObj.getFullYear()}`
+      } else {
+        periodText = dateRange
+      }
 
       const branchText =
         selectedBranch === "all"
@@ -676,6 +1071,129 @@ export function ComprehensiveReports() {
               </div>
             </div>
           </div>
+
+          <div class="section page-break">
+            <h2>📊 ANALISIS KEUANGAN DETAIL</h2>
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <div class="metric-value">Rp ${financialDetail.totalRevenue.toLocaleString("id-ID")}</div>
+                <div class="metric-label">Total Pendapatan</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value" style="color: #dc2626;">Rp ${financialDetail.totalExpenses.toLocaleString("id-ID")}</div>
+                <div class="metric-label">Total Pengeluaran</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value" style="color: #ea580c;">Rp ${financialDetail.totalCommissions.toLocaleString("id-ID")}</div>
+                <div class="metric-label">Total Komisi Karyawan</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value" style="color: #d97706;">Rp ${financialDetail.totalKasbon.toLocaleString("id-ID")}</div>
+                <div class="metric-label">Total Kasbon</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 25px; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border-left: 5px solid #10b981;">
+              <h3 style="margin: 0 0 15px 0; color: #065f46; font-size: 18px;">💰 KEUNTUNGAN BERSIH</h3>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-size: 32px; font-weight: bold; color: #059669;">Rp ${financialDetail.netProfit.toLocaleString("id-ID")}</div>
+                  <div style="color: #047857; font-size: 14px; margin-top: 5px;">Profit Margin: ${financialDetail.profitMargin.toFixed(2)}%</div>
+                </div>
+                <div style="text-align: right;">
+                  <div style="font-size: 14px; color: #065f46;">Formula:</div>
+                  <div style="font-size: 12px; color: #047857;">Revenue - Expenses - Commissions - Kasbon</div>
+                </div>
+              </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #374151;">BREAKDOWN METODE PEMBAYARAN</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Metode Pembayaran</th>
+                  <th class="text-right">Jumlah (Rp)</th>
+                  <th class="text-center">Persentase</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 3px; margin-right: 8px;"></span>Cash</td>
+                  <td class="text-right">Rp ${financialDetail.cashPayments.toLocaleString("id-ID")}</td>
+                  <td class="text-center">${financialDetail.totalRevenue > 0 ? ((financialDetail.cashPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%</td>
+                </tr>
+                <tr>
+                  <td><span style="display: inline-block; width: 12px; height: 12px; background: #3b82f6; border-radius: 3px; margin-right: 8px;"></span>QRIS</td>
+                  <td class="text-right">Rp ${financialDetail.qrisPayments.toLocaleString("id-ID")}</td>
+                  <td class="text-center">${financialDetail.totalRevenue > 0 ? ((financialDetail.qrisPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%</td>
+                </tr>
+                <tr>
+                  <td><span style="display: inline-block; width: 12px; height: 12px; background: #8b5cf6; border-radius: 3px; margin-right: 8px;"></span>Transfer</td>
+                  <td class="text-right">Rp ${financialDetail.transferPayments.toLocaleString("id-ID")}</td>
+                  <td class="text-center">${financialDetail.totalRevenue > 0 ? ((financialDetail.transferPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%</td>
+                </tr>
+                <tr style="background: #f9fafb; font-weight: bold;">
+                  <td>TOTAL</td>
+                  <td class="text-right">Rp ${financialDetail.totalRevenue.toLocaleString("id-ID")}</td>
+                  <td class="text-center">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          ${
+            branchFinancialDetails.length > 0
+              ? `
+          <div class="section page-break">
+            <h2>🏪 ANALISIS KEUANGAN PER CABANG</h2>
+            <p style="color: #666; font-style: italic; margin-bottom: 20px;">Detail pendapatan, pengeluaran, dan keuntungan setiap cabang</p>
+            ${branchFinancialDetails
+              .map(
+                (branch) => `
+            <div style="margin-bottom: 30px; padding: 20px; background: #f9fafb; border-radius: 12px; border: 2px solid #e5e7eb;">
+              <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 20px;">📍 ${branch.branchName}</h3>
+              
+              <div class="metrics-grid" style="margin-bottom: 15px;">
+                <div style="background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 18px; font-weight: bold; color: #10b981;">Rp ${(branch.totalRevenue || 0).toLocaleString("id-ID")}</div>
+                  <div style="font-size: 12px; color: #666;">Pendapatan</div>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 18px; font-weight: bold; color: #dc2626;">Rp ${(branch.totalExpenses || 0).toLocaleString("id-ID")}</div>
+                  <div style="font-size: 12px; color: #666;">Pengeluaran</div>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 18px; font-weight: bold; color: #ea580c;">Rp ${(branch.totalCommissions || 0).toLocaleString("id-ID")}</div>
+                  <div style="font-size: 12px; color: #666;">Komisi</div>
+                </div>
+                <div style="background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 18px; font-weight: bold; color: ${(branch.netProfit || 0) >= 0 ? "#059669" : "#dc2626"};">Rp ${(branch.netProfit || 0).toLocaleString("id-ID")}</div>
+                  <div style="font-size: 12px; color: #666;">Profit</div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 15px; margin-top: 15px;">
+                <div style="flex: 1; background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 14px; color: #666;">Profit Margin</div>
+                  <div style="font-size: 20px; font-weight: bold; color: ${(branch.profitMargin || 0) >= 0 ? "#059669" : "#dc2626"};">${(branch.profitMargin || 0).toFixed(2)}%</div>
+                </div>
+                <div style="flex: 1; background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 14px; color: #666;">Total Transaksi</div>
+                  <div style="font-size: 20px; font-weight: bold; color: #3b82f6;">${branch.transactions || 0}</div>
+                </div>
+                <div style="flex: 1; background: white; padding: 12px; border-radius: 8px;">
+                  <div style="font-size: 14px; color: #666;">Jumlah Karyawan</div>
+                  <div style="font-size: 20px; font-weight: bold; color: #8b5cf6;">${branch.employees || 0}</div>
+                </div>
+              </div>
+            </div>
+            `,
+              )
+              .join("")}
+          </div>
+          `
+              : ""
+          }
 
           ${
             revenueData.length > 0
@@ -885,8 +1403,94 @@ export function ComprehensiveReports() {
             }
           </div>
 
+          <div class="section page-break">
+            <h2>📈 KESIMPULAN & REKOMENDASI</h2>
+            
+            <div style="padding: 20px; background: #eff6ff; border-radius: 12px; border-left: 5px solid #3b82f6; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 15px 0; color: #1e40af;">✅ PENCAPAIAN TERBAIK</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #1e3a8a;">
+                ${branchPerformance.length > 0 ? `<li><strong>Cabang Terbaik:</strong> ${branchPerformance[0].branch} dengan revenue Rp ${branchPerformance[0].revenue.toLocaleString("id-ID")} (${branchPerformance[0].transactions} transaksi)</li>` : ""}
+                ${employeePerformance.length > 0 ? `<li><strong>Karyawan Terbaik:</strong> ${employeePerformance[0].name} dengan revenue Rp ${employeePerformance[0].revenue.toLocaleString("id-ID")} (${employeePerformance[0].transactions} transaksi)</li>` : ""}
+                ${employeeAttendanceList.length > 0 ? `<li><strong>Kehadiran Terbaik:</strong> ${employeeAttendanceList[0]?.name} dengan ${employeeAttendanceList[0]?.totalHours} jam kerja (${employeeAttendanceList[0]?.attendanceRate}% kehadiran)</li>` : ""}
+                <li><strong>Profit Margin:</strong> ${financialDetail.profitMargin.toFixed(2)}% dari total revenue</li>
+                <li><strong>Metode Pembayaran Favorit:</strong> ${financialDetail.cashPayments > financialDetail.qrisPayments && financialDetail.cashPayments > financialDetail.transferPayments ? "Cash" : financialDetail.qrisPayments > financialDetail.transferPayments ? "QRIS" : "Transfer"} (${Math.max(
+                  financialDetail.cashPayments > 0 ? (financialDetail.cashPayments / financialDetail.totalRevenue) * 100 : 0,
+                  financialDetail.qrisPayments > 0 ? (financialDetail.qrisPayments / financialDetail.totalRevenue) * 100 : 0,
+                  financialDetail.transferPayments > 0 ? (financialDetail.transferPayments / financialDetail.totalRevenue) * 100 : 0
+                ).toFixed(1)}%)</li>
+              </ul>
+            </div>
+
+            <div style="padding: 20px; background: #fef3c7; border-radius: 12px; border-left: 5px solid #f59e0b; margin-bottom: 20px;">
+              <h3 style="margin: 0 0 15px 0; color: #92400e;">⚠️ AREA YANG PERLU PERHATIAN</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #78350f;">
+                ${financialDetail.profitMargin < 20 ? `<li><strong>Profit Margin Rendah:</strong> ${financialDetail.profitMargin.toFixed(2)}% (target ideal: >20%). Pertimbangkan optimasi biaya operasional.</li>` : ""}
+                ${attendanceStats.attendanceRate < 90 ? `<li><strong>Tingkat Kehadiran:</strong> ${attendanceStats.attendanceRate}% (target ideal: >90%). Perlu peningkatan disiplin dan motivasi karyawan.</li>` : ""}
+                ${branchPerformance.length > 0 && branchPerformance[branchPerformance.length - 1].revenue < (dashboardStats.totalRevenue / branchPerformance.length) * 0.7 ? `<li><strong>Cabang Underperforming:</strong> ${branchPerformance[branchPerformance.length - 1].branch} perlu strategi peningkatan revenue.</li>` : ""}
+                ${financialDetail.totalExpenses > financialDetail.totalRevenue * 0.4 ? `<li><strong>Pengeluaran Tinggi:</strong> ${((financialDetail.totalExpenses / financialDetail.totalRevenue) * 100).toFixed(1)}% dari revenue. Lakukan audit dan efisiensi biaya.</li>` : ""}
+                ${employeePerformance.length > 0 && employeePerformance[employeePerformance.length - 1].transactions < (dashboardStats.totalTransactions / employeePerformance.length) * 0.5 ? `<li><strong>Karyawan Kurang Produktif:</strong> ${employeePerformance[employeePerformance.length - 1].name} membutuhkan training atau evaluasi.</li>` : ""}
+              </ul>
+            </div>
+
+            <div style="padding: 20px; background: #dcfce7; border-radius: 12px; border-left: 5px solid #10b981;">
+              <h3 style="margin: 0 0 15px 0; color: #065f46;">💡 REKOMENDASI STRATEGIS</h3>
+              <ol style="margin: 0; padding-left: 20px; color: #064e3b;">
+                <li style="margin-bottom: 10px;"><strong>Optimasi Revenue:</strong> Fokus pada upselling dan cross-selling layanan premium. Tingkatkan kualitas layanan untuk meningkatkan customer retention.</li>
+                <li style="margin-bottom: 10px;"><strong>Efisiensi Biaya:</strong> Review pengeluaran rutin dan cari supplier alternatif. Implementasikan sistem inventory yang lebih baik untuk mengurangi waste.</li>
+                <li style="margin-bottom: 10px;"><strong>Pengembangan Karyawan:</strong> Berikan training reguler kepada karyawan dengan performa rendah. Implementasikan sistem reward untuk top performers.</li>
+                <li style="margin-bottom: 10px;"><strong>Ekspansi Pembayaran Digital:</strong> Promosikan QRIS dan Transfer untuk mengurangi risiko cash handling dan meningkatkan efisiensi.</li>
+                <li style="margin-bottom: 10px;"><strong>Monitoring Real-time:</strong> Gunakan dashboard untuk monitoring harian dan ambil keputusan berbasis data secara cepat.</li>
+              </ol>
+            </div>
+
+            <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%); border-radius: 12px;">
+              <h3 style="margin: 0 0 15px 0; color: #374151;">📊 RINGKASAN ANGKA KUNCI</h3>
+              <table style="width: 100%; border: none;">
+                <tr style="border-bottom: 1px solid #d1d5db;">
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Revenue:</td>
+                  <td style="padding: 12px; text-align: right; color: #10b981; font-weight: bold;">Rp ${financialDetail.totalRevenue.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #d1d5db;">
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Expenses:</td>
+                  <td style="padding: 12px; text-align: right; color: #dc2626; font-weight: bold;">Rp ${financialDetail.totalExpenses.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #d1d5db;">
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Commissions:</td>
+                  <td style="padding: 12px; text-align: right; color: #ea580c; font-weight: bold;">Rp ${financialDetail.totalCommissions.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #d1d5db;">
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Kasbon:</td>
+                  <td style="padding: 12px; text-align: right; color: #d97706; font-weight: bold;">Rp ${financialDetail.totalKasbon.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr style="background: #f0fdf4; border-bottom: 3px solid #10b981;">
+                  <td style="padding: 12px; font-weight: bold; color: #065f46; font-size: 16px;">NET PROFIT:</td>
+                  <td style="padding: 12px; text-align: right; color: #059669; font-weight: bold; font-size: 18px;">Rp ${financialDetail.netProfit.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Transaksi:</td>
+                  <td style="padding: 12px; text-align: right; font-weight: bold;">${dashboardStats.totalTransactions.toLocaleString("id-ID")}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Rata-rata per Transaksi:</td>
+                  <td style="padding: 12px; text-align: right; font-weight: bold;">Rp ${dashboardStats.totalTransactions > 0 ? (financialDetail.totalRevenue / dashboardStats.totalTransactions).toLocaleString("id-ID", { maximumFractionDigits: 0 }) : 0}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Total Karyawan:</td>
+                  <td style="padding: 12px; text-align: right; font-weight: bold;">${dashboardStats.totalEmployees} orang</td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px; font-weight: bold; color: #4b5563;">Tingkat Kehadiran:</td>
+                  <td style="padding: 12px; text-align: right; font-weight: bold;">${attendanceStats.attendanceRate}%</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
           <div class="footer">
-            <p>© Barbershop Management System - Laporan dibuat pada ${currentDate}</p>
+            <p><strong>© Barbershop Management System</strong></p>
+            <p>Laporan dibuat pada ${currentDate}</p>
+            <p style="color: #666; font-size: 11px; margin-top: 10px;">Periode: ${periodText} | Cabang: ${branchText}</p>
+            <p style="color: #999; font-size: 10px; margin-top: 5px;">Dokumen ini bersifat rahasia dan hanya untuk keperluan internal manajemen</p>
           </div>
 
           <script>
@@ -931,6 +1535,7 @@ export function ComprehensiveReports() {
         fetchEmployeePerformance(),
         fetchAttendanceStats(),
         fetchBranches(),
+        fetchFinancialDetails(),
       ])
 
       setLoading(false)
@@ -938,7 +1543,7 @@ export function ComprehensiveReports() {
     }
 
     fetchAllData()
-  }, [selectedBranch, dateRange])
+  }, [selectedBranch, dateRange, startDate, endDate]) // Tambahkan startDate dan endDate sebagai dependency
 
   if (loading) {
     return (
@@ -991,8 +1596,12 @@ export function ComprehensiveReports() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Hari Ini</SelectItem>
+                  <SelectItem value="yesterday">Kemarin</SelectItem>
                   <SelectItem value="thisWeek">Minggu Ini</SelectItem>
+                  <SelectItem value="lastWeek">Minggu Lalu</SelectItem>
                   <SelectItem value="thisMonth">Bulan Ini</SelectItem>
+                  <SelectItem value="lastMonth">Bulan Lalu</SelectItem>
+                  <SelectItem value="last3Months">3 Bulan Terakhir</SelectItem>
                   <SelectItem value="thisYear">Tahun Ini</SelectItem>
                   <SelectItem value="custom">Custom Range</SelectItem>
                 </SelectContent>
@@ -1094,66 +1703,148 @@ export function ComprehensiveReports() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Tren Revenue & Transaksi</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-red-600" />
+                Performa Cabang Detail
+              </CardTitle>
+              <CardDescription>
+                Analisis lengkap kinerja setiap cabang - transaksi, pendapatan, pengeluaran, profit, dan efisiensi
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {revenueData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={revenueData}>
-                    <defs>
-                      <linearGradient id="revenueBar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0.7}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
-                    <XAxis dataKey="month" fontSize={12} />
-                    <YAxis 
-                      yAxisId="left" 
-                      fontSize={12}
-                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                    />
-                    <YAxis 
-                      yAxisId="right" 
-                      orientation="right" 
-                      fontSize={12}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid rgba(0, 0, 0, 0.1)',
-                        borderRadius: '8px',
-                        padding: '8px 12px'
-                      }}
-                      formatter={(value, name) => [
-                        name === "revenue" ? `Rp ${Number(value).toLocaleString("id-ID")}` : value,
-                        name === "revenue" ? "Revenue" : "Transaksi",
-                      ]}
-                    />
-                    <Legend />
-                    <Bar 
-                      yAxisId="left" 
-                      dataKey="revenue" 
-                      fill="url(#revenueBar)"
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={60}
-                      name="Revenue"
-                    />
-                    <Line 
-                      yAxisId="right" 
-                      type="monotone" 
-                      dataKey="transactions" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      dot={{ fill: '#3b82f6', r: 4 }}
-                      activeDot={{ r: 6 }}
-                      name="Transaksi"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
+              {branchPerformance.length > 0 ? (
+                <div className="space-y-4">
+                  {branchPerformance.map((branch, index) => (
+                    <div key={branch.branch} className="border rounded-lg overflow-hidden">
+                      <div className="bg-gradient-to-r from-orange-100 via-red-100 to-pink-100 p-4 flex items-center justify-between border-b border-orange-300">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <div className="font-bold text-lg text-gray-900">{branch.branch}</div>
+                            <div className="text-sm text-gray-700">Cabang {index + 1}</div>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-600 text-white border-0 font-bold">Aktif</Badge>
+                      </div>
+                      
+                      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Total Transaksi</div>
+                          <div className="text-xl font-bold text-blue-600">{branch.transactions}</div>
+                          <div className="text-xs text-gray-500">transaksi</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-green-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Total Revenue</div>
+                          <div className="text-xl font-bold text-green-600">
+                            Rp {(branch.revenue / 1000).toFixed(0)}k
+                          </div>
+                          <div className="text-xs text-gray-500">pendapatan</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Avg/Transaksi</div>
+                          <div className="text-xl font-bold text-orange-600">
+                            Rp {branch.transactions > 0 ? (branch.revenue / branch.transactions / 1000).toFixed(0) : 0}k
+                          </div>
+                          <div className="text-xs text-gray-500">rata-rata</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-purple-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Karyawan</div>
+                          <div className="text-xl font-bold text-purple-600">{branch.employees}</div>
+                          <div className="text-xs text-gray-500">orang</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-gray-500">
-                  Tidak ada data revenue untuk ditampilkan
+                <div className="flex items-center justify-center py-12 text-gray-500">
+                  <div className="text-center">
+                    <MapPin className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                    <p>Tidak ada data cabang untuk ditampilkan</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-red-600" />
+                Performa Karyawan Detail
+              </CardTitle>
+              <CardDescription>
+                Analisis lengkap kinerja setiap karyawan - transaksi, penjualan, komisi, kehadiran, dan produktivitas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {employeePerformance.length > 0 ? (
+                <div className="space-y-3">
+                  {employeePerformance.map((employee, index) => (
+                    <div key={employee.name} className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="bg-gradient-to-r from-blue-100 via-indigo-100 to-purple-100 p-4 flex items-center justify-between border-b border-blue-300">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <div className="font-bold text-lg text-gray-900">{employee.name}</div>
+                            <div className="text-sm text-gray-700">{employee.branch}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right mr-2">
+                            <div className="text-xs text-gray-700">Rating</div>
+                            <div className="text-lg font-bold text-orange-600">⭐ {employee.rating.toFixed(1)}</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="text-center p-3 bg-green-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Total Penjualan</div>
+                          <div className="text-lg font-bold text-green-600">
+                            Rp {(employee.revenue / 1000).toFixed(0)}k
+                          </div>
+                          <div className="text-xs text-gray-500">revenue</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Transaksi</div>
+                          <div className="text-lg font-bold text-blue-600">{employee.transactions}</div>
+                          <div className="text-xs text-gray-500">dibayar</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-orange-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Avg/Transaksi</div>
+                          <div className="text-lg font-bold text-orange-600">
+                            Rp {employee.transactions > 0 ? (employee.revenue / employee.transactions / 1000).toFixed(0) : 0}k
+                          </div>
+                          <div className="text-xs text-gray-500">rata-rata</div>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-purple-50 rounded-lg">
+                          <div className="text-xs text-gray-600 mb-1">Produktivitas</div>
+                          <div className="text-lg font-bold text-purple-600">
+                            {employee.transactions > 0 ? ((employee.revenue / employee.transactions) / 1000 * 0.1).toFixed(1) : 0}
+                          </div>
+                          <div className="text-xs text-gray-500">score</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-12 text-gray-500">
+                  <div className="text-center">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                    <p>Tidak ada data performa karyawan untuk ditampilkan</p>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -1161,130 +1852,1159 @@ export function ComprehensiveReports() {
         </TabsContent>
 
         <TabsContent value="financial" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue by Branch</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {branchPerformance.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={branchPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="branch" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`Rp ${Number(value).toLocaleString("id-ID")}`, "Revenue"]} />
-                      <Bar dataKey="revenue" fill="#ef4444" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-gray-500">
-                    Tidak ada data cabang untuk ditampilkan
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Ringkasan Keuangan Global */}
+          <Card className="border-2 border-red-700">
+            <CardHeader className="bg-gradient-to-r from-orange-100 via-red-100 to-pink-100 border-b-2 border-red-300">
+              <CardTitle className="text-2xl flex items-center gap-2 text-gray-900">
+                <DollarSign className="h-6 w-6 text-red-600" />
+                💰 RINGKASAN KEUANGAN BISNIS
+              </CardTitle>
+              <CardDescription className="text-gray-700">
+                Laporan keuangan lengkap - Pendapatan, Pengeluaran, Profit & Loss Statement
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 text-gray-900">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <Card className="bg-white border-l-4 border-green-600 shadow-md">
+                  <CardContent className="p-4 text-gray-900">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">💵 Total Pendapatan</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Income</span>
+                    </div>
+                    <div className="text-3xl font-bold text-green-600">
+                      Rp {financialDetail.totalRevenue.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Total uang masuk dari penjualan</p>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Service Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {serviceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={serviceData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {serviceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, "Persentase"]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-gray-500">
-                    Tidak ada data layanan untuk ditampilkan
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+                <Card className="bg-white border-l-4 border-red-600 shadow-md">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">💸 Total Pengeluaran</span>
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Expenses</span>
+                    </div>
+                    <div className="text-3xl font-bold text-red-600">
+                      Rp {financialDetail.totalExpenses.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Total biaya operasional cabang</p>
+                  </CardContent>
+                </Card>
 
-        <TabsContent value="branches" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {branchPerformance.map((branch) => (
-              <Card key={branch.branch}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    {branch.branch}
-                    <Badge className="bg-green-100 text-green-800">Aktif</Badge>
+                <Card className="bg-white border-l-4 border-orange-600 shadow-md">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">🎁 Total Komisi</span>
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">Commission</span>
+                    </div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      Rp {financialDetail.totalCommissions.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Komisi yang dibayar ke karyawan</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <Card className="bg-white border-l-4 border-purple-600 shadow-md">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">💳 Total Kasbon</span>
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Advance</span>
+                    </div>
+                    <div className="text-2xl font-bold text-purple-600">
+                      Rp {financialDetail.totalKasbon.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Kasbon yang disetujui (belum dikurangi dari gaji)</p>
+                  </CardContent>
+                </Card>
+
+                <Card className={`bg-white border-l-4 ${financialDetail.netProfit >= 0 ? 'border-blue-600' : 'border-red-600'} shadow-md`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-600">
+                        {financialDetail.netProfit >= 0 ? '✅ Net Profit' : '❌ Net Loss'}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded ${financialDetail.netProfit >= 0 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                        {financialDetail.profitMargin.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className={`text-2xl font-bold ${financialDetail.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      Rp {financialDetail.netProfit.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Pendapatan - Pengeluaran - Komisi = Profit Bersih
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Breakdown Metode Pembayaran */}
+              <Card className="bg-white shadow-md">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-blue-600" />
+                    💳 Breakdown Metode Pembayaran
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <span className="text-sm text-gray-600">Revenue:</span>
-                    <div className="text-xl font-bold text-green-600">Rp {branch.revenue.toLocaleString("id-ID")}</div>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Transaksi:</span>
-                    <div className="text-lg font-medium">{branch.transactions}</div>
-                  </div>
-                  <div>
-                    <span className="text-sm text-gray-600">Karyawan:</span>
-                    <div className="text-lg font-medium">{branch.employees} orang</div>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">💵 Cash</span>
+                        <span className="text-xs bg-green-400 text-gray-900 px-2 py-1 rounded font-semibold">
+                          {financialDetail.totalRevenue > 0 ? ((financialDetail.cashPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold text-green-700">
+                        Rp {financialDetail.cashPayments.toLocaleString("id-ID")}
+                      </div>
+                      <div className="mt-2 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full transition-all"
+                          style={{width: `${financialDetail.totalRevenue > 0 ? (financialDetail.cashPayments / financialDetail.totalRevenue * 100) : 0}%`}}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">📱 QRIS</span>
+                        <span className="text-xs bg-blue-400 text-gray-900 px-2 py-1 rounded font-semibold">
+                          {financialDetail.totalRevenue > 0 ? ((financialDetail.qrisPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold text-blue-700">
+                        Rp {financialDetail.qrisPayments.toLocaleString("id-ID")}
+                      </div>
+                      <div className="mt-2 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{width: `${financialDetail.totalRevenue > 0 ? (financialDetail.qrisPayments / financialDetail.totalRevenue * 100) : 0}%`}}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">🏦 Transfer</span>
+                        <span className="text-xs bg-purple-400 text-gray-900 px-2 py-1 rounded font-semibold">
+                          {financialDetail.totalRevenue > 0 ? ((financialDetail.transferPayments / financialDetail.totalRevenue) * 100).toFixed(1) : 0}%
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold text-purple-700">
+                        Rp {financialDetail.transferPayments.toLocaleString("id-ID")}
+                      </div>
+                      <div className="mt-2 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-purple-600 h-2 rounded-full transition-all"
+                          style={{width: `${financialDetail.totalRevenue > 0 ? (financialDetail.transferPayments / financialDetail.totalRevenue * 100) : 0}%`}}
+                        ></div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-            {branchPerformance.length === 0 && (
-              <div className="col-span-3 flex items-center justify-center py-8 text-gray-500">
-                Tidak ada data cabang untuk ditampilkan
-              </div>
-            )}
-          </div>
-        </TabsContent>
+            </CardContent>
+          </Card>
 
-        <TabsContent value="employees" className="space-y-6">
+          {/* Detail Per Cabang dengan Data Keuangan Lengkap */}
           <Card>
             <CardHeader>
-              <CardTitle>Performa Karyawan</CardTitle>
-              <CardDescription>Top performing employees berdasarkan revenue dan rating</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-red-600" />
+                📊 LAPORAN KEUANGAN PER CABANG
+              </CardTitle>
+              <CardDescription>
+                Analisis mendalam setiap cabang: Pendapatan, Pengeluaran, Komisi, Kasbon, Profit Margin, dan Metode Pembayaran
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {employeePerformance.length > 0 ? (
-                <div className="space-y-4">
-                  {employeePerformance.map((employee, index) => (
-                    <div key={employee.name} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium">{employee.name}</div>
-                          <div className="text-sm text-gray-600">{employee.branch}</div>
+              {branchFinancialDetails.length > 0 ? (
+                <div className="space-y-6">
+                  {branchFinancialDetails.map((branch, index) => (
+                    <div key={branch.branchId} className="border-2 border-gray-300 rounded-xl overflow-hidden hover:shadow-2xl transition-shadow">
+                      {/* Header Cabang */}
+                      <div className="bg-gradient-to-r from-orange-100 via-red-100 to-pink-100 p-5 border-b-2 border-orange-300">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg">
+                              #{index + 1}
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold text-gray-900">{branch.branchName}</div>
+                              <div className="text-sm text-gray-700">{branch.employees} Karyawan • {branch.transactions} Transaksi</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge className={`${branch.netProfit >= 0 ? 'bg-green-400 text-gray-900' : 'bg-red-400 text-gray-900'} border-0 text-lg px-4 py-2 font-bold`}>
+                              {branch.netProfit >= 0 ? '📈 PROFIT' : '📉 LOSS'}
+                            </Badge>
+                            <div className="text-sm mt-1">Margin: {branch.profitMargin.toFixed(1)}%</div>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-green-600">Rp {employee.revenue.toLocaleString("id-ID")}</div>
-                        <div className="text-sm text-gray-600">{employee.transactions} transaksi</div>
-                        <div className="text-sm">⭐ {employee.rating.toFixed(1)}</div>
+
+                      {/* Konten Detail */}
+                      <div className="p-6 bg-gray-50 space-y-6 text-gray-900">
+                        {/* Section 1: Pemasukan & Pengeluaran */}
+                        <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                          <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                            💰 PEMASUKAN & PENGELUARAN
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg border border-green-300">
+                              <div className="text-xs text-gray-600 mb-1">💵 Pendapatan</div>
+                              <div className="text-xl font-bold text-green-700">
+                                Rp {branch.totalRevenue.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-xs text-green-600 mt-1">Total penjualan</div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-red-50 to-rose-100 rounded-lg border border-red-300">
+                              <div className="text-xs text-gray-600 mb-1">💸 Pengeluaran</div>
+                              <div className="text-xl font-bold text-red-700">
+                                Rp {branch.totalExpenses.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-xs text-red-600 mt-1">Biaya operasional</div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-100 rounded-lg border border-orange-300">
+                              <div className="text-xs text-gray-600 mb-1">🎁 Komisi</div>
+                              <div className="text-xl font-bold text-orange-700">
+                                Rp {branch.totalCommissions.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-xs text-orange-600 mt-1">Komisi karyawan</div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-purple-50 to-violet-100 rounded-lg border border-purple-300">
+                              <div className="text-xs text-gray-600 mb-1">💳 Kasbon</div>
+                              <div className="text-xl font-bold text-purple-700">
+                                Rp {branch.totalKasbon.toLocaleString("id-ID")}
+                              </div>
+                              <div className="text-xs text-purple-600 mt-1">Kasbon disetujui</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 2: Profit Analysis */}
+                        <div className={`p-6 rounded-xl border-2 shadow-md ${branch.netProfit >= 0 ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300' : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300'}`}>
+                          <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                            {branch.netProfit >= 0 ? '✅ ANALISIS PROFIT' : '⚠️ ANALISIS LOSS'}
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700">Pendapatan Kotor:</span>
+                              <span className="font-bold text-green-600">+ Rp {branch.totalRevenue.toLocaleString("id-ID")}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700">Pengeluaran:</span>
+                              <span className="font-bold text-red-600">- Rp {branch.totalExpenses.toLocaleString("id-ID")}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700">Komisi:</span>
+                              <span className="font-bold text-orange-600">- Rp {branch.totalCommissions.toLocaleString("id-ID")}</span>
+                            </div>
+                            <div className="border-t-2 border-gray-300 pt-2"></div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-lg font-bold text-gray-800">NET PROFIT/LOSS:</span>
+                              <span className={`text-2xl font-bold ${branch.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                Rp {branch.netProfit.toLocaleString("id-ID")}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center bg-white/50 p-2 rounded">
+                              <span className="text-sm text-gray-700">Profit Margin:</span>
+                              <span className={`text-lg font-bold ${branch.profitMargin >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                {branch.profitMargin.toFixed(2)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 3: Metode Pembayaran */}
+                        <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                          <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                            💳 METODE PEMBAYARAN
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">💵 Cash</span>
+                                <Badge className="bg-green-400 text-gray-900 font-semibold">
+                                  {branch.totalRevenue > 0 ? ((branch.cashPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                </Badge>
+                              </div>
+                              <div className="text-xl font-bold text-green-700">
+                                Rp {branch.cashPayments.toLocaleString("id-ID")}
+                              </div>
+                              <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full"
+                                  style={{width: `${branch.totalRevenue > 0 ? (branch.cashPayments / branch.totalRevenue * 100) : 0}%`}}
+                                ></div>
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">📱 QRIS</span>
+                                <Badge className="bg-blue-400 text-gray-900 font-semibold">
+                                  {branch.totalRevenue > 0 ? ((branch.qrisPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                </Badge>
+                              </div>
+                              <div className="text-xl font-bold text-blue-700">
+                                Rp {branch.qrisPayments.toLocaleString("id-ID")}
+                              </div>
+                              <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{width: `${branch.totalRevenue > 0 ? (branch.qrisPayments / branch.totalRevenue * 100) : 0}%`}}
+                                ></div>
+                              </div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">🏦 Transfer</span>
+                                <Badge className="bg-purple-400 text-gray-900 font-semibold">
+                                  {branch.totalRevenue > 0 ? ((branch.transferPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                </Badge>
+                              </div>
+                              <div className="text-xl font-bold text-purple-700">
+                                Rp {branch.transferPayments.toLocaleString("id-ID")}
+                              </div>
+                              <div className="mt-2 bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-purple-600 h-2 rounded-full"
+                                  style={{width: `${branch.totalRevenue > 0 ? (branch.transferPayments / branch.totalRevenue * 100) : 0}%`}}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 4: Metrik Kinerja */}
+                        <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                          <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                            📈 METRIK KINERJA
+                          </h4>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="text-xs text-gray-600 mb-1">Rata-rata per Transaksi</div>
+                              <div className="text-lg font-bold text-blue-700">
+                                Rp {branch.avgTransactionValue.toLocaleString("id-ID", {maximumFractionDigits: 0})}
+                              </div>
+                            </div>
+
+                            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                              <div className="text-xs text-gray-600 mb-1">Pendapatan per Karyawan</div>
+                              <div className="text-lg font-bold text-green-700">
+                                Rp {branch.revenuePerEmployee.toLocaleString("id-ID", {maximumFractionDigits: 0})}
+                              </div>
+                            </div>
+
+                            <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                              <div className="text-xs text-gray-600 mb-1">Transaksi per Karyawan</div>
+                              <div className="text-lg font-bold text-orange-700">
+                                {branch.transactionPerEmployee.toFixed(1)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 5: Kontribusi ke Total Bisnis */}
+                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-5 rounded-xl border-2 border-yellow-300 shadow-sm text-gray-900">
+                          <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                            🎯 KONTRIBUSI KE TOTAL BISNIS
+                          </h4>
+                          <div className="text-sm text-gray-600 mb-4">
+                            Seberapa besar cabang ini berkontribusi terhadap total pendapatan dan transaksi bisnis Anda
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium text-gray-700">Kontribusi Pendapatan:</span>
+                                <span className="text-lg font-bold text-green-600">
+                                  {financialDetail.totalRevenue > 0 
+                                    ? ((branch.totalRevenue / financialDetail.totalRevenue) * 100).toFixed(1)
+                                    : 0}%
+                                </span>
+                              </div>
+                              <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                <div 
+                                  className="bg-gradient-to-r from-green-500 to-emerald-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                  style={{
+                                    width: `${financialDetail.totalRevenue > 0 
+                                      ? (branch.totalRevenue / financialDetail.totalRevenue * 100)
+                                      : 0}%`
+                                  }}
+                                >
+                                  <span className="text-xs text-white font-bold">
+                                    Rp {(branch.totalRevenue / 1000).toFixed(0)}k
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Dari total Rp {financialDetail.totalRevenue.toLocaleString("id-ID")}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium text-gray-700">Kontribusi Transaksi:</span>
+                                <span className="text-lg font-bold text-blue-600">
+                                  {dashboardStats.totalTransactions > 0 
+                                    ? ((branch.transactions / dashboardStats.totalTransactions) * 100).toFixed(1)
+                                    : 0}%
+                                </span>
+                              </div>
+                              <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                <div 
+                                  className="bg-gradient-to-r from-blue-500 to-cyan-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                  style={{
+                                    width: `${dashboardStats.totalTransactions > 0 
+                                      ? (branch.transactions / dashboardStats.totalTransactions * 100)
+                                      : 0}%`
+                                  }}
+                                >
+                                  <span className="text-xs text-white font-bold">{branch.transactions} trx</span>
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                Dari total {dashboardStats.totalTransactions} transaksi
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center py-8 text-gray-500">
-                  Tidak ada data performa karyawan untuk ditampilkan
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <DollarSign className="h-20 w-20 mb-4 text-gray-400" />
+                  <p className="text-xl font-medium">Tidak ada data keuangan</p>
+                  <p className="text-sm mt-2">Silakan pilih periode dan cabang untuk melihat laporan</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="branches" className="space-y-6">
+          {/* Header Summary Semua Cabang */}
+          <Card className="border-2 border-orange-700">
+            <CardHeader className="bg-gradient-to-r from-orange-100 via-yellow-100 to-red-100 border-b-2 border-orange-300">
+              <CardTitle className="text-2xl flex items-center gap-2 text-gray-900">
+                <MapPin className="h-6 w-6 text-orange-600" />
+                🏪 PERBANDINGAN PERFORMA SEMUA CABANG
+              </CardTitle>
+              <CardDescription className="text-gray-700">
+                Analisis lengkap dan perbandingan kinerja setiap cabang - Revenue, Profit, Efisiensi, dan Ranking
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-white border-l-4 border-blue-600">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-gray-600 mb-1">🏪 Total Cabang</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {branchFinancialDetails.length}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Cabang beroperasi</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-green-600">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-gray-600 mb-1">💰 Total Revenue</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      Rp {financialDetail.totalRevenue.toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Semua cabang</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-orange-600">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-gray-600 mb-1">📊 Rata-rata Revenue</div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      Rp {branchFinancialDetails.length > 0 
+                        ? (financialDetail.totalRevenue / branchFinancialDetails.length).toLocaleString("id-ID", {maximumFractionDigits: 0})
+                        : "0"}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Per cabang</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-purple-600">
+                  <CardContent className="p-4">
+                    <div className="text-xs text-gray-600 mb-1">👥 Total Karyawan</div>
+                    <div className="text-3xl font-bold text-purple-600">
+                      {dashboardStats.totalEmployees}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Seluruh bisnis</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ranking & Comparison Cabang */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                🏆 RANKING PERFORMA CABANG
+              </CardTitle>
+              <CardDescription>
+                Cabang diurutkan berdasarkan performa terbaik - Revenue tertinggi, Profit terbesar, dan Efisiensi optimal
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {branchFinancialDetails.length > 0 ? (
+                <div className="space-y-6">
+                  {/* Sort by revenue descending */}
+                  {[...branchFinancialDetails].sort((a, b) => b.totalRevenue - a.totalRevenue).map((branch, index) => {
+                    const rank = index + 1
+                    const isTopPerformer = rank <= 3
+                    const rankColor = rank === 1 ? 'bg-yellow-500' : rank === 2 ? 'bg-gray-400' : rank === 3 ? 'bg-orange-600' : 'bg-gray-600'
+                    const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🏪'
+                    
+                    return (
+                      <div key={branch.branchId} className={`border-2 rounded-xl overflow-hidden transition-all hover:shadow-2xl ${isTopPerformer ? 'border-yellow-400 shadow-lg' : 'border-gray-300'}`}>
+                        {/* Header Cabang dengan Ranking */}
+                        <div className={`p-5 ${rank === 1 ? 'bg-gradient-to-r from-yellow-100 via-orange-100 to-red-100 border-b-2 border-yellow-400' : rank === 2 ? 'bg-gradient-to-r from-gray-200 via-gray-300 to-gray-400 border-b-2 border-gray-500' : rank === 3 ? 'bg-gradient-to-r from-orange-100 via-red-100 to-pink-200 border-b-2 border-orange-400' : 'bg-gradient-to-r from-blue-100 to-purple-100 border-b-2 border-blue-400'}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl border-4 ${rank === 1 ? 'bg-yellow-500 border-yellow-600 text-white' : rank === 2 ? 'bg-gray-500 border-gray-600 text-white' : rank === 3 ? 'bg-orange-600 border-orange-700 text-white' : 'bg-blue-700 border-blue-800 text-white'}`}>
+                                <div className="text-center">
+                                  <div className="text-2xl">{rankEmoji}</div>
+                                  <div className="text-xs font-bold">#{rank}</div>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-2xl font-bold text-gray-900">{branch.branchName}</div>
+                                <div className="text-sm font-medium text-gray-700">
+                                  {branch.employees} Karyawan • {branch.transactions} Transaksi
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {isTopPerformer && (
+                                <Badge className="bg-yellow-400 text-gray-900 border-0 text-lg px-4 py-2 mb-2 font-bold">
+                                  ⭐ TOP {rank}
+                                </Badge>
+                              )}
+                              <div className={`text-lg font-bold ${branch.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                Profit: Rp {branch.netProfit.toLocaleString("id-ID")}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detail Lengkap Cabang */}
+                        <div className="p-6 bg-gray-50 space-y-6 text-gray-900">
+                          {/* Section 1: Overview Keuangan */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              💼 OVERVIEW KEUANGAN CABANG
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg border border-green-300">
+                                <div className="text-xs text-gray-600 mb-1">💰 Total Revenue</div>
+                                <div className="text-xl font-bold text-green-700">
+                                  Rp {branch.totalRevenue.toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-green-600 mt-1">Pendapatan kotor</div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-red-50 to-rose-100 rounded-lg border border-red-300">
+                                <div className="text-xs text-gray-600 mb-1">💸 Total Biaya</div>
+                                <div className="text-xl font-bold text-red-700">
+                                  Rp {(branch.totalExpenses + branch.totalCommissions).toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-red-600 mt-1">Expense + Komisi</div>
+                              </div>
+
+                              <div className={`p-4 rounded-lg border ${branch.netProfit >= 0 ? 'bg-gradient-to-br from-blue-50 to-cyan-100 border-blue-300' : 'bg-gradient-to-br from-red-50 to-pink-100 border-red-300'}`}>
+                                <div className="text-xs text-gray-600 mb-1">{branch.netProfit >= 0 ? '✅ Net Profit' : '❌ Net Loss'}</div>
+                                <div className={`text-xl font-bold ${branch.netProfit >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                                  Rp {branch.netProfit.toLocaleString("id-ID")}
+                                </div>
+                                <div className={`text-xs mt-1 ${branch.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                  Margin: {branch.profitMargin.toFixed(1)}%
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-100 rounded-lg border border-orange-300">
+                                <div className="text-xs text-gray-600 mb-1">📊 Avg/Transaksi</div>
+                                <div className="text-xl font-bold text-orange-700">
+                                  Rp {branch.avgTransactionValue.toLocaleString("id-ID", {maximumFractionDigits: 0})}
+                                </div>
+                                <div className="text-xs text-orange-600 mt-1">Nilai rata-rata</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 2: Breakdown Detail Biaya */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              💳 BREAKDOWN DETAIL BIAYA
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">🏢 Pengeluaran</span>
+                                  <span className="text-xs bg-red-400 text-gray-900 px-2 py-1 rounded font-semibold">
+                                    {branch.totalRevenue > 0 ? ((branch.totalExpenses / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                  </span>
+                                </div>
+                                <div className="text-2xl font-bold text-red-700">
+                                  Rp {branch.totalExpenses.toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Biaya operasional</div>
+                              </div>
+
+                              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">🎁 Komisi</span>
+                                  <span className="text-xs bg-orange-400 text-gray-900 px-2 py-1 rounded font-semibold">
+                                    {branch.totalRevenue > 0 ? ((branch.totalCommissions / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                  </span>
+                                </div>
+                                <div className="text-2xl font-bold text-orange-700">
+                                  Rp {branch.totalCommissions.toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Komisi karyawan</div>
+                              </div>
+
+                              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700">💰 Kasbon</span>
+                                  <span className="text-xs bg-purple-400 text-gray-900 px-2 py-1 rounded font-semibold">Info</span>
+                                </div>
+                                <div className="text-2xl font-bold text-purple-700">
+                                  Rp {branch.totalKasbon.toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">Kasbon disetujui</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 3: Analisis Transaksi & Pembayaran */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              💳 ANALISIS TRANSAKSI & METODE PEMBAYARAN
+                            </h4>
+                            
+                            {/* Stats Transaksi */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                                <div className="text-xs text-gray-600 mb-1">Total Transaksi</div>
+                                <div className="text-2xl font-bold text-blue-700">{branch.transactions}</div>
+                              </div>
+
+                              <div className="p-3 bg-green-50 rounded-lg border border-green-200 text-center">
+                                <div className="text-xs text-gray-600 mb-1">Avg/Transaksi</div>
+                                <div className="text-lg font-bold text-green-700">
+                                  Rp {branch.avgTransactionValue.toLocaleString("id-ID", {maximumFractionDigits: 0})}
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-orange-50 rounded-lg border border-orange-200 text-center">
+                                <div className="text-xs text-gray-600 mb-1">Transaksi/Karyawan</div>
+                                <div className="text-2xl font-bold text-orange-700">
+                                  {branch.transactionPerEmployee.toFixed(1)}
+                                </div>
+                              </div>
+
+                              <div className="p-3 bg-purple-50 rounded-lg border border-purple-200 text-center">
+                                <div className="text-xs text-gray-600 mb-1">Revenue/Karyawan</div>
+                                <div className="text-lg font-bold text-purple-700">
+                                  Rp {(branch.revenuePerEmployee / 1000).toFixed(0)}k
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Metode Pembayaran */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                              <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">💵 Cash</span>
+                                  <Badge className="bg-green-400 text-gray-900 font-semibold">
+                                    {branch.totalRevenue > 0 ? ((branch.cashPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                  </Badge>
+                                </div>
+                                <div className="text-xl font-bold text-green-700">
+                                  Rp {branch.cashPayments.toLocaleString("id-ID")}
+                                </div>
+                                <div className="mt-2 bg-gray-200 rounded-full h-3">
+                                  <div 
+                                    className="bg-green-600 h-3 rounded-full transition-all"
+                                    style={{width: `${branch.totalRevenue > 0 ? (branch.cashPayments / branch.totalRevenue * 100) : 0}%`}}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg border border-blue-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">📱 QRIS</span>
+                                  <Badge className="bg-blue-400 text-gray-900 font-semibold">
+                                    {branch.totalRevenue > 0 ? ((branch.qrisPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                  </Badge>
+                                </div>
+                                <div className="text-xl font-bold text-blue-700">
+                                  Rp {branch.qrisPayments.toLocaleString("id-ID")}
+                                </div>
+                                <div className="mt-2 bg-gray-200 rounded-full h-3">
+                                  <div 
+                                    className="bg-blue-600 h-3 rounded-full transition-all"
+                                    style={{width: `${branch.totalRevenue > 0 ? (branch.qrisPayments / branch.totalRevenue * 100) : 0}%`}}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">🏦 Transfer</span>
+                                  <Badge className="bg-purple-400 text-gray-900 font-semibold">
+                                    {branch.totalRevenue > 0 ? ((branch.transferPayments / branch.totalRevenue) * 100).toFixed(1) : 0}%
+                                  </Badge>
+                                </div>
+                                <div className="text-xl font-bold text-purple-700">
+                                  Rp {branch.transferPayments.toLocaleString("id-ID")}
+                                </div>
+                                <div className="mt-2 bg-gray-200 rounded-full h-3">
+                                  <div 
+                                    className="bg-purple-600 h-3 rounded-full transition-all"
+                                    style={{width: `${branch.totalRevenue > 0 ? (branch.transferPayments / branch.totalRevenue * 100) : 0}%`}}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 4: Perbandingan dengan Cabang Lain */}
+                          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-5 rounded-xl border-2 border-blue-300 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              📊 PERBANDINGAN DENGAN CABANG LAIN
+                            </h4>
+                            <div className="space-y-4">
+                              {/* Revenue Comparison */}
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Kontribusi Revenue terhadap Total Bisnis:</span>
+                                  <span className="text-lg font-bold text-green-600">
+                                    {financialDetail.totalRevenue > 0 
+                                      ? ((branch.totalRevenue / financialDetail.totalRevenue) * 100).toFixed(1)
+                                      : 0}%
+                                  </span>
+                                </div>
+                                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-green-500 to-emerald-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                    style={{
+                                      width: `${financialDetail.totalRevenue > 0 
+                                        ? (branch.totalRevenue / financialDetail.totalRevenue * 100)
+                                        : 0}%`
+                                    }}
+                                  >
+                                    <span className="text-xs text-white font-bold">
+                                      {financialDetail.totalRevenue > 0 
+                                        ? ((branch.totalRevenue / financialDetail.totalRevenue) * 100).toFixed(1)
+                                        : 0}%
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Cabang ini: Rp {branch.totalRevenue.toLocaleString("id-ID")} dari total Rp {financialDetail.totalRevenue.toLocaleString("id-ID")}
+                                </div>
+                              </div>
+
+                              {/* Profit Comparison */}
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Kontribusi Profit terhadap Total Bisnis:</span>
+                                  <span className={`text-lg font-bold ${branch.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {financialDetail.netProfit > 0 
+                                      ? ((branch.netProfit / financialDetail.netProfit) * 100).toFixed(1)
+                                      : 0}%
+                                  </span>
+                                </div>
+                                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                  <div 
+                                    className={`h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500 ${branch.netProfit >= 0 ? 'bg-gradient-to-r from-blue-500 to-cyan-600' : 'bg-gradient-to-r from-red-500 to-rose-600'}`}
+                                    style={{
+                                      width: `${financialDetail.netProfit > 0 && branch.netProfit >= 0
+                                        ? (branch.netProfit / financialDetail.netProfit * 100)
+                                        : 0}%`
+                                    }}
+                                  >
+                                    <span className="text-xs text-white font-bold">
+                                      {financialDetail.netProfit > 0 
+                                        ? ((branch.netProfit / financialDetail.netProfit) * 100).toFixed(1)
+                                        : 0}%
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Cabang ini: Rp {branch.netProfit.toLocaleString("id-ID")} dari total Rp {financialDetail.netProfit.toLocaleString("id-ID")}
+                                </div>
+                              </div>
+
+                              {/* Transaction Comparison */}
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Kontribusi Transaksi:</span>
+                                  <span className="text-lg font-bold text-orange-600">
+                                    {dashboardStats.totalTransactions > 0 
+                                      ? ((branch.transactions / dashboardStats.totalTransactions) * 100).toFixed(1)
+                                      : 0}%
+                                  </span>
+                                </div>
+                                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-orange-500 to-amber-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                    style={{
+                                      width: `${dashboardStats.totalTransactions > 0 
+                                        ? (branch.transactions / dashboardStats.totalTransactions * 100)
+                                        : 0}%`
+                                    }}
+                                  >
+                                    <span className="text-xs text-white font-bold">
+                                      {branch.transactions} trx
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Cabang ini: {branch.transactions} dari total {dashboardStats.totalTransactions} transaksi
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 5: Status & Performance Badge */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              🎯 STATUS PERFORMA CABANG
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className={`p-4 rounded-lg text-center ${rank === 1 ? 'bg-yellow-100 border-2 border-yellow-500' : rank <= 3 ? 'bg-green-100 border-2 border-green-500' : 'bg-gray-100 border-2 border-gray-300'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Ranking</div>
+                                <div className={`text-3xl font-bold ${rank === 1 ? 'text-yellow-600' : rank <= 3 ? 'text-green-600' : 'text-gray-600'}`}>
+                                  #{rank}
+                                </div>
+                                <div className="text-xs mt-1">{rank === 1 ? 'TOP 1' : rank <= 3 ? 'TOP 3' : 'Standard'}</div>
+                              </div>
+
+                              <div className={`p-4 rounded-lg text-center ${branch.profitMargin >= 30 ? 'bg-green-100 border-2 border-green-500' : branch.profitMargin >= 15 ? 'bg-blue-100 border-2 border-blue-500' : 'bg-red-100 border-2 border-red-500'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Profit Margin</div>
+                                <div className={`text-2xl font-bold ${branch.profitMargin >= 30 ? 'text-green-600' : branch.profitMargin >= 15 ? 'text-blue-600' : 'text-red-600'}`}>
+                                  {branch.profitMargin.toFixed(1)}%
+                                </div>
+                                <div className="text-xs mt-1">
+                                  {branch.profitMargin >= 30 ? 'Excellent' : branch.profitMargin >= 15 ? 'Good' : 'Needs Improve'}
+                                </div>
+                              </div>
+
+                              <div className={`p-4 rounded-lg text-center ${branch.transactionPerEmployee >= 10 ? 'bg-green-100 border-2 border-green-500' : branch.transactionPerEmployee >= 5 ? 'bg-blue-100 border-2 border-blue-500' : 'bg-orange-100 border-2 border-orange-500'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Produktivitas</div>
+                                <div className={`text-2xl font-bold ${branch.transactionPerEmployee >= 10 ? 'text-green-600' : branch.transactionPerEmployee >= 5 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                  {branch.transactionPerEmployee.toFixed(1)}
+                                </div>
+                                <div className="text-xs mt-1">Trx/Karyawan</div>
+                              </div>
+
+                              <div className="p-4 bg-blue-100 rounded-lg text-center border-2 border-blue-500">
+                                <div className="text-xs text-gray-600 mb-1">Status</div>
+                                <div className="text-2xl font-bold text-blue-600">✅</div>
+                                <div className="text-xs mt-1 font-medium text-blue-700">Aktif</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <MapPin className="h-20 w-20 mb-4 text-gray-400" />
+                  <p className="text-xl font-medium">Tidak ada data cabang</p>
+                  <p className="text-sm mt-2">Silakan pilih periode dan filter untuk melihat laporan cabang</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="employees" className="space-y-6">
+          {/* Header Summary Semua Karyawan */}
+          <Card className="border-2 border-purple-700">
+            <CardHeader className="bg-gradient-to-r from-purple-100 via-indigo-100 to-blue-100 border-b-2 border-purple-300">
+              <CardTitle className="text-2xl flex items-center gap-2 text-gray-900">
+                <Users className="h-6 w-6 text-purple-600" />
+                👥 RANKING & PERFORMA KARYAWAN
+              </CardTitle>
+              <CardDescription className="text-gray-700">
+                Analisis lengkap performa setiap karyawan - Revenue, Transaksi, Komisi, Rating, dan Produktivitas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 text-gray-900">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-white border-l-4 border-purple-600">
+                  <CardContent className="p-4 text-gray-900">
+                    <div className="text-xs text-gray-600 mb-1">👥 Total Karyawan</div>
+                    <div className="text-3xl font-bold text-purple-600">
+                      {employeePerformance.length}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Karyawan aktif</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-green-600">
+                  <CardContent className="p-4 text-gray-900">
+                    <div className="text-xs text-gray-600 mb-1">💰 Total Revenue</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      Rp {employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0).toLocaleString("id-ID")}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Semua karyawan</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-blue-600">
+                  <CardContent className="p-4 text-gray-900">
+                    <div className="text-xs text-gray-600 mb-1">📊 Total Transaksi</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0)}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Semua transaksi</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border-l-4 border-orange-600">
+                  <CardContent className="p-4 text-gray-900">
+                    <div className="text-xs text-gray-600 mb-1">⭐ Rating Rata-rata</div>
+                    <div className="text-3xl font-bold text-orange-600">
+                      {employeePerformance.length > 0 
+                        ? (employeePerformance.reduce((sum, emp) => sum + emp.rating, 0) / employeePerformance.length).toFixed(1)
+                        : "0.0"}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Performa tim</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ranking & Detail Karyawan */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                🏆 RANKING PERFORMA KARYAWAN
+              </CardTitle>
+              <CardDescription>
+                Karyawan diurutkan berdasarkan performa terbaik - Revenue tertinggi, Rating terbaik, dan Produktivitas optimal
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {employeePerformance.length > 0 ? (
+                <div className="space-y-6">
+                  {/* Sort by revenue descending */}
+                  {[...employeePerformance].sort((a, b) => b.revenue - a.revenue).map((employee, index) => {
+                    const rank = index + 1
+                    const isTopPerformer = rank <= 3
+                    const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤'
+                    
+                    return (
+                      <div key={employee.name} className={`border-2 rounded-xl overflow-hidden transition-all hover:shadow-2xl ${isTopPerformer ? 'border-yellow-400 shadow-lg' : 'border-gray-300'}`}>
+                        {/* Header Karyawan dengan Ranking */}
+                        <div className={`p-5 ${rank === 1 ? 'bg-gradient-to-r from-yellow-100 via-orange-100 to-red-100 border-b-2 border-yellow-400' : rank === 2 ? 'bg-gradient-to-r from-gray-200 via-gray-300 to-gray-400 border-b-2 border-gray-500' : rank === 3 ? 'bg-gradient-to-r from-orange-100 via-amber-100 to-yellow-100 border-b-2 border-orange-400' : 'bg-gradient-to-r from-blue-100 to-purple-100 border-b-2 border-blue-400'}`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-xl border-4 ${rank === 1 ? 'bg-yellow-500 border-yellow-600 text-white' : rank === 2 ? 'bg-gray-500 border-gray-600 text-white' : rank === 3 ? 'bg-orange-500 border-orange-600 text-white' : 'bg-blue-600 border-blue-700 text-white'}`}>
+                                <div className="text-center">
+                                  <div className="text-2xl">{rankEmoji}</div>
+                                  <div className="text-xs font-bold">#{rank}</div>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-2xl font-bold text-gray-900">{employee.name}</div>
+                                <div className="text-sm font-medium text-gray-700">
+                                  💼 {employee.position} • ⭐ Rating {employee.rating.toFixed(1)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              {isTopPerformer && (
+                                <Badge className="bg-yellow-400 text-gray-900 border-0 text-lg px-4 py-2 mb-2 font-bold">
+                                  ⭐ TOP {rank}
+                                </Badge>
+                              )}
+                              <div className="text-lg font-bold text-green-700">
+                                Revenue: Rp {employee.revenue.toLocaleString("id-ID")}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detail Lengkap Karyawan */}
+                        <div className="p-6 bg-gray-50 space-y-6 text-gray-900">
+                          {/* Section 1: Performa Penjualan */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              💰 PERFORMA PENJUALAN
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg border border-green-300">
+                                <div className="text-xs text-gray-600 mb-1">💵 Total Revenue</div>
+                                <div className="text-xl font-bold text-green-700">
+                                  Rp {employee.revenue.toLocaleString("id-ID")}
+                                </div>
+                                <div className="text-xs text-green-600 mt-1">Pendapatan kotor</div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-100 rounded-lg border border-blue-300">
+                                <div className="text-xs text-gray-600 mb-1">📊 Total Transaksi</div>
+                                <div className="text-xl font-bold text-blue-700">
+                                  {employee.transactions}
+                                </div>
+                                <div className="text-xs text-blue-600 mt-1">Transaksi selesai</div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-100 rounded-lg border border-orange-300">
+                                <div className="text-xs text-gray-600 mb-1">💎 Avg/Transaksi</div>
+                                <div className="text-xl font-bold text-orange-700">
+                                  Rp {employee.transactions > 0 ? (employee.revenue / employee.transactions).toLocaleString("id-ID", {maximumFractionDigits: 0}) : 0}
+                                </div>
+                                <div className="text-xs text-orange-600 mt-1">Nilai rata-rata</div>
+                              </div>
+
+                              <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-100 rounded-lg border border-purple-300">
+                                <div className="text-xs text-gray-600 mb-1">⭐ Rating</div>
+                                <div className="text-xl font-bold text-purple-700">
+                                  {employee.rating.toFixed(1)} / 5.0
+                                </div>
+                                <div className="text-xs text-purple-600 mt-1">Kepuasan pelanggan</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 2: Kontribusi & Ranking */}
+                          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 p-5 rounded-xl border-2 border-blue-300 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              📊 KONTRIBUSI & PERBANDINGAN
+                            </h4>
+                            <div className="space-y-4">
+                              {/* Revenue Contribution */}
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Kontribusi Revenue terhadap Total Tim:</span>
+                                  <span className="text-lg font-bold text-green-600">
+                                    {employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0) > 0 
+                                      ? ((employee.revenue / employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0)) * 100).toFixed(1)
+                                      : 0}%
+                                  </span>
+                                </div>
+                                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-green-500 to-emerald-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                    style={{
+                                      width: `${employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0) > 0 
+                                        ? (employee.revenue / employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0) * 100)
+                                        : 0}%`
+                                    }}
+                                  >
+                                    <span className="text-xs text-white font-bold">
+                                      Rp {(employee.revenue / 1000).toFixed(0)}k
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Karyawan ini: Rp {employee.revenue.toLocaleString("id-ID")} dari total Rp {employeePerformance.reduce((sum, emp) => sum + emp.revenue, 0).toLocaleString("id-ID")}
+                                </div>
+                              </div>
+
+                              {/* Transaction Contribution */}
+                              <div>
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-sm font-medium text-gray-700">Kontribusi Transaksi:</span>
+                                  <span className="text-lg font-bold text-blue-600">
+                                    {employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0) > 0 
+                                      ? ((employee.transactions / employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0)) * 100).toFixed(1)
+                                      : 0}%
+                                  </span>
+                                </div>
+                                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
+                                  <div 
+                                    className="bg-gradient-to-r from-blue-500 to-cyan-600 h-4 rounded-full flex items-center justify-end px-2 transition-all duration-500"
+                                    style={{
+                                      width: `${employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0) > 0 
+                                        ? (employee.transactions / employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0) * 100)
+                                        : 0}%`
+                                    }}
+                                  >
+                                    <span className="text-xs text-white font-bold">
+                                      {employee.transactions} trx
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Karyawan ini: {employee.transactions} dari total {employeePerformance.reduce((sum, emp) => sum + emp.transactions, 0)} transaksi
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Section 3: Status & Badge */}
+                          <div className="bg-white p-5 rounded-xl border-2 border-gray-200 shadow-sm text-gray-900">
+                            <h4 className="font-bold text-gray-800 mb-4 flex items-center gap-2 text-lg">
+                              🎯 STATUS PERFORMA
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <div className={`p-4 rounded-lg text-center ${rank === 1 ? 'bg-yellow-100 border-2 border-yellow-500' : rank <= 3 ? 'bg-green-100 border-2 border-green-500' : 'bg-gray-100 border-2 border-gray-300'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Ranking</div>
+                                <div className={`text-3xl font-bold ${rank === 1 ? 'text-yellow-600' : rank <= 3 ? 'text-green-600' : 'text-gray-600'}`}>
+                                  #{rank}
+                                </div>
+                                <div className="text-xs mt-1 text-gray-700">{rank === 1 ? 'TOP 1 🥇' : rank <= 3 ? 'TOP 3 🏆' : 'Standard'}</div>
+                              </div>
+
+                              <div className={`p-4 rounded-lg text-center ${employee.rating >= 4.5 ? 'bg-green-100 border-2 border-green-500' : employee.rating >= 4.0 ? 'bg-blue-100 border-2 border-blue-500' : 'bg-orange-100 border-2 border-orange-500'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Rating</div>
+                                <div className={`text-3xl font-bold ${employee.rating >= 4.5 ? 'text-green-600' : employee.rating >= 4.0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                  ⭐ {employee.rating.toFixed(1)}
+                                </div>
+                                <div className="text-xs mt-1 text-gray-700">{employee.rating >= 4.5 ? 'Excellent' : employee.rating >= 4.0 ? 'Good' : 'Average'}</div>
+                              </div>
+
+                              <div className={`p-4 rounded-lg text-center ${employee.transactions >= 10 ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-100 border-2 border-gray-300'}`}>
+                                <div className="text-xs text-gray-600 mb-1">Produktivitas</div>
+                                <div className={`text-3xl font-bold ${employee.transactions >= 10 ? 'text-blue-600' : 'text-gray-600'}`}>
+                                  {employee.transactions >= 20 ? '🔥' : employee.transactions >= 10 ? '💪' : '📊'}
+                                </div>
+                                <div className="text-xs mt-1 text-gray-700">{employee.transactions >= 20 ? 'Sangat Tinggi' : employee.transactions >= 10 ? 'Tinggi' : 'Normal'}</div>
+                              </div>
+
+                              <div className="p-4 bg-purple-100 rounded-lg text-center border-2 border-purple-500">
+                                <div className="text-xs text-gray-600 mb-1">Status</div>
+                                <div className="text-3xl font-bold text-purple-600">✅</div>
+                                <div className="text-xs mt-1 text-gray-700">Aktif</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <Users className="h-20 w-20 mb-4 text-gray-400" />
+                  <p className="text-xl font-medium">Tidak ada data karyawan</p>
+                  <p className="text-sm mt-2">Silakan pilih periode dan cabang untuk melihat performa karyawan</p>
                 </div>
               )}
             </CardContent>
@@ -1455,7 +3175,7 @@ export function ComprehensiveReports() {
                                   )}
                                 </div>
                                 <p className="text-sm text-gray-600">
-                                  {employee.branch} • {employee.daysWorked} hari kerja
+                                  {employee.daysWorked} hari kerja
                                 </p>
                               </div>
                             </div>
@@ -1617,7 +3337,6 @@ export function ComprehensiveReports() {
                           <th className="p-3 text-left font-semibold border border-red-600">Rank</th>
                           <th className="p-3 text-left font-semibold border border-red-600">Nama Karyawan</th>
                           <th className="p-3 text-center font-semibold border border-red-600">Status Hari Ini</th>
-                          <th className="p-3 text-center font-semibold border border-red-600">Cabang</th>
                           <th className="p-3 text-center font-semibold border border-red-600">Check In</th>
                           <th className="p-3 text-center font-semibold border border-red-600">Check Out</th>
                           <th className="p-3 text-center font-semibold border border-red-600">Jam Kerja Hari Ini</th>
@@ -1679,9 +3398,6 @@ export function ComprehensiveReports() {
                                 {employee.currentStatus === "checked-out" && "⚪ Pulang"}
                                 {employee.currentStatus === "absent" && "🔴 Absent"}
                               </Badge>
-                            </td>
-                            <td className="p-3 text-center text-sm text-gray-700 border border-gray-200">
-                              {employee.branch}
                             </td>
                             <td className="p-3 text-center font-mono text-green-700 font-semibold border border-gray-200">
                               {employee.todayCheckIn

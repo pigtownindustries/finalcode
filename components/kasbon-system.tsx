@@ -552,7 +552,7 @@ export function KasbonSystem() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-base md:text-lg">{formatCurrency(request.amount)}</h3>
                           <p className="text-xs md:text-sm text-muted-foreground font-medium">
-                            Pengaju: {request.users?.name || "-"}
+                            Pengaju: {request.user?.name || "-"}
                           </p>
                           <p className="text-xs md:text-sm text-muted-foreground font-medium">
                             Diajukan: {new Date(request.request_date).toLocaleDateString("id-ID")}
@@ -737,7 +737,7 @@ export function KasbonSystem() {
                               </Badge>
                             </div>
                             <p className="text-xs md:text-sm text-muted-foreground font-medium">
-                              Pengaju: {request.users?.name || "-"}
+                              Pengaju: {request.user?.name || "-"}
                             </p>
                             <p className="text-xs md:text-sm text-muted-foreground">
                               Jatuh Tempo: {new Date(request.due_date).toLocaleDateString("id-ID")}
@@ -815,7 +815,7 @@ export function KasbonSystem() {
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-sm md:text-base">{formatCurrency(request.amount)}</p>
                           <p className="text-xs md:text-sm text-muted-foreground">
-                            Pengaju: {request.users?.name || "-"}
+                            Pengaju: {request.user?.name || "-"}
                           </p>
                           <p className="text-xs md:text-sm text-muted-foreground">
                             Tanggal: {new Date(request.request_date).toLocaleDateString("id-ID")}

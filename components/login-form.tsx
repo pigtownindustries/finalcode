@@ -73,7 +73,7 @@ export function LoginForm() {
           id: data.user.id,
           email: data.user.email,
           name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-          role: data.user.user_metadata?.role || 'owner',
+          position: data.user.user_metadata?.position || 'Owner',
           loginTime: new Date().toISOString(),
         }
 
