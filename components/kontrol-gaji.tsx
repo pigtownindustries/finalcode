@@ -500,7 +500,7 @@ export function KontrolGaji() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3" style={{ display: 'none' }}>
                 {connectionStatus === 'connected' ? (
                   <>
                     <Wifi className="h-4 w-4 text-green-300" />
