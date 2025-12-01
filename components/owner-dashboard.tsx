@@ -68,12 +68,16 @@ export function OwnerDashboard() {
   const [loading, setLoading] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [showPin, setShowPin] = useState(false)
+  const [showCurrentPin, setShowCurrentPin] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [accountSettings, setAccountSettings] = useState({
     email: "",
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    pin: "",
+    currentPin: ""
   })
   const [realTimeEnabled, setRealTimeEnabled] = useState(true)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "error">("disconnected")
@@ -82,7 +86,6 @@ export function OwnerDashboard() {
   // Tab configuration untuk mobile responsive
   const tabsConfig = [
     { value: "overview", label: "Overview", icon: BarChart3, shortLabel: "Home" },
-    { value: "analytics", label: "Analytics", icon: BarChart3, shortLabel: "Stats" },
     { value: "employees", label: "Karyawan", icon: Users, shortLabel: "Staff" },
     { value: "branches", label: "Cabang", icon: Target, shortLabel: "Branch" },
     { value: "points", label: "Poin", icon: Award, shortLabel: "Point" },
@@ -106,6 +109,8 @@ export function OwnerDashboard() {
       setAccountSettings((prev) => ({
         ...prev,
         email: user.email || "",
+        pin: (user as any).pin || "",
+        currentPin: (user as any).pin || "",
         currentPassword: "",
       }))
       
@@ -142,222 +147,69 @@ export function OwnerDashboard() {
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    console.log("=== FORM SUBMIT DEBUG ===")
-    console.log("accountSettings:", accountSettings)
-    console.log("currentUserData:", currentUserData)
-    
-    // ===== VALIDASI TAHAP 1: Cek Field yang Diisi =====
-    const hasPasswordChange = accountSettings.newPassword && accountSettings.newPassword.trim() !== ""
-    const hasEmailChange = currentUserData?.email && accountSettings.email !== currentUserData.email
-    
-    console.log("hasPasswordChange:", hasPasswordChange)
-    console.log("hasEmailChange:", hasEmailChange)
-    
-    // Cek apakah ada perubahan
-    if (!hasPasswordChange && !hasEmailChange) {
-      console.log("❌ Tidak ada perubahan")
-      toast({ 
-        title: "❌ Tidak Ada Perubahan", 
-        description: "Silakan ubah Email atau masukkan Password Baru untuk melanjutkan.", 
-        variant: "destructive",
-        duration: 6000 
-      })
-      return
-    }
-
-    // ===== VALIDASI TAHAP 2: Validasi Password Baru =====
-    if (hasPasswordChange) {
-      const pwLength = accountSettings.newPassword.length
-      console.log("Password baru length:", pwLength)
-      
-      // Validasi minimal 6 karakter
-      if (pwLength < 6) {
-        console.log("❌ Password terlalu pendek:", pwLength, "karakter")
-        toast({ 
-          title: "❌ Password Terlalu Pendek", 
-          description: `Password baru hanya ${pwLength} karakter. Minimal 6 karakter diperlukan! Tambahkan ${6 - pwLength} karakter lagi.`, 
-          variant: "destructive", 
-          duration: 7000 
-        })
-        return
-      }
-      
-      // Validasi konfirmasi password
-      if (accountSettings.newPassword !== accountSettings.confirmPassword) {
-        console.log("❌ Password tidak cocok")
-        toast({ 
-          title: "❌ Password Tidak Cocok", 
-          description: "Password Baru dan Konfirmasi Password tidak sama! Periksa kembali.", 
-          variant: "destructive", 
-          duration: 6000 
-        })
-        return
-      }
-      
-      console.log("✅ Password baru valid:", pwLength, "karakter")
-    }
-
-    // ===== VALIDASI TAHAP 3: Password Saat Ini (Wajib) =====
-    if (!accountSettings.currentPassword || accountSettings.currentPassword.trim() === "") {
-      console.log("❌ Password saat ini kosong")
-      toast({ 
-        title: "❌ Password Saat Ini Diperlukan", 
-        description: "Untuk keamanan, masukkan Password Saat Ini untuk memverifikasi perubahan!", 
-        variant: "destructive",
-        duration: 6000 
-      })
+    // Validasi password
+    if (accountSettings.newPassword && accountSettings.newPassword !== accountSettings.confirmPassword) {
+      toast({ title: "Error", description: "Password baru dan konfirmasi tidak cocok!", variant: "destructive" })
       return
     }
     
-    if (accountSettings.currentPassword.length < 6) {
-      console.log("❌ Password saat ini terlalu pendek (mungkin salah)")
-      toast({ 
-        title: "❌ Password Saat Ini Tidak Valid", 
-        description: `Password yang Anda masukkan hanya ${accountSettings.currentPassword.length} karakter. Pastikan Anda memasukkan password yang benar!`, 
-        variant: "destructive",
-        duration: 6000 
-      })
+    // Validasi PIN
+    if (accountSettings.pin && (accountSettings.pin.length !== 6 || !/^\d+$/.test(accountSettings.pin))) {
+      toast({ title: "Error", description: "PIN harus 6 digit angka!", variant: "destructive" })
       return
     }
-    
-    console.log("✅ Semua validasi lulus, mulai proses update...")
-
-    console.log("✅ Validasi awal lulus, mulai update...")
-
-    console.log("✅ Semua validasi lulus, mulai proses update...")
 
     try {
-      // ===== TAHAP 4: Ambil Data User =====
       const currentUser = await getCurrentUser()
-      console.log("currentUser dari getCurrentUser:", currentUser)
-      
       if (!currentUser) {
-        console.log("❌ User tidak ditemukan")
-        toast({ 
-          title: "❌ User Tidak Ditemukan", 
-          description: "Sesi Anda mungkin sudah berakhir. Silakan login kembali!", 
-          variant: "destructive", 
-          duration: 6000 
-        })
+        toast({ title: "Error", description: "User tidak ditemukan!", variant: "destructive" })
         return
       }
 
-      // ===== TAHAP 5: Verifikasi Password Saat Ini =====
-      console.log("🔐 Memverifikasi password saat ini...")
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: currentUser.email || "",
-        password: accountSettings.currentPassword
-      })
-      
-      if (signInError) {
-        console.log("❌ Password salah:", signInError.message)
-        toast({ 
-          title: "❌ Password Saat Ini Salah", 
-          description: `Autentikasi gagal! Password yang Anda masukkan tidak sesuai. Error: ${signInError.message}`, 
-          variant: "destructive",
-          duration: 7000 
-        })
-        return
+      // Update email jika berubah
+      if (currentUser.email !== accountSettings.email) {
+        const { error: emailError } = await supabase.auth.updateUser({ email: accountSettings.email })
+        if (emailError) throw emailError
       }
-      
-      console.log("✅ Password saat ini terverifikasi!")
 
-      let successMessage = ""
-      let updateCount = 0
+      // Update password jika diisi
+      if (accountSettings.newPassword) {
+        const { error: passwordError } = await supabase.auth.updateUser({ password: accountSettings.newPassword })
+        if (passwordError) throw passwordError
+      }
 
-      // ===== TAHAP 6: Update Password =====
-      if (hasPasswordChange) {
-        console.log("🔄 Memproses update password...")
-        const { error: passwordError } = await supabase.auth.updateUser({ 
-          password: accountSettings.newPassword 
-        })
-        if (passwordError) {
-          console.log("❌ Gagal update password:", passwordError.message)
-          toast({ 
-            title: "❌ Gagal Update Password", 
-            description: `Tidak dapat memperbarui password. Error: ${passwordError.message}`, 
-            variant: "destructive",
-            duration: 7000 
-          })
-          return
+      // Update PIN di database
+      if (accountSettings.pin !== accountSettings.currentPin) {
+        const pinUpdated = await updateUserPin(currentUser.id, accountSettings.pin)
+        if (!pinUpdated) {
+          throw new Error("Gagal update PIN")
         }
-        console.log("✅ Password berhasil diupdate!")
-        updateCount++
-        successMessage = "✅ Password berhasil diperbarui! Gunakan password baru untuk login berikutnya."
       }
 
-      // ===== TAHAP 7: Update Email =====
-      if (hasEmailChange) {
-        console.log("🔄 Memproses update email...")
-        const { error: emailError } = await supabase.auth.updateUser({ 
-          email: accountSettings.email 
+      // Update data user lainnya
+      const { error: dbError } = await supabase
+        .from("users")
+        .update({ 
+          email: accountSettings.email,
+          pin: accountSettings.pin 
         })
-        if (emailError) {
-          console.log("❌ Gagal update email:", emailError.message)
-          toast({ 
-            title: "❌ Gagal Update Email", 
-            description: `Tidak dapat memperbarui email. Error: ${emailError.message}`, 
-            variant: "destructive",
-            duration: 7000 
-          })
-          return
-        }
-        
-        console.log("✅ Email auth berhasil diupdate!")
-        
-        // Update email di tabel users juga
-        console.log("🔄 Sinkronisasi email ke database users...")
-        const { error: dbEmailError } = await supabase
-          .from("users")
-          .update({ email: accountSettings.email })
-          .eq("id", currentUser.id)
-          
-        if (dbEmailError) {
-          console.warn("⚠️ Warning: Email updated in auth but not in users table:", dbEmailError.message)
-        } else {
-          console.log("✅ Email di users table berhasil diupdate!")
-        }
-        
-        updateCount++
-        successMessage = hasPasswordChange 
-          ? "✅ Password dan Email berhasil diperbarui! Cek email baru Anda untuk verifikasi."
-          : "✅ Email verifikasi telah dikirim ke email baru Anda. Email lama masih valid sampai Anda verifikasi."
-      }
+        .eq("id", currentUser.id)
 
-      // ===== TAHAP 8: Tampilkan Notifikasi Sukses =====
-      console.log(`🎉 Update berhasil! ${updateCount} perubahan disimpan.`)
-      toast({ 
-        title: "🎉 Berhasil Disimpan!", 
-        description: successMessage,
-        duration: 10000
-      })
+      if (dbError) throw dbError
 
-      // ===== TAHAP 9: Refresh Data & Reset Form =====
-      console.log("🔄 Me-refresh data user...")
-      const updatedUser = await getCurrentUser()
-      if (updatedUser) {
-        setCurrentUserData(updatedUser)
-        setAccountSettings({
-          email: updatedUser.email || "",
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: ""
-        })
-        console.log("✅ Form di-reset, data user di-refresh!")
-      }
-
-      console.log("🚪 Menutup dialog settings...")
+      toast({ title: "Berhasil", description: "Pengaturan akun berhasil diperbarui!" })
       setSettingsOpen(false)
-      console.log("=== ✅ PROSES SELESAI SEMPURNA ===")
+      setAccountSettings((prev) => ({ 
+        ...prev, 
+        currentPassword: "", 
+        newPassword: "", 
+        confirmPassword: "",
+        currentPin: prev.pin // Update current pin dengan yang baru
+      }))
       
     } catch (error: any) {
-      console.error("💥 Error tidak terduga:", error)
-      toast({ 
-        title: "💥 Error Tidak Terduga", 
-        description: `Terjadi kesalahan sistem: ${error.message || error}. Silakan coba lagi atau hubungi admin.`,
-        variant: "destructive",
-        duration: 8000
-      })
+      console.error("Error updating settings:", error)
+      toast({ title: "Error", description: `Gagal memperbarui pengaturan: ${error.message}`, variant: "destructive" })
     }
   }
 
@@ -408,8 +260,8 @@ export function OwnerDashboard() {
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 
-        {/* Connection Status Indicator - Hidden but still functional */}
-        <div className="fixed top-4 right-4 z-50" style={{ display: 'none' }}>
+        {/* Connection Status Indicator - Enhanced */}
+        <div className="fixed top-4 right-4 z-50">
           <div className={`px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md border transition-all duration-300 shadow-lg ${connectionStatus === 'connected'
               ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 shadow-green-500/20'
               : connectionStatus === 'error'
@@ -500,21 +352,20 @@ export function OwnerDashboard() {
                           value={accountSettings.email}
                           onChange={(e) => setAccountSettings((prev) => ({ ...prev, email: e.target.value }))}
                           className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
-                          placeholder="owner@pigtownbarbershop.com"
+                          placeholder="owner@example.com"
                         />
-                        <p className="text-xs text-slate-500">Jika diubah, email verifikasi akan dikirim ke email baru</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="currentPassword" className="text-sm font-medium">Password Saat Ini</Label>
+                        <Label htmlFor="newPassword" className="text-sm font-medium">Password Baru (Opsional)</Label>
                         <div className="relative">
                           <Input
-                            id="currentPassword"
+                            id="newPassword"
                             type={showPassword ? "text" : "password"}
-                            value={accountSettings.currentPassword}
-                            onChange={(e) => setAccountSettings((prev) => ({ ...prev, currentPassword: e.target.value }))}
+                            value={accountSettings.newPassword}
+                            onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
                             className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
-                            placeholder="Masukkan password saat ini"
+                            placeholder="Masukkan password baru"
                           />
                           <Button
                             type="button"
@@ -529,19 +380,6 @@ export function OwnerDashboard() {
                             }
                           </Button>
                         </div>
-                        <p className="text-xs text-slate-500">Wajib diisi untuk autentikasi jika ingin mengubah email atau password</p>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword" className="text-sm font-medium">Password Baru (Opsional)</Label>
-                        <Input
-                          id="newPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={accountSettings.newPassword}
-                          onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
-                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
-                          placeholder="Masukkan password baru (min. 6 karakter)"
-                        />
                       </div>
                       
                       <div className="space-y-2">
@@ -554,6 +392,65 @@ export function OwnerDashboard() {
                           className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
                           placeholder="Konfirmasi password baru"
                         />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="currentPin" className="text-sm font-medium">PIN Saat Ini</Label>
+                        <div className="relative">
+                          <Input
+                            id="currentPin"
+                            type={showCurrentPin ? "text" : "password"}
+                            value={accountSettings.currentPin}
+                            disabled
+                            className="bg-gray-100 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 pr-10 backdrop-blur-sm"
+                            placeholder="PIN saat ini"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowCurrentPin(!showCurrentPin)}
+                          >
+                            {showCurrentPin ?
+                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
+                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
+                            }
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="pin" className="text-sm font-medium">PIN Baru (6 digit)</Label>
+                        <div className="relative">
+                          <Input
+                            id="pin"
+                            type={showPin ? "text" : "password"}
+                            value={accountSettings.pin}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                              setAccountSettings((prev) => ({ ...prev, pin: value }));
+                            }}
+                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
+                            placeholder="123456"
+                            maxLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPin(!showPin)}
+                          >
+                            {showPin ?
+                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
+                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
+                            }
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          PIN digunakan untuk autentikasi akses ke dashboard
+                        </p>
                       </div>
                       
                       <div className="flex gap-2 pt-4">
@@ -618,7 +515,6 @@ export function OwnerDashboard() {
               </div>
               
               <div className="flex items-center gap-3">
-                {/* Realtime Button - Hidden but still functional */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -627,7 +523,6 @@ export function OwnerDashboard() {
                       ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/30'
                       : 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 hover:bg-gray-500/30'
                     }`}
-                  style={{ display: 'none' }}
                 >
                   <RefreshCw className={`h-4 w-4 ${realTimeEnabled ? 'animate-spin' : ''}`} />
                   <span>Realtime: {realTimeEnabled ? 'ON' : 'OFF'}</span>
@@ -706,21 +601,21 @@ export function OwnerDashboard() {
                   {/* Desktop Tab Navigation */}
                   <div className="hidden sm:block w-full">
                     <TabsList className="w-full h-auto p-2 bg-gradient-to-r from-white/30 via-white/20 to-white/30 dark:from-white/10 dark:via-white/5 dark:to-white/10 backdrop-blur-md border border-white/30 dark:border-white/20 rounded-2xl shadow-lg">
-                      <div className="grid grid-cols-5 lg:grid-cols-10 gap-1 w-full">
+                      <div className="flex flex-wrap justify-center gap-1 w-full">
                         {tabsConfig.map((tab, index) => (
                           <TabsTrigger
                             key={tab.value}
                             value={tab.value}
-                            className={`group relative overflow-hidden px-2 sm:px-4 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 ${activeTab === tab.value
+                            className={`group relative overflow-hidden px-3 sm:px-4 lg:px-5 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 flex-1 min-w-[80px] max-w-[140px] ${activeTab === tab.value
                                 ? 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-600 text-white shadow-xl shadow-red-500/30'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                               }`}
                             style={{ animationDelay: `${index * 100}ms` }}
                           >
                             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative z-10">
+                            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 relative z-10 justify-center">
                               <tab.icon className="h-3 w-3 sm:h-4 sm:w-4 group-hover:rotate-12 transition-transform duration-300" />
-                              <span className="text-[10px] sm:text-xs lg:text-sm leading-none">{window.innerWidth < 640 ? tab.shortLabel : tab.label}</span>
+                              <span className="text-[10px] sm:text-xs lg:text-sm leading-none whitespace-nowrap">{window.innerWidth < 640 ? tab.shortLabel : tab.label}</span>
                             </div>
                           </TabsTrigger>
                         ))}
@@ -734,16 +629,6 @@ export function OwnerDashboard() {
                 <TabsContent value="overview" className="space-y-6 mt-0">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 via-rose-500/5 to-blue-500/5 rounded-2xl blur-xl"></div>
-                    <OverviewAndAnalytics
-                      onRefreshData={() => testDatabaseConnection()}
-                      realTimeEnabled={realTimeEnabled}
-                    />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="analytics" className="space-y-6 mt-0">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-cyan-500/5 to-teal-500/5 rounded-2xl blur-xl"></div>
                     <OverviewAndAnalytics
                       onRefreshData={() => testDatabaseConnection()}
                       realTimeEnabled={realTimeEnabled}

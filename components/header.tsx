@@ -64,14 +64,15 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
           <ChevronRight className="h-4 w-4" />
         </Button>
 
-        {/* Welcome Message dengan efek interaktif modern */}
-        <div className="group cursor-pointer flex-1 overflow-hidden">
-          <h1 className="text-base md:text-2xl font-bold text-white transition-all duration-300 origin-left transform group-hover:scale-110 group-hover:tracking-wider inline-block">
-            <span className="bg-gradient-to-r from-white via-red-100 to-white bg-clip-text group-hover:text-transparent transition-all duration-300">
-              Welcome pig!
+        {/* Welcome Message dengan efek interaktif */}
+        <div className="group cursor-pointer flex-1">
+          <h1 className="text-base md:text-2xl font-bold text-white transition-all duration-300 group-hover:scale-105">
+            {" "}
+            <span className="text-white truncate block"> {/* Diubah jadi putih solid */}
+              {user.name || user.email}!
             </span>
           </h1>
-          <p className="text-[10px] md:text-sm text-red-300/80 transition-all duration-300 group-hover:text-red-100 group-hover:translate-x-1 mt-0.5 md:mt-1 truncate">
+          <p className="text-[10px] md:text-sm text-red-300/80 transition-all duration-300 group-hover:text-red-200 mt-0.5 md:mt-1 truncate">
             {currentTime}
           </p>
         </div>
