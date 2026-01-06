@@ -1,0 +1,8 @@
+@startuml Architecture_Cabang
+package "Manajemen Cabang" {
+  [Owner/Admin UI] --> [Branch Logic]
+  [Branch Logic] --> [Branch Service]
+  [Branch Service] --> [Database]
+  [Branch Logic] --> [Shift Service]
+}
+@enduml

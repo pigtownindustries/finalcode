@@ -1,0 +1,21 @@
+@startuml UseCase_POS
+actor "Cashier" as Cashier
+actor "Customer" as Customer
+rectangle "POS System" {
+  usecase "Login" as UC_Login
+  usecase "Buat Transaksi" as UC_Transaksi
+  usecase "Tambah Item" as UC_TambahItem
+  usecase "Pilih Karyawan" as UC_PilihKaryawan
+  usecase "Input Diskon" as UC_Diskon
+  usecase "Pilih Metode Bayar" as UC_Bayar
+  usecase "Cetak Struk" as UC_Struk
+}
+Cashier --> UC_Login
+Cashier --> UC_Transaksi
+Cashier --> UC_TambahItem
+Cashier --> UC_PilihKaryawan
+Cashier --> UC_Diskon
+Cashier --> UC_Bayar
+Cashier --> UC_Struk
+Customer --> UC_Transaksi
+@enduml

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, CheckCircle, XCircle, DollarSign, Plus, Eye, Calendar, Loader2, FileText, User, Edit, Trash2 } from "lucide-react"
+import { Clock, CheckCircle, XCircle, DollarSign, Plus, Eye, Calendar, Loader2, FileText, User as UserIcon, Edit, Trash2 } from "lucide-react"
 import { getKasbonRequests, createKasbonRequest, getEmployees, supabase, type KasbonWithUser, type User } from "@/lib/supabase"
 import {
   Select,
@@ -246,7 +246,7 @@ export function KasbonSystem() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Memuat data kasbon Anda...</span>
+          <span>Memuat data pinjaman Anda...</span>
         </div>
       </div>
     )
@@ -265,20 +265,20 @@ export function KasbonSystem() {
       {/* Header - Responsif untuk semua perangkat */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Kasbon Saya</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">Kelola pengajuan kasbon dan lihat status persetujuan</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Pengajuan Pinjaman</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Kelola pengajuan pinjaman dan lihat status persetujuan</p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
             <Button className="bg-red-600 hover:bg-red-700 shadow-lg hover:shadow-xl transition-all duration-300 text-sm md:text-base">
               <Plus className="h-4 w-4 mr-1 md:mr-2" />
-              Ajukan Kasbon Baru
+              Ajukan Pinjaman Baru
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-[95vw] md:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-lg md:text-xl">Ajukan Kasbon Baru</DialogTitle>
-              <DialogDescription className="text-sm md:text-base">Isi form berikut untuk mengajukan kasbon</DialogDescription>
+              <DialogTitle className="text-lg md:text-xl">Ajukan Pinjaman Baru</DialogTitle>
+              <DialogDescription className="text-sm md:text-base">Isi form berikut untuk mengajukan pinjaman</DialogDescription>
             </DialogHeader>
             <div className="space-y-3 md:space-y-4">
               {error && (
@@ -306,11 +306,11 @@ export function KasbonSystem() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="amount" className="text-sm md:text-base">Jumlah Kasbon *</Label>
+                <Label htmlFor="amount" className="text-sm md:text-base">Jumlah pinjaman *</Label>
                 <Input
                   id="amount"
                   type="text"
-                  placeholder="Masukkan jumlah kasbon"
+                  placeholder="Masukkan jumlah pinjaman"
                   value={formatInputCurrency(newKasbon.amount)}
                   onChange={(e) => {
                     const rawValue = parseInputCurrency(e.target.value)
@@ -326,10 +326,10 @@ export function KasbonSystem() {
                 )}
               </div>
               <div>
-                <Label htmlFor="reason" className="text-sm md:text-base">Alasan Kasbon *</Label>
+                <Label htmlFor="reason" className="text-sm md:text-base">Alasan Pinjaman *</Label>
                 <Textarea
                   id="reason"
-                  placeholder="Jelaskan alasan pengajuan kasbon (contoh: keperluan mendadak, biaya pengobatan, dll)"
+                  placeholder="Jelaskan alasan pengajuan pinjaman (contoh: keperluan mendadak, biaya pengobatan, dll)"
                   value={newKasbon.reason}
                   onChange={(e) => setNewKasbon({ ...newKasbon, reason: e.target.value })}
                   disabled={addKasbonLoading}
@@ -366,22 +366,22 @@ export function KasbonSystem() {
                 <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={addKasbonLoading} className="text-sm md:text-base">
                   Batal
                 </Button>
-                <Button onClick={handleAddKasbon} className="bg-red-600 hover:bg-red-700" disabled={addKasbonLoading} className="text-sm md:text-base">
+                <Button onClick={handleAddKasbon} className="bg-red-600 hover:bg-red-700 text-sm md:text-base" disabled={addKasbonLoading}>
                   {addKasbonLoading && <Loader2 className="h-4 w-4 mr-1 md:mr-2 animate-spin" />}
-                  Ajukan Kasbon
+                  Ajukan Pinjaman
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Dialog Edit Kasbon */}
+        {/* Dialog Edit Pinjaman */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="max-w-[95vw] md:max-w-xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg md:text-xl">Edit Kasbon</DialogTitle>
+              <DialogTitle className="text-lg md:text-xl">Edit Pinjaman</DialogTitle>
               <DialogDescription className="text-sm md:text-base">
-                Ubah detail pengajuan kasbon Anda yang masih pending
+                Ubah detail pengajuan pinjaman Anda yang masih pending
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 md:space-y-4">
@@ -391,11 +391,11 @@ export function KasbonSystem() {
                 </Alert>
               )}
               <div>
-                <Label htmlFor="edit_amount" className="text-sm md:text-base">Jumlah Kasbon *</Label>
+                <Label htmlFor="edit_amount" className="text-sm md:text-base">Jumlah Pinjaman *</Label>
                 <Input
                   id="edit_amount"
                   type="text"
-                  placeholder="Masukkan jumlah kasbon"
+                  placeholder="Masukkan jumlah pinjaman"
                   value={formatInputCurrency(editKasbon.amount)}
                   onChange={(e) => {
                     const rawValue = parseInputCurrency(e.target.value)
@@ -411,10 +411,10 @@ export function KasbonSystem() {
                 )}
               </div>
               <div>
-                <Label htmlFor="edit_reason" className="text-sm md:text-base">Alasan Kasbon *</Label>
+                <Label htmlFor="edit_reason" className="text-sm md:text-base">Alasan Pinjaman *</Label>
                 <Textarea
                   id="edit_reason"
-                  placeholder="Jelaskan alasan pengajuan kasbon"
+                  placeholder="Jelaskan alasan pengajuan pinjaman"
                   value={editKasbon.reason}
                   onChange={(e) => setEditKasbon({ ...editKasbon, reason: e.target.value })}
                   disabled={updateKasbonLoading}
@@ -510,7 +510,7 @@ export function KasbonSystem() {
         </Card>
         <Card className="border-l-4 border-l-blue-500 h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
-            <CardTitle className="text-xs md:text-sm font-medium">Total Kasbon</CardTitle>
+            <CardTitle className="text-xs md:text-sm font-medium">Total Pinjaman</CardTitle>
             <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
           </CardHeader>
           <CardContent className="p-3 md:p-4 pt-0">
@@ -522,9 +522,9 @@ export function KasbonSystem() {
 
       <Tabs defaultValue="current" className="space-y-4 md:space-y-6">
         <TabsList className="w-full flex overflow-x-auto">
-          <TabsTrigger value="current" className="flex-1 text-xs md:text-sm">Kasbon Aktif</TabsTrigger>
+          <TabsTrigger value="current" className="flex-1 text-xs md:text-sm">Pinjaman Aktif</TabsTrigger>
           <TabsTrigger value="due" className="flex-1 text-xs md:text-sm">Jatuh Tempo</TabsTrigger>
-          <TabsTrigger value="history" className="flex-1 text-xs md:text-sm">Riwayat Kasbon</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 text-xs md:text-sm">Riwayat Pinjaman</TabsTrigger>
         </TabsList>
 
         <TabsContent value="current" className="space-y-4 md:space-y-6">
@@ -532,9 +532,9 @@ export function KasbonSystem() {
             <CardHeader className="p-4 md:p-6">
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <FileText className="h-4 w-4 md:h-5 md:w-5" />
-                Kasbon Aktif Saya
+                Pinjaman Aktif Saya
               </CardTitle>
-              <CardDescription className="text-sm md:text-base">Daftar kasbon yang sedang menunggu persetujuan</CardDescription>
+              <CardDescription className="text-sm md:text-base">Daftar pinjaman yang sedang menunggu persetujuan</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
@@ -608,14 +608,14 @@ export function KasbonSystem() {
                           </DialogTrigger>
                           <DialogContent className="max-w-[95vw] md:max-w-lg">
                             <DialogHeader>
-                              <DialogTitle className="text-lg md:text-xl">Detail Kasbon</DialogTitle>
-                              <DialogDescription className="text-sm md:text-base">Informasi lengkap pengajuan kasbon Anda</DialogDescription>
+                              <DialogTitle className="text-lg md:text-xl">Detail Pinjaman</DialogTitle>
+                              <DialogDescription className="text-sm md:text-base">Informasi lengkap pengajuan pinjaman Anda</DialogDescription>
                             </DialogHeader>
                             {selectedKasbon && (
                               <div className="space-y-3 md:space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                   <div className="space-y-1 md:space-y-2">
-                                    <Label className="text-xs md:text-sm font-semibold text-gray-700">Jumlah Kasbon</Label>
+                                    <Label className="text-xs md:text-sm font-semibold text-gray-700">Jumlah Pinjaman</Label>
                                     <p className="text-lg md:text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
                                       {formatCurrency(selectedKasbon.amount)}
                                     </p>
@@ -642,7 +642,7 @@ export function KasbonSystem() {
                                   )}
                                 </div>
                                 <div className="space-y-1 md:space-y-2">
-                                  <Label className="text-xs md:text-sm font-semibold text-gray-700">Alasan Kasbon</Label>
+                                  <Label className="text-xs md:text-sm font-semibold text-gray-700">Alasan Pinjaman</Label>
                                   <p className="text-sm md:text-base bg-gray-50 p-3 rounded-lg">{selectedKasbon.reason}</p>
                                 </div>
                                 {selectedKasbon.notes && (
@@ -661,8 +661,8 @@ export function KasbonSystem() {
                 {myKasbonRequests.filter((k) => k.status === "pending" || k.status === "approved").length === 0 && (
                   <div className="text-center py-8 md:py-12 text-muted-foreground">
                     <FileText className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
-                    <p className="text-base md:text-lg font-medium">Tidak ada kasbon aktif</p>
-                    <p className="text-xs md:text-sm">Ajukan kasbon baru untuk memulai</p>
+                    <p className="text-base md:text-lg font-medium">Tidak ada pinjaman aktif</p>
+                    <p className="text-xs md:text-sm">Ajukan pinjaman baru untuk memulai</p>
                   </div>
                 )}
               </div>
@@ -675,9 +675,9 @@ export function KasbonSystem() {
             <CardHeader className="p-4 md:p-6">
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <Clock className="h-4 w-4 md:h-5 md:w-5 text-orange-600" />
-                Kasbon Jatuh Tempo
+                Pinjaman Jatuh Tempo
               </CardTitle>
-              <CardDescription className="text-sm md:text-base">Daftar kasbon yang sudah disetujui dan mendekati atau melewati jatuh tempo</CardDescription>
+              <CardDescription className="text-sm md:text-base">Daftar pinjaman yang sudah disetujui dan mendekati atau melewati jatuh tempo</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
@@ -771,8 +771,8 @@ export function KasbonSystem() {
                 {myKasbonRequests.filter((k) => (k.status === "approved" || k.status === "paid") && k.due_date).length === 0 && (
                   <div className="text-center py-8 md:py-12 text-muted-foreground">
                     <Clock className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
-                    <p className="text-base md:text-lg font-medium">Tidak ada kasbon jatuh tempo</p>
-                    <p className="text-xs md:text-sm">Semua kasbon dalam kondisi baik</p>
+                    <p className="text-base md:text-lg font-medium">Tidak ada pinjaman jatuh tempo</p>
+                    <p className="text-xs md:text-sm">Semua pinjaman dalam kondisi baik</p>
                   </div>
                 )}
               </div>
@@ -785,9 +785,9 @@ export function KasbonSystem() {
             <CardHeader className="p-4 md:p-6">
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <Calendar className="h-4 w-4 md:h-5 md:w-5" />
-                Riwayat Kasbon
+                Riwayat Pinjaman
               </CardTitle>
-              <CardDescription className="text-sm md:text-base">Kasbon yang sudah disetujui atau ditolak</CardDescription>
+              <CardDescription className="text-sm md:text-base">Pinjaman yang sudah disetujui atau ditolak</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
@@ -837,9 +837,9 @@ export function KasbonSystem() {
                 ))}
                 {myKasbonRequests.filter((k) => k.status === "approved" || k.status === "rejected" || k.status === "paid").length === 0 && (
                   <div className="text-center py-8 md:py-12 text-muted-foreground">
-                    <User className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
-                    <p className="text-base md:text-lg font-medium">Belum ada riwayat kasbon</p>
-                    <p className="text-xs md:text-sm">Riwayat kasbon yang disetujui/ditolak akan muncul di sini</p>
+                    <UserIcon className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />
+                    <p className="text-base md:text-lg font-medium">Belum ada riwayat pinjaman</p>
+                    <p className="text-xs md:text-sm">Riwayat pinjaman yang disetujui/ditolak akan muncul di sini</p>
                   </div>
                 )}
               </div>

@@ -1,0 +1,8 @@
+@startuml Architecture_POS
+package "POS System" {
+  [Cashier UI] --> [POS Logic]
+  [POS Logic] --> [Transaction Service]
+  [Transaction Service] --> [Database]
+  [POS Logic] --> [Printer]
+}
+@enduml

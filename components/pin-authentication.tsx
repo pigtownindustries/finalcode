@@ -64,23 +64,31 @@ export function PinAuthentication({
     }
   }, [isLocked, lockTimeRemaining])
 
-  // Fungsi untuk mencari user berdasarkan PIN
+  // Fungsi untuk mencari user berdasarkan PIN - DISEDERHANAKAN
   const findUserByPin = async (pinValue: string): Promise<any> => {
     try {
+      console.log('[PIN AUTH] Mencari user dengan PIN:', pinValue)
+      
+      // Query sederhana: cari user dengan PIN yang cocok
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('pin', pinValue)
-        .single()
+        .limit(1)
+      
+      console.log('[PIN AUTH] Hasil pencarian:', data)
 
-      if (error) {
-        // PIN tidak ditemukan atau error
-        return null
+      // Jika ada data, ambil user pertama
+      if (data && data.length > 0) {
+        console.log('[PIN AUTH] ✅ User ditemukan:', data[0].name)
+        return data[0]
       }
 
-      return data
+      console.log('[PIN AUTH] ❌ PIN tidak ditemukan di database')
+      return null
+      
     } catch (error) {
-      console.error('Error finding user by PIN:', error)
+      console.error('[PIN AUTH] Error:', error)
       return null
     }
   }
@@ -127,6 +135,8 @@ export function PinAuthentication({
     if (isLocked || isLoading) return
 
     const currentPin = pinValue || pin.join("")
+    
+    console.log('[PIN AUTH] Submitting PIN:', currentPin, 'Length:', currentPin.length)
 
     if (currentPin.length !== 6) {
       toast({
@@ -142,6 +152,8 @@ export function PinAuthentication({
     try {
       // Cari user berdasarkan PIN
       const userData = await findUserByPin(currentPin)
+      
+      console.log('[PIN AUTH] Authentication result:', userData ? 'Success' : 'Failed')
 
       if (userData) {
         // PIN valid - kirim data user ke parent component
@@ -154,6 +166,8 @@ export function PinAuthentication({
         // PIN tidak valid
         const newAttempts = attempts + 1
         setAttempts(newAttempts)
+        
+        console.log('[PIN AUTH] Failed attempts:', newAttempts, 'of', MAX_ATTEMPTS)
 
         if (newAttempts >= MAX_ATTEMPTS) {
           setIsLocked(true)

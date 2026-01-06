@@ -1,0 +1,8 @@
+@startuml Architecture_Laporan
+package "Laporan & Analytics" {
+  [User UI] --> [Report Logic]
+  [Report Logic] --> [Report Service]
+  [Report Service] --> [Database]
+  [Report Logic] --> [Export Service]
+}
+@enduml

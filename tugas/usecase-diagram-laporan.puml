@@ -1,0 +1,27 @@
+@startuml UseCase_Laporan
+actor "Owner" as Owner
+actor "Admin" as Admin
+actor "Cashier" as Cashier
+rectangle "Laporan & Analytics" {
+  usecase "Login" as UC_Login
+  usecase "Pilih Jenis Laporan" as UC_Pilih
+  usecase "Set Filter" as UC_Filter
+  usecase "Lihat Laporan" as UC_Lihat
+  usecase "Export/Print" as UC_Export
+}
+Owner --> UC_Login
+Owner --> UC_Pilih
+Owner --> UC_Filter
+Owner --> UC_Lihat
+Owner --> UC_Export
+Admin --> UC_Login
+Admin --> UC_Pilih
+Admin --> UC_Filter
+Admin --> UC_Lihat
+Admin --> UC_Export
+Cashier --> UC_Login
+Cashier --> UC_Pilih
+Cashier --> UC_Filter
+Cashier --> UC_Lihat
+Cashier --> UC_Export
+@enduml

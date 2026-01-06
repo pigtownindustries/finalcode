@@ -1,0 +1,8 @@
+@startuml Architecture_DashboardOwner
+package "Dashboard Owner" {
+  [Owner UI] --> [Dashboard Logic]
+  [Dashboard Logic] --> [Metrics Service]
+  [Metrics Service] --> [Database]
+  [Dashboard Logic] --> [Other Modules]
+}
+@enduml

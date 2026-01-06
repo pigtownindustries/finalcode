@@ -1,0 +1,8 @@
+@startuml Architecture_Kasbon
+package "Kasbon" {
+  [Karyawan/Admin UI] --> [Kasbon Logic]
+  [Kasbon Logic] --> [Kasbon Service]
+  [Kasbon Service] --> [Database]
+  [Kasbon Logic] --> [Notification Service]
+}
+@enduml

@@ -1,0 +1,21 @@
+@startuml Kasbon_Activity
+|Karyawan|
+start
+:Login;
+:Ajukan Kasbon;
+:Input Jumlah & Alasan;
+:Submit Pengajuan;
+|Admin/Owner|
+:Review Pengajuan;
+if (Setuju?) then (Ya)
+  :Setujui Kasbon;
+  :Notifikasi Karyawan;
+else (Tidak)
+  :Tolak Kasbon;
+  :Notifikasi Karyawan;
+endif
+|Karyawan|
+:Lihat Status Kasbon;
+:Kembali ke Dashboard;
+stop
+@enduml

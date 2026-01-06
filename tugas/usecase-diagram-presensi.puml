@@ -1,0 +1,18 @@
+@startuml UseCase_Presensi
+actor "Karyawan" as Karyawan
+actor "Admin" as Admin
+rectangle "Presensi Karyawan" {
+  usecase "Login" as UC_Login
+  usecase "Ambil Foto" as UC_Foto
+  usecase "Input Lokasi" as UC_Lokasi
+  usecase "Submit Presensi" as UC_Submit
+  usecase "Validasi Presensi" as UC_Validasi
+  usecase "Lihat Riwayat" as UC_Riwayat
+}
+Karyawan --> UC_Login
+Karyawan --> UC_Foto
+Karyawan --> UC_Lokasi
+Karyawan --> UC_Submit
+Karyawan --> UC_Riwayat
+Admin --> UC_Validasi
+@enduml

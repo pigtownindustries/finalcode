@@ -1,0 +1,24 @@
+@startuml UseCase_Cabang
+actor "Owner" as Owner
+actor "Admin" as Admin
+rectangle "Manajemen Cabang" {
+  usecase "Login" as UC_Login
+  usecase "Tambah Cabang" as UC_Tambah
+  usecase "Edit Cabang" as UC_Edit
+  usecase "Hapus Cabang" as UC_Hapus
+  usecase "Lihat Daftar Cabang" as UC_Lihat
+  usecase "Kelola Shift" as UC_Shift
+}
+Owner --> UC_Login
+Owner --> UC_Tambah
+Owner --> UC_Edit
+Owner --> UC_Hapus
+Owner --> UC_Lihat
+Owner --> UC_Shift
+Admin --> UC_Login
+Admin --> UC_Tambah
+Admin --> UC_Edit
+Admin --> UC_Hapus
+Admin --> UC_Lihat
+Admin --> UC_Shift
+@enduml

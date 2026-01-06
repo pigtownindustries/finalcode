@@ -1,0 +1,9 @@
+@startuml Manajemen_Karyawan_Activity
+|Admin/Owner|
+start
+:Login;
+:Tambah/Edit/Hapus Karyawan;
+:Simpan Data;
+:Kembali ke Dashboard;
+stop
+@enduml

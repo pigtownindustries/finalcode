@@ -1,0 +1,17 @@
+@startuml UseCase_Kasbon
+actor "Karyawan" as Karyawan
+actor "Admin" as Admin
+actor "Owner" as Owner
+rectangle "Kasbon" {
+  usecase "Ajukan Kasbon" as UC_Ajukan
+  usecase "Review Kasbon" as UC_Review
+  usecase "Setujui/Tolak Kasbon" as UC_Keputusan
+  usecase "Lihat Status Kasbon" as UC_Status
+}
+Karyawan --> UC_Ajukan
+Karyawan --> UC_Status
+Admin --> UC_Review
+Admin --> UC_Keputusan
+Owner --> UC_Review
+Owner --> UC_Keputusan
+@enduml

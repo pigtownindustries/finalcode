@@ -485,7 +485,7 @@ export default function KasbonManagement() {
     }).format(amount)
   }
 
-  const getDueDateStatus = (dueDate: string | null, status: string) => {
+  const getDueDateStatus = (dueDate: string | null | undefined, status: string) => {
     if (!dueDate || status === "paid") return null;
     
     const today = new Date();
@@ -543,20 +543,20 @@ export default function KasbonManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Management Kasbon</h2>
-          <p className="text-muted-foreground">Kelola pengajuan kasbon dari karyawan</p>
+          <h2 className="text-2xl font-bold">Management Pengajuan Pinjaman</h2>
+          <p className="text-muted-foreground">Kelola pengajuan pinjaman dari karyawan</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="w-4 h-4 mr-2" />
-              Tambah Kasbon
+              Tambah Pinjaman
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingKasbon ? "Edit Kasbon" : "Tambah Kasbon"}</DialogTitle>
-              <DialogDescription>Kelola pengajuan kasbon karyawan</DialogDescription>
+              <DialogTitle>{editingKasbon ? "Edit Pinjaman" : "Tambah Pinjaman"}</DialogTitle>
+              <DialogDescription>Kelola pengajuan pinjaman karyawan</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -584,7 +584,7 @@ export default function KasbonManagement() {
                   type="number"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  placeholder="Masukkan jumlah kasbon"
+                  placeholder="Masukkan jumlah pinjaman"
                   required
                 />
               </div>
@@ -594,7 +594,7 @@ export default function KasbonManagement() {
                   id="reason"
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  placeholder="Jelaskan alasan kasbon"
+                  placeholder="Jelaskan alasan pinjaman"
                   required
                 />
               </div>
@@ -639,7 +639,7 @@ export default function KasbonManagement() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="pending">Menunggu Persetujuan</TabsTrigger>
-          <TabsTrigger value="all">Semua Kasbon</TabsTrigger>
+          <TabsTrigger value="all">Semua Pinjaman</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -687,8 +687,8 @@ export default function KasbonManagement() {
         <TabsContent value="pending" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Kasbon Menunggu Persetujuan</CardTitle>
-              <CardDescription>Kasbon yang perlu ditinjau dan disetujui</CardDescription>
+              <CardTitle>Pinjaman Menunggu Persetujuan</CardTitle>
+              <CardDescription>Pinjaman yang perlu ditinjau dan disetujui</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -708,7 +708,7 @@ export default function KasbonManagement() {
                       <TableRow key={kasbon.id}>
                         <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
                         <TableCell>
-                          <div className="font-medium">{kasbon.user?.name || 'N/A'}</div>
+                          <div className="font-medium">{(kasbon as any).user_name || kasbon.user?.name || 'N/A'}</div>
                         </TableCell>
                         <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
                         <TableCell>{kasbon.reason}</TableCell>
@@ -746,8 +746,8 @@ export default function KasbonManagement() {
         <TabsContent value="all" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Semua Riwayat Kasbon</CardTitle>
-              <CardDescription>Riwayat kasbon yang sudah disetujui, ditolak, dan dibayar dengan informasi jatuh tempo</CardDescription>
+              <CardTitle>Semua Riwayat Pinjaman</CardTitle>
+              <CardDescription>Riwayat pinjaman yang sudah disetujui, ditolak, dan dibayar dengan informasi jatuh tempo</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -771,7 +771,7 @@ export default function KasbonManagement() {
                     <TableRow key={kasbon.id}>
                       <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{kasbon.user?.name || 'N/A'}</div>
+                        <div className="font-medium">{(kasbon as any).user_name || kasbon.user?.name || 'N/A'}</div>
                       </TableCell>
                       <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
                       <TableCell>
@@ -856,16 +856,16 @@ export default function KasbonManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog Penolakan Kasbon */}
+      {/* Dialog Penolakan Pinjaman */}
       <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <X className="w-5 h-5" />
-              Tolak Pengajuan Kasbon
+              Tolak Pengajuan Pinjaman
             </DialogTitle>
             <DialogDescription>
-              Berikan alasan penolakan untuk pengajuan kasbon dari {rejectingKasbon?.user?.name || 'N/A'}
+              Berikan alasan penolakan untuk pengajuan pinjaman dari {rejectingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
           
@@ -874,7 +874,7 @@ export default function KasbonManagement() {
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Karyawan:</span>
-                  <span className="font-medium">{rejectingKasbon.user?.name || 'N/A'}</span>
+                  <span className="font-medium">{(rejectingKasbon as any).user_name || rejectingKasbon.user?.name || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Jumlah:</span>
@@ -923,22 +923,22 @@ export default function KasbonManagement() {
               disabled={!rejectionReason.trim()}
             >
               <X className="w-4 h-4 mr-2" />
-              Tolak Kasbon
+              Tolak Pinjaman
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Pembayaran Kasbon */}
+      {/* Dialog Pembayaran Pinjaman */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-blue-600 flex items-center gap-2">
               <DollarSign className="w-5 h-5" />
-              Pembayaran Kasbon
+              Pembayaran Pinjaman
             </DialogTitle>
             <DialogDescription>
-              Proses pembayaran kasbon untuk {payingKasbon?.user?.name || 'N/A'}
+              Proses pembayaran pinjaman untuk {payingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
 
@@ -948,10 +948,10 @@ export default function KasbonManagement() {
                 <div className="bg-blue-50 p-4 rounded-lg space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Karyawan:</span>
-                    <span className="font-medium">{payingKasbon.user?.name || 'N/A'}</span>
+                    <span className="font-medium">{(payingKasbon as any).user_name || payingKasbon.user?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Kasbon:</span>
+                    <span className="text-gray-600">Total Pinjaman:</span>
                     <span className="font-bold text-blue-600">{formatCurrency(payingKasbon.amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -1060,7 +1060,7 @@ export default function KasbonManagement() {
               Perpanjang Jatuh Tempo
             </DialogTitle>
             <DialogDescription>
-              Ubah tanggal jatuh tempo kasbon untuk {extendingKasbon?.user?.name || 'N/A'}
+              Ubah tanggal jatuh tempo pinjaman untuk {extendingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
 
@@ -1070,10 +1070,10 @@ export default function KasbonManagement() {
                 <div className="bg-purple-50 p-4 rounded-lg space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Karyawan:</span>
-                    <span className="font-medium">{extendingKasbon.user?.name || 'N/A'}</span>
+                    <span className="font-medium">{(extendingKasbon as any).user_name || extendingKasbon.user?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Jumlah Kasbon:</span>
+                    <span className="text-gray-600">Jumlah Pinjaman:</span>
                     <span className="font-bold text-purple-600">{formatCurrency(extendingKasbon.amount)}</span>
                   </div>
                   <div className="flex justify-between text-sm">

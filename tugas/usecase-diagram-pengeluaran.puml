@@ -1,0 +1,17 @@
+@startuml UseCase_Pengeluaran
+actor "Admin" as Admin
+rectangle "Pengeluaran Cabang" {
+  usecase "Login" as UC_Login
+  usecase "Tambah Pengeluaran" as UC_Tambah
+  usecase "Edit Pengeluaran" as UC_Edit
+  usecase "Hapus Pengeluaran" as UC_Hapus
+  usecase "Upload Bukti" as UC_Bukti
+  usecase "Lihat Riwayat" as UC_Riwayat
+}
+Admin --> UC_Login
+Admin --> UC_Tambah
+Admin --> UC_Edit
+Admin --> UC_Hapus
+Admin --> UC_Bukti
+Admin --> UC_Riwayat
+@enduml

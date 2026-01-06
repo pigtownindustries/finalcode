@@ -1,5 +1,4 @@
 import { createClient } from "@supabase/supabase-js"
-import { getBusinessDaysCount } from './date-utils';
 
 // =============================
 // Konfigurasi Supabase
@@ -140,7 +139,11 @@ export interface Transaction {
   notes?: string
   created_at: string
   cashier_id?: string
+  cashier_name?: string
   branch_id?: string
+  branch_name?: string
+  server_id?: string
+  server_name?: string
   cashier?: {
     name: string
   }
@@ -201,7 +204,7 @@ export interface Attendance {
 }
 
 export interface AttendanceWithDetails extends Attendance {
-  users?: Employee
+  users?: User
   branches?: Branch
 }
 
@@ -275,7 +278,9 @@ export interface UserWithPoints extends User {
 export interface Kasbon {
   id: string
   user_id: string
+  user_name?: string
   amount: number
+  paid_amount?: number
   reason: string
   status: "pending" | "approved" | "rejected" | "paid"
   request_date: string
@@ -562,7 +567,9 @@ export async function createTransactionItems(items: Partial<TransactionItem>[]) 
         ...item,
         service_name: service?.name || 'Unknown Service',
         service_type: service?.type,
-        service_category: service?.service_categories?.name
+        service_category: Array.isArray(service?.service_categories) 
+          ? service.service_categories[0]?.name 
+          : (service?.service_categories as any)?.name
       }
     }
     return item
@@ -1105,8 +1112,21 @@ export async function createKasbonRequest(kasbonData: {
 }) {
   console.log("[v0] createKasbonRequest called with:", kasbonData)
 
+  // Get user name for snapshot
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .select("name")
+    .eq("id", kasbonData.user_id)
+    .single()
+
+  if (userError) {
+    console.error("[createKasbonRequest] Error getting user name:", userError)
+    return { data: null, error: userError }
+  }
+
   const kasbonToInsert = {
     ...kasbonData,
+    user_name: user?.name || "Unknown",
     status: "pending" as const,
     request_date: new Date().toISOString(),
     created_at: new Date().toISOString(),
@@ -1390,7 +1410,7 @@ export async function addEmployee(employee: Partial<Employee>) {
     status: employee.status || "active",
     pin: employee.pin,
     position: employee.position,
-    salary: employee.salary || employee.baseSalary || 0,
+    salary: (employee as any).salary || employee.baseSalary || 0,
     commission_rate: employee.commissionRate || 0,
   }
 
@@ -2301,6 +2321,8 @@ export async function getAbsentEmployeesToday(): Promise<Employee[]> {
       overtimeRate: 25000,
       bonusPoints: 0,
       penaltyPoints: 0,
+      totalBonus: 0,
+      totalPenalty: 0,
       commissionRate: 0.05,
       joinDate: user.created_at,
       kasbonBalance: 0,

@@ -1,0 +1,8 @@
+@startuml Architecture_Presensi
+package "Presensi Karyawan" {
+  [Karyawan UI] --> [Presensi Logic]
+  [Presensi Logic] --> [Attendance Service]
+  [Attendance Service] --> [Database]
+  [Presensi Logic] --> [Photo Service]
+}
+@enduml

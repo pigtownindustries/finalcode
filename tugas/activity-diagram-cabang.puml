@@ -1,0 +1,10 @@
+@startuml Manajemen_Cabang_Activity
+|Owner/Admin|
+start
+:Login;
+:Tambah/Edit/Hapus Cabang;
+:Simpan Data;
+:Kelola Shift;
+:Kembali ke Dashboard;
+stop
+@enduml

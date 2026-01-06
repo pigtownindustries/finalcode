@@ -1,0 +1,15 @@
+@startuml Laporan_Analytics_Activity
+|Owner/Admin|
+start
+:Login;
+:Pilih Jenis Laporan;
+:Set Filter;
+:Load Data;
+|System|
+:Query Data;
+:Tampilkan Laporan;
+|Owner/Admin|
+:Export/Print;
+:Kembali ke Dashboard;
+stop
+@enduml

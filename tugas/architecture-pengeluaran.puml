@@ -1,0 +1,8 @@
+@startuml Architecture_Pengeluaran
+package "Pengeluaran Cabang" {
+  [Admin UI] --> [Expense Logic]
+  [Expense Logic] --> [Expense Service]
+  [Expense Service] --> [Database]
+  [Expense Logic] --> [Upload Service]
+}
+@enduml

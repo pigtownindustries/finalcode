@@ -1,0 +1,19 @@
+@startuml Presensi_Karyawan_Activity
+|Karyawan|
+start
+:Login;
+:Ambil Foto;
+:Input Lokasi;
+:Submit Presensi;
+|System|
+:Validasi Data;
+if (Valid?) then (Ya)
+  :Simpan Data;
+  :Notifikasi Sukses;
+else (Tidak)
+  :Tampilkan Error;
+endif
+|Karyawan|
+:Kembali ke Dashboard;
+stop
+@enduml

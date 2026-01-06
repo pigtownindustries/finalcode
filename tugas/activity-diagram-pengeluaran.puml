@@ -1,0 +1,15 @@
+@startuml Pengeluaran_Cabang_Activity
+|Admin|
+start
+:Login;
+:Tambah Pengeluaran;
+:Input Detail & Jumlah;
+:Upload Bukti;
+:Submit Pengeluaran;
+|System|
+:Simpan Data;
+:Update Saldo;
+|Admin|
+:Kembali ke Dashboard;
+stop
+@enduml

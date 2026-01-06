@@ -1,0 +1,11 @@
+@startuml Dashboard_Owner_Activity
+|Owner|
+start
+:Login;
+:Lihat Metrik Bisnis;
+:Lihat Performa Cabang;
+:Lihat Top Karyawan;
+:Akses Menu Lain;
+:Kembali ke Dashboard;
+stop
+@enduml

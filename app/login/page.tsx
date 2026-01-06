@@ -55,7 +55,7 @@ export default function LoginPage() {
                 <svg className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8zm-4-10.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm7 0a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm-3.5 3a3.5 3.5 0 00-3.14 1.96 5.5 5.5 0 016.28 0A3.5 3.5 0 0012 12.5z"/>
                 </svg>
-                bayuence_
+                ence
               </Link>
             </p>
           </div>

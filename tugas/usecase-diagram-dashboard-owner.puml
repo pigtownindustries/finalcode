@@ -1,0 +1,15 @@
+@startuml UseCase_DashboardOwner
+actor "Owner" as Owner
+rectangle "Dashboard Owner" {
+  usecase "Login" as UC_Login
+  usecase "Lihat Metrik Bisnis" as UC_Metrik
+  usecase "Lihat Performa Cabang" as UC_Performa
+  usecase "Lihat Top Karyawan" as UC_TopKaryawan
+  usecase "Akses Menu Lain" as UC_Menu
+}
+Owner --> UC_Login
+Owner --> UC_Metrik
+Owner --> UC_Performa
+Owner --> UC_TopKaryawan
+Owner --> UC_Menu
+@enduml

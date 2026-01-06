@@ -1,0 +1,21 @@
+@startuml POS_System_Activity
+|Cashier|
+start
+:Login;
+:Buat Transaksi Baru;
+repeat
+  :Tambah Item;
+  :Pilih Karyawan;
+repeat while (Tambah Item Lagi?) is (Ya)
+-> Tidak;
+:Input Diskon;
+:Pilih Metode Bayar;
+:Proses Pembayaran;
+|System|
+:Simpan Transaksi;
+:Cetak Struk;
+|Cashier|
+:Notifikasi Sukses;
+:Kembali ke Dashboard;
+stop
+@enduml

@@ -1,0 +1,7 @@
+@startuml Architecture_Karyawan
+package "Manajemen Karyawan" {
+  [Admin/Owner UI] --> [Employee Logic]
+  [Employee Logic] --> [Employee Service]
+  [Employee Service] --> [Database]
+}
+@enduml
