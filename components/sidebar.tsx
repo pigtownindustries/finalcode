@@ -49,10 +49,10 @@ const menuItems = [
     color: "text-orange-400"
   },
   {
-    title: "Pengajuan pinjaman",
+    title: "Pinjaman",
     icon: Users,
     href: "/kasbon",
-    description: "Manajemen pengajuan pinjaman",
+    description: "Manajemen pinjaman",
     color: "text-orange-400"
   },
   {
