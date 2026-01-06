@@ -236,12 +236,14 @@ export interface ReceiptTemplate {
   header_text?: string
   footer_text?: string
   logo_url?: string
+  logo_height?: number
   is_active?: boolean
   show_logo?: boolean
   show_address?: boolean
   show_phone?: boolean
   show_date?: boolean
   show_barber?: boolean
+  show_customer?: boolean
   created_at?: string
 }
 

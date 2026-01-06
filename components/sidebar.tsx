@@ -21,7 +21,7 @@ interface SidebarProps {
 
 const menuItems = [
   {
-    title: "Cashier System",
+    title: "Kasir",
     icon: ShoppingCart,
     href: "/dashboard",
     description: "Sistem kasir utama",
@@ -56,7 +56,7 @@ const menuItems = [
     color: "text-orange-400"
   },
   {
-    title: "Owner Dashboard",
+    title: "Dashboard Owner",
     icon: LayoutDashboard,
     href: "/owner",
     description: "Dashboard lengkap owner",

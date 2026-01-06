@@ -305,7 +305,7 @@ export function OwnerDashboard() {
                 
                 <div className="flex flex-col min-w-0 flex-1">
                   <h1 className="text-lg font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-tight truncate">
-                    Owner Dashboard
+                    Dashboard Owner 
                   </h1>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight truncate">
                     Kontrol penuh operasional
@@ -505,7 +505,7 @@ export function OwnerDashboard() {
                   
                   <div className="flex flex-col justify-center">
                     <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-none">
-                      Owner Dashboard
+                      Dashboard Owner 
                     </h1>
                     <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 font-medium mt-1 leading-none">
                       Kelola seluruh operasional dengan data real-time dan analytics mendalam
