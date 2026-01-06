@@ -158,7 +158,7 @@ export function KasbonSystem() {
   }
 
   const handleDeleteKasbon = async (kasbonId: string) => {
-    if (!confirm("Apakah Anda yakin ingin membatalkan pengajuan kasbon ini?")) return
+    if (!confirm("Apakah Anda yakin ingin membatalkan pinjaman ini?")) return
 
     try {
       const { error: deleteError } = await supabase
@@ -265,8 +265,8 @@ export function KasbonSystem() {
       {/* Header - Responsif untuk semua perangkat */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Pengajuan Pinjaman</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">Kelola pengajuan pinjaman dan lihat status persetujuan</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Pinjaman</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Kelola pinjaman dan lihat status persetujuan</p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
@@ -329,7 +329,7 @@ export function KasbonSystem() {
                 <Label htmlFor="reason" className="text-sm md:text-base">Alasan Pinjaman *</Label>
                 <Textarea
                   id="reason"
-                  placeholder="Jelaskan alasan pengajuan pinjaman (contoh: keperluan mendadak, biaya pengobatan, dll)"
+                  placeholder="Jelaskan alasan pinjaman (contoh: keperluan mendadak, biaya pengobatan, dll)"
                   value={newKasbon.reason}
                   onChange={(e) => setNewKasbon({ ...newKasbon, reason: e.target.value })}
                   disabled={addKasbonLoading}
@@ -381,7 +381,7 @@ export function KasbonSystem() {
             <DialogHeader>
               <DialogTitle className="text-lg md:text-xl">Edit Pinjaman</DialogTitle>
               <DialogDescription className="text-sm md:text-base">
-                Ubah detail pengajuan pinjaman Anda yang masih pending
+                Ubah detail pinjamanpinjaman Anda yang masih pending
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 md:space-y-4">
@@ -414,7 +414,7 @@ export function KasbonSystem() {
                 <Label htmlFor="edit_reason" className="text-sm md:text-base">Alasan Pinjaman *</Label>
                 <Textarea
                   id="edit_reason"
-                  placeholder="Jelaskan alasan pengajuan pinjaman"
+                  placeholder="Jelaskan alasan pinjamanpinjaman"
                   value={editKasbon.reason}
                   onChange={(e) => setEditKasbon({ ...editKasbon, reason: e.target.value })}
                   disabled={updateKasbonLoading}
@@ -505,7 +505,7 @@ export function KasbonSystem() {
           </CardHeader>
           <CardContent className="p-3 md:p-4 pt-0">
             <div className="text-xl md:text-2xl font-bold text-red-600">{myStats.rejected}</div>
-            <p className="text-xs text-muted-foreground">Pengajuan ditolak</p>
+            <p className="text-xs text-muted-foreground">pinjamanditolak</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500 h-full">
@@ -609,7 +609,7 @@ export function KasbonSystem() {
                           <DialogContent className="max-w-[95vw] md:max-w-lg">
                             <DialogHeader>
                               <DialogTitle className="text-lg md:text-xl">Detail Pinjaman</DialogTitle>
-                              <DialogDescription className="text-sm md:text-base">Informasi lengkap pengajuan pinjaman Anda</DialogDescription>
+                              <DialogDescription className="text-sm md:text-base">Informasi lengkap pinjaman Anda</DialogDescription>
                             </DialogHeader>
                             {selectedKasbon && (
                               <div className="space-y-3 md:space-y-4">

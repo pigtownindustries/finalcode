@@ -543,8 +543,8 @@ export default function KasbonManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Management Pengajuan Pinjaman</h2>
-          <p className="text-muted-foreground">Kelola pengajuan pinjaman dari karyawan</p>
+          <h2 className="text-2xl font-bold">Management Pinjaman</h2>
+          <p className="text-muted-foreground">Kelola pinjaman dari karyawan</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -556,7 +556,7 @@ export default function KasbonManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingKasbon ? "Edit Pinjaman" : "Tambah Pinjaman"}</DialogTitle>
-              <DialogDescription>Kelola pengajuan pinjaman karyawan</DialogDescription>
+              <DialogDescription>Kelola pinjaman pinjaman karyawan</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -862,10 +862,10 @@ export default function KasbonManagement() {
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <X className="w-5 h-5" />
-              Tolak Pengajuan Pinjaman
+              Tolak pinjaman Pinjaman
             </DialogTitle>
             <DialogDescription>
-              Berikan alasan penolakan untuk pengajuan pinjaman dari {rejectingKasbon?.user?.name || 'N/A'}
+              Berikan alasan penolakan untuk pinjaman pinjaman dari {rejectingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
           
@@ -881,7 +881,7 @@ export default function KasbonManagement() {
                   <span className="font-medium text-red-600">{formatCurrency(rejectingKasbon.amount)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Alasan Pengajuan:</span>
+                  <span className="text-gray-600">Alasan pinjaman:</span>
                   <span className="font-medium text-right ml-4">{rejectingKasbon.reason}</span>
                 </div>
               </div>
