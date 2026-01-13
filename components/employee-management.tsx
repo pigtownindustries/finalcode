@@ -55,12 +55,13 @@ import {
     updateMaxAbsentDays,
 } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
+import { toast as sonnerToast } from "sonner"
 
 import { KontrolKomisi } from "./kontrol-komisi"
 import { KontrolPresensi } from "./kontrol-presensi"
 import { KontrolGaji } from "./kontrol-gaji"
 
-// 🔥 FUNGSI FORMAT RUPIAH BARU
+//  FUNGSI FORMAT RUPIAH BARU
 const formatRupiah = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -155,20 +156,16 @@ function EmployeeManagement() {
             await updateMaxAbsentDays(employeeId, maxDays)
             await loadAbsenceInfo(employeeId)
 
+            // Refresh employees data agar kartu diupdate
+            await loadEmployees()
+
             // Dapatkan nama karyawan untuk notifikasi
             const employeeName = selectedEmployeeForAbsence?.name || "Karyawan"
 
-            toast({
-                title: "✅ Berhasil Disimpan",
-                description: `Batas hari libur untuk ${employeeName} berhasil diubah menjadi ${maxDays} hari`,
-            })
+            sonnerToast.success(`Batas hari libur untuk ${employeeName} berhasil diubah menjadi ${maxDays} hari`)
         } catch (error) {
             console.error("Error updating max days:", error)
-            toast({
-                title: "❌ Gagal Menyimpan",
-                description: "Terjadi kesalahan saat mengupdate jumlah hari libur. Silakan coba lagi.",
-                variant: "destructive",
-            })
+            sonnerToast.error("Terjadi kesalahan saat mengupdate jumlah hari libur. Silakan coba lagi.")
         } finally {
             setUpdatingAbsence(false)
         }

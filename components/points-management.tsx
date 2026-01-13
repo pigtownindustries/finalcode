@@ -34,7 +34,7 @@ import {
   Clock,
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
-import { toast } from "@/hooks/use-toast"
+import { toast as sonnerToast } from "sonner"
 import CurrencyInput from "react-currency-input-field"
 
 interface BonusPenaltyTransaction {
@@ -53,6 +53,7 @@ interface BonusPenaltyTransaction {
     email: string
     position: string
   }
+  user_name?: string
 }
 
 interface User {
@@ -82,7 +83,7 @@ export default function PointsManagement() {
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     fetchData()
   }, [])
 
@@ -99,7 +100,7 @@ export default function PointsManagement() {
         .order("name")
 
       if (usersError) throw usersError;
-      
+
       // Map ke format yang dibutuhkan
       const usersWithTotals = (usersData || []).map(user => ({
         ...user,
@@ -107,7 +108,7 @@ export default function PointsManagement() {
         total_penalty: 0,
         total_points: 0
       }))
-      
+
       setUsers(usersWithTotals || []);
 
       // Fetch points (using snapshot column: user_name)
@@ -147,11 +148,7 @@ export default function PointsManagement() {
       // PENTING: Trik ini memaksa console untuk menampilkan seluruh isi objek error
       console.error("Detail Error Sebenarnya:", JSON.stringify(error, null, 2));
 
-      toast({
-        title: "Error",
-        description: errorMessage, // Tampilkan pesan yang lebih berguna ke pengguna
-        variant: "destructive",
-      });
+      sonnerToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -160,25 +157,24 @@ export default function PointsManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.user_id) {
-      toast({
-        title: "Input Tidak Lengkap",
-        description: "Silakan pilih karyawan terlebih dahulu.",
-        variant: "destructive",
-      });
+      sonnerToast.error("Silakan pilih karyawan terlebih dahulu.");
       return; // Hentikan fungsi jika karyawan kosong
     }
 
     if (!formData.category) {
-      toast({
-        title: "Input Tidak Lengkap",
-        description: "Silakan pilih kategori bonus/penalty.",
-        variant: "destructive",
-      });
+      sonnerToast.error("Silakan pilih kategori bonus/penalty.");
       return; // Hentikan fungsi jika kategori kosong
     }
 
+    // Validasi jumlah
+    const rawAmount = Number(formData.custom_amount) || 0;
+    if (rawAmount <= 0) {
+      sonnerToast.error("Silakan masukkan jumlah bonus/penalty.");
+      return;
+    }
+
     try {
-      let amount = Math.abs(Number(formData.custom_amount) || 0) // Ambil nilai absolut (selalu positif)
+      let amount = Math.abs(rawAmount) // Ambil nilai absolut (selalu positif)
 
       if (formData.category === "penalty") {
         amount = amount * -1 // Jika penalty, jadikan negatif
@@ -186,8 +182,13 @@ export default function PointsManagement() {
 
       const needsApproval = Math.abs(amount) >= 300000
 
+      // Dapatkan nama user untuk snapshot
+      const selectedUser = users.find(u => u.id === formData.user_id)
+      const userName = selectedUser ? selectedUser.name : "Unknown"
+
       const transactionData = {
         user_id: formData.user_id,
+        user_name: userName, // Snapshot nama user
         points_earned: amount,
         points_type: formData.category,
         description: formData.description,
@@ -197,30 +198,25 @@ export default function PointsManagement() {
         const { error } = await supabase.from("points").update(transactionData).eq("id", editingTransaction.id)
 
         if (error) throw error
-        toast({ title: "Berhasil", description: "Transaksi berhasil diperbarui" })
+        sonnerToast.success("Data berhasil diperbarui")
       } else {
         const { error } = await supabase.from("points").insert([transactionData])
 
         if (error) throw error
-        toast({
-          title: "Berhasil",
-          description: needsApproval
-            ? "Transaksi berhasil ditambahkan dan menunggu approval"
-            : "Transaksi berhasil ditambahkan",
-        })
+        sonnerToast.success(needsApproval
+          ? "Data berhasil ditambahkan dan menunggu approval"
+          : "Data berhasil ditambahkan")
       }
 
       setIsDialogOpen(false)
       setEditingTransaction(null)
       setFormData({ user_id: "", category: "", custom_amount: "", description: "" })
       fetchData()
-    } catch (error) {
-      console.error("Error saving transaction:", error)
-      toast({
-        title: "Error",
-        description: "Gagal menyimpan transaksi",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      console.error("Error saving transaction FULL OBJECT:", JSON.stringify(error, null, 2))
+      console.error("Error message:", error?.message || "Unknown error")
+
+      sonnerToast.error(`Gagal menyimpan data: ${error?.message || "Terjadi kesalahan sistem"}`)
     }
   }
 
@@ -236,21 +232,17 @@ export default function PointsManagement() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus transaksi ini?")) return
+    if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return
 
     try {
       const { error } = await supabase.from("points").delete().eq("id", id)
 
       if (error) throw error
-      toast({ title: "Berhasil", description: "Transaksi berhasil dihapus" })
+      sonnerToast.success("Data berhasil dihapus")
       fetchData()
     } catch (error) {
       console.error("Error deleting transaction:", error)
-      toast({
-        title: "Error",
-        description: "Gagal menghapus transaksi",
-        variant: "destructive",
-      })
+      sonnerToast.error("Gagal menghapus data")
     }
   }
 
@@ -311,7 +303,7 @@ export default function PointsManagement() {
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Pilih jenis transaksi" />
+                    <SelectValue placeholder="Pilih jenis" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="reward">🎁 Reward</SelectItem>
@@ -362,7 +354,7 @@ export default function PointsManagement() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">Riwayat Transaksi</TabsTrigger>
+          <TabsTrigger value="transactions">Riwayat</TabsTrigger>
           <TabsTrigger value="salary-impact">Impact Gaji</TabsTrigger>
         </TabsList>
 
@@ -409,7 +401,7 @@ export default function PointsManagement() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 md:p-4">
-                <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Transaksi Bulan Ini</CardTitle>
+                <CardTitle className="text-xs md:text-sm font-medium line-clamp-2">Aktivitas Bulan Ini</CardTitle>
                 <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>

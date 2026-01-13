@@ -36,7 +36,7 @@ import {
   Loader2,
   Settings,
 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast as sonnerToast } from "sonner"
 import { supabase, getOutletStock, updateOutletStock, getLowStockAlerts, type OutletStock } from "@/lib/supabase"
 import { Switch } from "@/components/ui/switch"
 
@@ -128,7 +128,6 @@ export function CashierManagement() {
   const [isAddCategoryDialogOpen, setIsAddCategoryDialogOpen] = useState(false)
   const [isAddMenuItemDialogOpen, setIsAddMenuItemDialogOpen] = useState(false)
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false)
-  const { toast } = useToast()
   const [receiptLoading, setReceiptLoading] = useState(false)
   const [templateName, setTemplateName] = useState("")
   const [templateHeader, setTemplateHeader] = useState("")
@@ -159,7 +158,6 @@ export function CashierManagement() {
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    description: "",
     icon: "",
     type: "service" as "service" | "product",
     sort_order: 0,
@@ -170,7 +168,6 @@ export function CashierManagement() {
     price: 0,
     category_id: "",
     duration: 0,
-    stock: 0,
     type: "service" as "service" | "product",
   })
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null)
@@ -185,11 +182,7 @@ export function CashierManagement() {
       const { data, error } = await getOutletStock(outletId);
       if (error) {
         console.error("Error fetching outlet stock:", error);
-        toast({
-          title: "Error",
-          description: "Gagal memuat stok outlet",
-          variant: "destructive",
-        });
+        sonnerToast.error("Gagal memuat stok outlet");
         return;
       }
       setOutletStock(data || []);
@@ -215,11 +208,7 @@ export function CashierManagement() {
 
   const handleUpdateStock = async (serviceId: string, newStock: number) => {
     if (!selectedOutlet) {
-      toast({
-        title: "Error",
-        description: "Pilih outlet terlebih dahulu",
-        variant: "destructive",
-      });
+      sonnerToast.error("Pilih outlet terlebih dahulu");
       return;
     }
 
@@ -239,17 +228,10 @@ export function CashierManagement() {
       // Refresh low stock alerts
       fetchLowStockAlerts();
 
-      toast({
-        title: "Berhasil",
-        description: "Stok berhasil diupdate",
-      });
+      sonnerToast.success("Stok berhasil diupdate");
     } catch (error) {
       console.error("Error updating stock:", error);
-      toast({
-        title: "Error",
-        description: "Gagal mengupdate stok",
-        variant: "destructive",
-      });
+      sonnerToast.error("Gagal mengupdate stok");
     }
   };
 
@@ -477,7 +459,6 @@ export function CashierManagement() {
         .insert([
           {
             name: categoryForm.name,
-            description: categoryForm.description,
             icon: categoryForm.icon,
             type: categoryForm.type,
             sort_order: categoryForm.sort_order,
@@ -488,21 +469,14 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error creating category:", error)
-        toast({
-          title: "Error",
-          description: "Gagal membuat kategori",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal membuat kategori");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Kategori berhasil dibuat",
-      })
+      sonnerToast.success("Kategori berhasil dibuat")
 
       setIsAddCategoryDialogOpen(false)
-      setCategoryForm({ name: "", description: "", icon: "", type: "service", sort_order: 0 })
+      setCategoryForm({ name: "", icon: "", type: "service", sort_order: 0 })
       fetchCategories()
     } catch (error) {
       console.error("[v0] Error:", error)
@@ -520,7 +494,6 @@ export function CashierManagement() {
         .from("service_categories")
         .update({
           name: categoryForm.name,
-          description: categoryForm.description,
           icon: categoryForm.icon,
           type: categoryForm.type,
           sort_order: categoryForm.sort_order,
@@ -529,22 +502,15 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error updating category:", error)
-        toast({
-          title: "Error",
-          description: "Gagal mengupdate kategori",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal mengupdate kategori");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Kategori berhasil diupdate",
-      })
+      sonnerToast.success("Kategori berhasil diupdate")
 
       setIsAddCategoryDialogOpen(false)
       setEditingCategory(null)
-      setCategoryForm({ name: "", description: "", icon: "", type: "service", sort_order: 0 })
+      setCategoryForm({ name: "", icon: "", type: "service", sort_order: 0 })
       fetchCategories()
     } catch (error) {
       console.error("[v0] Error:", error)
@@ -576,28 +542,17 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error deleting category:", error)
-        toast({
-          title: "Error",
-          description: error.message || "Gagal menghapus kategori",
-          variant: "destructive",
-        })
+        sonnerToast.error(error.message || "Gagal menghapus kategori");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Kategori berhasil dihapus",
-      })
+      sonnerToast.success("Kategori berhasil dihapus")
 
       fetchCategories()
       fetchMenuItems() // Refresh menu items to show updated category status
     } catch (error: any) {
       console.error("[v0] Error:", error.message || error)
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat menghapus kategori",
-        variant: "destructive",
-      })
+      sonnerToast.error("Terjadi kesalahan saat menghapus kategori");
     } finally {
       setSaving(false)
     }
@@ -611,11 +566,7 @@ export function CashierManagement() {
       if (menuForm.category_id) {
         const selectedCategory = categories.find(c => c.id === menuForm.category_id)
         if (selectedCategory && selectedCategory.type !== menuForm.type) {
-          toast({
-            title: "Error",
-            description: `Kategori ${selectedCategory.name} adalah kategori ${selectedCategory.type === 'service' ? 'LAYANAN' : 'PRODUK'}. Tidak bisa digunakan untuk ${menuForm.type === 'service' ? 'LAYANAN' : 'PRODUK'}.`,
-            variant: "destructive",
-          })
+          sonnerToast.error(`Kategori ${selectedCategory.name} adalah kategori ${selectedCategory.type === 'service' ? 'LAYANAN' : 'PRODUK'}. Tidak bisa digunakan untuk ${menuForm.type === 'service' ? 'LAYANAN' : 'PRODUK'}.`);
           setSaving(false)
           return
         }
@@ -631,7 +582,6 @@ export function CashierManagement() {
             category_id: menuForm.category_id || null,
             type: menuForm.type,
             duration: menuForm.type === "service" ? menuForm.duration : 0,
-            stock: menuForm.type === "product" ? menuForm.stock : null,
             status: "active",
           },
         ])
@@ -639,21 +589,14 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error creating menu item:", error)
-        toast({
-          title: "Error",
-          description: "Gagal membuat menu",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal membuat menu");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Menu berhasil dibuat",
-      })
+      sonnerToast.success("Menu berhasil dibuat")
 
       setIsAddMenuItemDialogOpen(false)
-      setMenuForm({ name: "", description: "", price: 0, category_id: "", duration: 0, type: "service", stock: 0 })
+      setMenuForm({ name: "", description: "", price: 0, category_id: "", duration: 0, type: "service" })
       fetchMenuItems()
     } catch (error) {
       console.error("[v0] Error:", error)
@@ -672,11 +615,7 @@ export function CashierManagement() {
       if (menuForm.category_id) {
         const selectedCategory = categories.find(c => c.id === menuForm.category_id)
         if (selectedCategory && selectedCategory.type !== menuForm.type) {
-          toast({
-            title: "Error",
-            description: `Kategori ${selectedCategory.name} adalah kategori ${selectedCategory.type === 'service' ? 'LAYANAN' : 'PRODUK'}. Tidak bisa digunakan untuk ${menuForm.type === 'service' ? 'LAYANAN' : 'PRODUK'}.`,
-            variant: "destructive",
-          })
+          sonnerToast.error(`Kategori ${selectedCategory.name} adalah kategori ${selectedCategory.type === 'service' ? 'LAYANAN' : 'PRODUK'}. Tidak bisa digunakan untuk ${menuForm.type === 'service' ? 'LAYANAN' : 'PRODUK'}.`);
           setSaving(false)
           return
         }
@@ -691,28 +630,20 @@ export function CashierManagement() {
           category_id: menuForm.category_id,
           type: menuForm.type,
           duration: menuForm.type === "service" ? menuForm.duration : 0,
-          stock: menuForm.type === "product" ? menuForm.stock : null,
         })
         .eq("id", editingMenuItem.id)
 
       if (error) {
         console.error("[v0] Error updating menu item:", error)
-        toast({
-          title: "Error",
-          description: "Gagal mengupdate menu",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal mengupdate menu");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Menu berhasil diupdate",
-      })
+      sonnerToast.success("Menu berhasil diupdate")
 
       setIsAddMenuItemDialogOpen(false)
       setEditingMenuItem(null)
-      setMenuForm({ name: "", description: "", price: 0, category_id: "", duration: 0, type: "service", stock: 0 })
+      setMenuForm({ name: "", description: "", price: 0, category_id: "", duration: 0, type: "service" })
       fetchMenuItems()
     } catch (error) {
       console.error("[v0] Error:", error)
@@ -742,27 +673,16 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error deleting menu item:", error.message || error)
-        toast({
-          title: "Error",
-          description: error.message || "Gagal menghapus menu",
-          variant: "destructive",
-        })
+        sonnerToast.error(error.message || "Gagal menghapus menu");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Menu berhasil dihapus",
-      })
+      sonnerToast.success("Menu berhasil dihapus")
 
       fetchMenuItems()
     } catch (error: any) {
       console.error("[v0] Error:", error.message || error)
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat menghapus menu",
-        variant: "destructive",
-      })
+      sonnerToast.error("Terjadi kesalahan saat menghapus menu");
     } finally {
       setSaving(false)
     }
@@ -776,11 +696,7 @@ export function CashierManagement() {
       if (logoFile) {
         logoUploadUrl = await uploadLogo(logoFile)
         if (!logoUploadUrl) {
-          toast({
-            title: "Error",
-            description: "Gagal mengupload logo",
-            variant: "destructive",
-          })
+          sonnerToast.error("Gagal mengupload logo");
           return
         }
       }
@@ -810,18 +726,11 @@ export function CashierManagement() {
 
       if (result.error) {
         console.error("[v0] Error saving template:", result.error)
-        toast({
-          title: "Error",
-          description: "Gagal menyimpan template",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal menyimpan template");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: editingTemplateId ? "Template berhasil diupdate" : "Template berhasil dibuat",
-      })
+      sonnerToast.success(editingTemplateId ? "Template berhasil diupdate" : "Template berhasil dibuat")
 
       setIsTemplateDialogOpen(false)
       resetTemplateForm()
@@ -838,11 +747,7 @@ export function CashierManagement() {
     const templateToDelete = receiptTemplates.find(t => t.id === templateId)
 
     if (templateToDelete?.is_default) {
-      toast({
-        title: "Tidak Dapat Menghapus",
-        description: "Template default tidak bisa dihapus. Ubah template lain sebagai default terlebih dahulu.",
-        variant: "destructive",
-      })
+      sonnerToast.error("Template default tidak bisa dihapus. Ubah template lain sebagai default terlebih dahulu.");
       return
     }
 
@@ -853,18 +758,11 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error deleting template:", error)
-        toast({
-          title: "Error",
-          description: "Gagal menghapus template",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal menghapus template");
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Template berhasil dihapus",
-      })
+      sonnerToast.success("Template berhasil dihapus")
 
       fetchReceiptTemplates()
     } catch (error) {
@@ -896,10 +794,7 @@ export function CashierManagement() {
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Template berhasil diaktifkan",
-      })
+      sonnerToast.success("Template berhasil diaktifkan")
 
       fetchReceiptTemplates()
     } catch (error) {
@@ -913,11 +808,7 @@ export function CashierManagement() {
       const hasDefault = receiptTemplates.some(t => t.is_default && t.id !== templateId);
 
       if (!hasDefault) {
-        toast({
-          title: "Peringatan",
-          description: "Harap aktifkan template default terlebih dahulu sebelum menonaktifkan template aktif ini!",
-          variant: "destructive"
-        });
+        sonnerToast.error("Harap aktifkan template default terlebih dahulu sebelum menonaktifkan template aktif ini!");
         return;
       }
 
@@ -928,10 +819,7 @@ export function CashierManagement() {
         return
       }
 
-      toast({
-        title: "Berhasil",
-        description: "Template berhasil dinonaktifkan. Template default akan digunakan.",
-      })
+      sonnerToast.success("Template berhasil dinonaktifkan. Template default akan digunakan.")
 
       fetchReceiptTemplates()
     } catch (error) {
@@ -946,11 +834,7 @@ export function CashierManagement() {
         const hasActiveTemplate = receiptTemplates.some(t => t.is_active && t.id !== templateId);
 
         if (!hasActiveTemplate) {
-          toast({
-            title: "Tidak Dapat Menonaktifkan",
-            description: "Tidak ada template aktif lain. Harap aktifkan template lain terlebih dahulu!",
-            variant: "destructive"
-          });
+          sonnerToast.error("Tidak ada template aktif lain. Harap aktifkan template lain terlebih dahulu!");
           return;
         }
 
@@ -962,20 +846,13 @@ export function CashierManagement() {
 
         if (error?.message) throw error;
 
-        toast({
-          title: "Berhasil",
-          description: "Template default telah dinonaktifkan",
-        });
+        sonnerToast.success("Template default telah dinonaktifkan");
       } else {
         // Cek apakah sudah ada template default lain
         const otherDefault = receiptTemplates.find(t => t.is_default && t.id !== templateId);
 
         if (otherDefault) {
-          toast({
-            title: "Template Default Sudah Ada",
-            description: `Template "${otherDefault.name}" sudah menjadi default. Nonaktifkan terlebih dahulu.`,
-            variant: "destructive"
-          });
+          sonnerToast.error(`Template "${otherDefault.name}" sudah menjadi default. Nonaktifkan terlebih dahulu.`);
           return;
         }
 
@@ -987,21 +864,14 @@ export function CashierManagement() {
 
         if (error?.message) throw error;
 
-        toast({
-          title: "Berhasil",
-          description: "Template berhasil diset sebagai default",
-        });
+        sonnerToast.success("Template berhasil diset sebagai default");
       }
 
       fetchReceiptTemplates();
     } catch (error: any) {
       // Hanya tampilkan toast jika ada error message yang valid
       if (error?.message) {
-        toast({
-          title: "Error",
-          description: error.message || "Gagal mengubah status default template",
-          variant: "destructive"
-        });
+        sonnerToast.error(error.message || "Gagal mengubah status default template");
       }
       // Jangan log error kosong
     }
@@ -1070,9 +940,8 @@ export function CashierManagement() {
     setEditingCategory(null)
     setCategoryForm({
       name: "",
-      description: "",
       icon: "",
-      type: filterType as "service" | "product",
+      type: (filterType === "all" ? "service" : filterType) as "service" | "product",
       sort_order: 0
     })
     setIsAddCategoryDialogOpen(true)
@@ -1082,7 +951,6 @@ export function CashierManagement() {
     setEditingCategory(category)
     setCategoryForm({
       name: category.name,
-      description: category.description || "",
       icon: category.icon,
       type: category.type || "service",
       sort_order: category.sort_order,
@@ -1097,7 +965,6 @@ export function CashierManagement() {
       price: 0,
       category_id: "",
       duration: 0,
-      stock: 0,
       type: filterType as "service" | "product",
     })
     setEditingMenuItem(null)
@@ -1111,7 +978,6 @@ export function CashierManagement() {
       price: item.price,
       category_id: item.category_id,
       duration: item.duration || 0,
-      stock: item.stock || 0,
       type: item.type,
     })
     setEditingMenuItem(item)
@@ -1130,7 +996,6 @@ export function CashierManagement() {
       price: 0,
       category_id: "",
       duration: 0,
-      stock: 0,
       type: filterType as "service" | "product",
     })
     setEditingMenuItem(null)
@@ -1171,16 +1036,9 @@ export function CashierManagement() {
         console.error("[v0] Error updating stock:", error)
         // If stock column doesn't exist, just show a warning instead of error
         if (error.message.includes("stock")) {
-          toast({
-            title: "Info",
-            description: "Fitur stok belum tersedia. Jalankan script database terlebih dahulu.",
-          })
+          sonnerToast.info("Fitur stok belum tersedia. Jalankan script database terlebih dahulu.");
         } else {
-          toast({
-            title: "Error",
-            description: "Gagal mengupdate stok produk",
-            variant: "destructive",
-          })
+          sonnerToast.error("Gagal mengupdate stok produk");
         }
         return
       }
@@ -1188,17 +1046,10 @@ export function CashierManagement() {
       // Update local state
       setMenuItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, stock: newStock } : item)))
 
-      toast({
-        title: "Berhasil",
-        description: "Stok produk berhasil diupdate",
-      })
+      sonnerToast.success("Stok produk berhasil diupdate")
     } catch (error) {
       console.error("[v0] Error updating stock:", error)
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat mengupdate stok",
-        variant: "destructive",
-      })
+      sonnerToast.error("Terjadi kesalahan saat mengupdate stok")
     }
   }
 
@@ -1209,28 +1060,17 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error updating price:", error)
-        toast({
-          title: "Error",
-          description: "Gagal mengupdate harga produk",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal mengupdate harga produk");
         return
       }
 
       // Update local state
       setMenuItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, price: newPrice } : item)))
 
-      toast({
-        title: "Berhasil",
-        description: "Harga produk berhasil diupdate",
-      })
+      sonnerToast.success("Harga produk berhasil diupdate")
     } catch (error) {
       console.error("[v0] Error updating price:", error)
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat mengupdate harga",
-        variant: "destructive",
-      })
+      sonnerToast.error("Terjadi kesalahan saat mengupdate harga")
     }
   }
 
@@ -1240,28 +1080,17 @@ export function CashierManagement() {
 
       if (error) {
         console.error("[v0] Error updating menu status:", error)
-        toast({
-          title: "Error",
-          description: "Gagal mengupdate status menu",
-          variant: "destructive",
-        })
+        sonnerToast.error("Gagal mengupdate status menu");
         return
       }
 
       // Update local state
       setMenuItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, status: newStatus } : item)))
 
-      toast({
-        title: "Berhasil",
-        description: "Status menu berhasil diupdate",
-      })
+      sonnerToast.success("Status menu berhasil diupdate")
     } catch (error) {
       console.error("[v0] Error updating menu status:", error)
-      toast({
-        title: "Error",
-        description: "Terjadi kesalahan saat mengupdate status",
-        variant: "destructive",
-      })
+      sonnerToast.error("Terjadi kesalahan saat mengupdate status")
     }
   }
 
@@ -1458,21 +1287,17 @@ export function CashierManagement() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">Memuat kategori...</p>
                 </div>
-              ) : categories.filter(c => {
-                // Filter categories based on type (you'll need to add type field to categories)
-                return true; // For now show all, but you should filter by type
-              }).length === 0 ? (
+              ) : categories.filter(c => c.type === filterType).length === 0 ? (
                 <div className="col-span-full text-center py-8">
-                  <p className="text-gray-600">Belum ada kategori. Tambahkan kategori pertama Anda!</p>
+                  <p className="text-gray-600">Belum ada kategori {filterType === "service" ? "layanan" : "produk"}. Tambahkan kategori pertama Anda!</p>
                 </div>
               ) : (
-                categories.filter(c => true).map((category) => (
+                categories.filter(c => c.type === filterType).map((category) => (
                   <Card key={category.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h3 className="font-semibold uppercase">{category.name}</h3>
-                          <p className="text-sm text-gray-600">{category.description}</p>
                         </div>
                         <Badge variant={category.status === "active" ? "default" : "secondary"}>
                           {category.status === "active" ? "Aktif" : "Nonaktif"}
@@ -1983,11 +1808,15 @@ export function CashierManagement() {
       <Dialog open={isAddCategoryDialogOpen} onOpenChange={setIsAddCategoryDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCategory ? "Edit Kategori" : "Tambah Kategori Baru"}</DialogTitle>
+            <DialogTitle>
+              {editingCategory
+                ? `Edit Kategori ${categoryForm.type === "service" ? "Layanan" : "Produk"}`
+                : `Tambah Kategori ${filterType === "service" ? "Layanan" : "Produk"} Baru`}
+            </DialogTitle>
             <DialogDescription>
               {editingCategory
-                ? "Update informasi kategori"
-                : "Buat kategori baru untuk mengelompokkan layanan dan produk"}
+                ? `Update informasi kategori ${categoryForm.type === "service" ? "layanan" : "produk"}`
+                : `Buat kategori baru untuk mengelompokkan ${filterType === "service" ? "layanan" : "produk"}`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1996,18 +1825,9 @@ export function CashierManagement() {
               <Input
                 value={categoryForm.name}
                 onChange={(e) => setCategoryForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="Contoh: Potong Rambut"
+                placeholder={filterType === "service" ? "Contoh: Potong Rambut" : "Contoh: Perawatan Rambut"}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Deskripsi</label>
-              <Textarea
-                value={categoryForm.description}
-                onChange={(e) => setCategoryForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Deskripsi kategori..."
-              />
-            </div>
-
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddCategoryDialogOpen(false)}>
@@ -2045,36 +1865,32 @@ export function CashierManagement() {
                 placeholder="Deskripsi menu..."
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={menuForm.type === "service" ? "grid grid-cols-2 gap-4" : ""}>
               <div>
                 <label className="text-sm font-medium">Harga</label>
                 <Input
-                  type="number"
-                  value={menuForm.price}
-                  onChange={(e) => setMenuForm((prev) => ({ ...prev, price: Number.parseInt(e.target.value) || 0 }))}
-                  placeholder="25000"
+                  type="text"
+                  inputMode="numeric"
+                  value={menuForm.price ? menuForm.price.toLocaleString('id-ID') : ""}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '')
+                    setMenuForm((prev) => ({ ...prev, price: Number.parseInt(value) || 0 }))
+                  }}
+                  placeholder="25.000"
                 />
               </div>
-              {menuForm.type === "service" ? (
+              {menuForm.type === "service" && (
                 <div>
                   <label className="text-sm font-medium">Durasi (menit)</label>
                   <Input
-                    type="number"
-                    value={menuForm.duration}
-                    onChange={(e) =>
-                      setMenuForm((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) || 0 }))
-                    }
+                    type="text"
+                    inputMode="numeric"
+                    value={menuForm.duration || ""}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '')
+                      setMenuForm((prev) => ({ ...prev, duration: Number.parseInt(value) || 0 }))
+                    }}
                     placeholder="30"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm font-medium">Stok</label>
-                  <Input
-                    type="number"
-                    value={menuForm.stock}
-                    onChange={(e) => setMenuForm((prev) => ({ ...prev, stock: Number.parseInt(e.target.value) || 0 }))}
-                    placeholder="100"
                   />
                 </div>
               )}
