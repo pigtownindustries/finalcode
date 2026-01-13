@@ -179,7 +179,7 @@ export function CashierManagement() {
   // NEW FUNCTIONS FOR OUTLET STOCK MANAGEMENT
   const fetchOutletStock = async (outletId: string) => {
     if (!outletId) return;
-    
+
     setStockLoading(true);
     try {
       const { data, error } = await getOutletStock(outletId);
@@ -228,17 +228,17 @@ export function CashierManagement() {
       if (error) {
         throw error;
       }
-      
+
       // Update local state
-      setOutletStock(prev => prev.map(item => 
-        item.service_id === serviceId 
+      setOutletStock(prev => prev.map(item =>
+        item.service_id === serviceId
           ? { ...item, stock_quantity: newStock }
           : item
       ));
 
       // Refresh low stock alerts
       fetchLowStockAlerts();
-      
+
       toast({
         title: "Berhasil",
         description: "Stok berhasil diupdate",
@@ -303,7 +303,7 @@ export function CashierManagement() {
         .from("service_categories")
         .select("*")
         .order("sort_order", { ascending: true })
-      
+
       // Filter by type based on filterType
       if (filterType === "service" || filterType === "product") {
         query = query.eq("type", filterType)
@@ -337,7 +337,7 @@ export function CashierManagement() {
           category:service_categories(name, icon, type)
         `)
         .order("created_at", { ascending: false })
-      
+
       // Filter by type based on filterType
       if (filterType === "service" || filterType === "product") {
         query = query.eq("type", filterType)
@@ -409,9 +409,9 @@ export function CashierManagement() {
     setIsRefreshing(true)
     try {
       await Promise.all([
-        fetchBranches(), 
-        fetchReceiptTemplates(), 
-        fetchCategories(), 
+        fetchBranches(),
+        fetchReceiptTemplates(),
+        fetchCategories(),
         fetchMenuItems(),
         fetchLowStockAlerts()
       ])
@@ -502,7 +502,7 @@ export function CashierManagement() {
       })
 
       setIsAddCategoryDialogOpen(false)
-      setCategoryForm({ name: "", description: "", icon: "", sort_order: 0 })
+      setCategoryForm({ name: "", description: "", icon: "", type: "service", sort_order: 0 })
       fetchCategories()
     } catch (error) {
       console.error("[v0] Error:", error)
@@ -558,37 +558,24 @@ export function CashierManagement() {
 
     try {
       setSaving(true)
-      
-      // Check if category has any menu items
-      const { data: menuItems, error: checkError } = await supabase
+
+      // Step 1: Unlink category from services first
+      // Menu yang ada di kategori ini akan menjadi "tanpa kategori"
+      const { error: unlinkError } = await supabase
         .from("services")
-        .select("id")
+        .update({ category_id: null })
         .eq("category_id", categoryId)
-      
-      if (checkError) {
-        console.error("[v0] Error checking category usage:", checkError.message || checkError)
-        toast({
-          title: "Error",
-          description: "Gagal memeriksa kategori",
-          variant: "destructive",
-        })
-        return
+
+      if (unlinkError) {
+        console.warn("[v0] Warning unlinking category:", unlinkError.message)
+        // Continue anyway
       }
-      
-      if (menuItems && menuItems.length > 0) {
-        toast({
-          title: "Tidak Dapat Menghapus",
-          description: `Kategori ini masih digunakan oleh ${menuItems.length} menu. Hapus atau pindahkan menu tersebut terlebih dahulu.`,
-          variant: "destructive",
-        })
-        return
-      }
-      
-      // Delete category if no menu items
+
+      // Step 2: Delete the category
       const { error } = await supabase.from("service_categories").delete().eq("id", categoryId)
 
       if (error) {
-        console.error("[v0] Error deleting category:", error.message || error)
+        console.error("[v0] Error deleting category:", error)
         toast({
           title: "Error",
           description: error.message || "Gagal menghapus kategori",
@@ -603,7 +590,7 @@ export function CashierManagement() {
       })
 
       fetchCategories()
-      fetchMenuItems() // Refresh menu items as well
+      fetchMenuItems() // Refresh menu items to show updated category status
     } catch (error: any) {
       console.error("[v0] Error:", error.message || error)
       toast({
@@ -619,7 +606,7 @@ export function CashierManagement() {
   const createMenuItem = async () => {
     try {
       setSaving(true)
-      
+
       // Validasi: pastikan category type sesuai dengan item type
       if (menuForm.category_id) {
         const selectedCategory = categories.find(c => c.id === menuForm.category_id)
@@ -633,7 +620,7 @@ export function CashierManagement() {
           return
         }
       }
-      
+
       const { data, error } = await supabase
         .from("services")
         .insert([
@@ -680,7 +667,7 @@ export function CashierManagement() {
 
     try {
       setSaving(true)
-      
+
       // Validasi: pastikan category type sesuai dengan item type
       if (menuForm.category_id) {
         const selectedCategory = categories.find(c => c.id === menuForm.category_id)
@@ -694,7 +681,7 @@ export function CashierManagement() {
           return
         }
       }
-      
+
       const { error } = await supabase
         .from("services")
         .update({
@@ -737,61 +724,20 @@ export function CashierManagement() {
   const deleteMenuItem = async (itemId: string) => {
     try {
       setSaving(true)
-      
-      // Check if menu item is used in transactions
-      const { data: usageCheck, error: checkError } = await supabase
+
+      // Step 1: Unlink service from transaction_items first
+      // Data transaksi tetap utuh karena sudah ada snapshot (service_name, service_type, dll)
+      const { error: unlinkError } = await supabase
         .from("transaction_items")
-        .select("id")
+        .update({ service_id: null })
         .eq("service_id", itemId)
-        .limit(1)
 
-      if (checkError) {
-        console.error("[v0] Error checking menu item usage:", checkError)
+      if (unlinkError) {
+        console.warn("[v0] Warning unlinking menu:", unlinkError.message)
+        // Continue anyway, the delete might still work
       }
 
-      if (usageCheck && usageCheck.length > 0) {
-        // Item is used in transactions, offer to deactivate instead
-        const shouldDeactivate = confirm(
-          "Menu ini sudah digunakan dalam transaksi dan tidak bisa dihapus.\\n\\n" +
-          "Apakah Anda ingin menonaktifkan menu ini? (Status akan diubah menjadi 'inactive')"
-        )
-        
-        if (!shouldDeactivate) {
-          setSaving(false)
-          return
-        }
-
-        // Deactivate the item instead of deleting
-        const { error: updateError } = await supabase
-          .from("services")
-          .update({ status: "inactive" })
-          .eq("id", itemId)
-
-        if (updateError) {
-          console.error("[v0] Error deactivating menu item:", updateError)
-          toast({
-            title: "Error",
-            description: "Gagal menonaktifkan menu",
-            variant: "destructive",
-          })
-          return
-        }
-
-        toast({
-          title: "Berhasil",
-          description: "Menu berhasil dinonaktifkan (tidak tampil di POS)",
-        })
-
-        fetchMenuItems()
-        return
-      }
-
-      // Item not used in transactions, safe to delete
-      if (!confirm("Yakin ingin menghapus menu ini? Aksi ini tidak bisa dibatalkan.")) {
-        setSaving(false)
-        return
-      }
-
+      // Step 2: Delete the service from master table
       const { error } = await supabase.from("services").delete().eq("id", itemId)
 
       if (error) {
@@ -890,7 +836,7 @@ export function CashierManagement() {
   const deleteTemplate = async (templateId: string) => {
     // Check if template is default
     const templateToDelete = receiptTemplates.find(t => t.id === templateId)
-    
+
     if (templateToDelete?.is_default) {
       toast({
         title: "Tidak Dapat Menghapus",
@@ -965,7 +911,7 @@ export function CashierManagement() {
     try {
       // Cek apakah ada template default
       const hasDefault = receiptTemplates.some(t => t.is_default && t.id !== templateId);
-      
+
       if (!hasDefault) {
         toast({
           title: "Peringatan",
@@ -998,7 +944,7 @@ export function CashierManagement() {
       if (currentDefaultStatus) {
         // Jika sudah default, cek apakah ada template aktif lain
         const hasActiveTemplate = receiptTemplates.some(t => t.is_active && t.id !== templateId);
-        
+
         if (!hasActiveTemplate) {
           toast({
             title: "Tidak Dapat Menonaktifkan",
@@ -1023,7 +969,7 @@ export function CashierManagement() {
       } else {
         // Cek apakah sudah ada template default lain
         const otherDefault = receiptTemplates.find(t => t.is_default && t.id !== templateId);
-        
+
         if (otherDefault) {
           toast({
             title: "Template Default Sudah Ada",
@@ -1122,12 +1068,12 @@ export function CashierManagement() {
 
   const handleAddCategory = () => {
     setEditingCategory(null)
-    setCategoryForm({ 
-      name: "", 
-      description: "", 
-      icon: "", 
+    setCategoryForm({
+      name: "",
+      description: "",
+      icon: "",
       type: filterType as "service" | "product",
-      sort_order: 0 
+      sort_order: 0
     })
     setIsAddCategoryDialogOpen(true)
   }
@@ -1288,7 +1234,7 @@ export function CashierManagement() {
     }
   }
 
-  const updateMenuStatus = async (itemId: string, newStatus: string) => {
+  const updateMenuStatus = async (itemId: string, newStatus: "active" | "inactive") => {
     try {
       const { error } = await supabase.from("services").update({ status: newStatus }).eq("id", itemId)
 
@@ -1640,7 +1586,7 @@ export function CashierManagement() {
                           {item.type === "service" ? "💈" : "📦"}
                         </div>
                       </div>
-                      
+
                       {/* Item Info */}
                       <div className="p-4 space-y-3">
                         {/* Name */}
@@ -1655,7 +1601,7 @@ export function CashierManagement() {
                             </p>
                           )}
                         </div>
-                        
+
                         {/* Action Buttons */}
                         <div className="flex gap-2">
                           <Button
@@ -1667,9 +1613,9 @@ export function CashierManagement() {
                             <Edit className="h-3 w-3 mr-1" />
                             EDIT
                           </Button>
-                          <Button 
-                            onClick={() => deleteMenuItem(item.id)} 
-                            variant="outline" 
+                          <Button
+                            onClick={() => deleteMenuItem(item.id)}
+                            variant="outline"
                             size="sm"
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
@@ -1903,13 +1849,12 @@ export function CashierManagement() {
               receiptTemplates.map((template) => (
                 <Card
                   key={template.id}
-                  className={`hover:shadow-lg transition-shadow ${
-                    template.is_active 
-                      ? "ring-2 ring-green-500" 
-                      : template.is_default 
-                      ? "ring-2 ring-blue-400" 
+                  className={`hover:shadow-lg transition-shadow ${template.is_active
+                    ? "ring-2 ring-green-500"
+                    : template.is_default
+                      ? "ring-2 ring-blue-400"
                       : ""
-                  }`}
+                    }`}
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1932,7 +1877,7 @@ export function CashierManagement() {
                           <img
                             src={template.logo_url || "/images/pigtown-logo.png"}
                             alt="Logo"
-                            className="h-12 w-auto mx-auto"
+                            className="h-12 w-auto mx-auto w-auto-h-auto"
                             onError={(e) => {
                               console.log("[v0] Logo failed to load:", template.logo_url)
                               e.currentTarget.style.display = "none"
@@ -2017,9 +1962,9 @@ export function CashierManagement() {
                           <span className="hidden sm:inline">Nonaktifkan</span>
                         </Button>
                       ) : (
-                        <Button 
-                          onClick={() => setActiveTemplate(template.id)} 
-                          size="sm" 
+                        <Button
+                          onClick={() => setActiveTemplate(template.id)}
+                          size="sm"
                           className="w-full gap-1 bg-green-600 hover:bg-green-700"
                         >
                           <Check className="h-3 w-3" />
@@ -2062,17 +2007,7 @@ export function CashierManagement() {
                 placeholder="Deskripsi kategori..."
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Urutan</label>
-              <Input
-                type="number"
-                value={categoryForm.sort_order}
-                onChange={(e) =>
-                  setCategoryForm((prev) => ({ ...prev, sort_order: Number.parseInt(e.target.value) || 0 }))
-                }
-                placeholder="0"
-              />
-            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddCategoryDialogOpen(false)}>
@@ -2148,7 +2083,7 @@ export function CashierManagement() {
               <label className="text-sm font-medium">Kategori</label>
               <Select
                 value={menuForm.category_id}
-                onChange={(value) => setMenuForm((prev) => ({ ...prev, category_id: value }))}
+                onValueChange={(value) => setMenuForm((prev) => ({ ...prev, category_id: value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Pilih kategori" />
@@ -2168,7 +2103,7 @@ export function CashierManagement() {
               <label className="text-sm font-medium">Tipe</label>
               <Select
                 value={menuForm.type}
-                onChange={(value: "service" | "product") => setMenuForm((prev) => ({ ...prev, type: value, category_id: "" }))}
+                onValueChange={(value: "service" | "product") => setMenuForm((prev) => ({ ...prev, type: value, category_id: "" }))}
                 disabled={!!editingMenuItem}
               >
                 <SelectTrigger>
@@ -2234,7 +2169,7 @@ export function CashierManagement() {
                 <label className="text-sm font-medium">Ukuran Kertas</label>
                 <Select value={paperSize} onValueChange={setPaperSize}>
                   <SelectTrigger>
-                    <SelectValue value={paperSize} />
+                    <SelectValue placeholder="Pilih ukuran" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="80mm">80mm</SelectItem>
@@ -2247,7 +2182,7 @@ export function CashierManagement() {
                 <label className="text-sm font-medium">Ukuran Font</label>
                 <Select value={fontSize} onValueChange={setFontSize}>
                   <SelectTrigger>
-                    <SelectValue value={fontSize} />
+                    <SelectValue placeholder="Pilih ukuran" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="small">Kecil</SelectItem>

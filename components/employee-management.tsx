@@ -154,15 +154,19 @@ function EmployeeManagement() {
         try {
             await updateMaxAbsentDays(employeeId, maxDays)
             await loadAbsenceInfo(employeeId)
+
+            // Dapatkan nama karyawan untuk notifikasi
+            const employeeName = selectedEmployeeForAbsence?.name || "Karyawan"
+
             toast({
-                title: "Berhasil",
-                description: "Jumlah hari libur berhasil diupdate",
+                title: "✅ Berhasil Disimpan",
+                description: `Batas hari libur untuk ${employeeName} berhasil diubah menjadi ${maxDays} hari`,
             })
         } catch (error) {
             console.error("Error updating max days:", error)
             toast({
-                title: "Error",
-                description: "Gagal mengupdate jumlah hari libur",
+                title: "❌ Gagal Menyimpan",
+                description: "Terjadi kesalahan saat mengupdate jumlah hari libur. Silakan coba lagi.",
                 variant: "destructive",
             })
         } finally {
@@ -265,7 +269,7 @@ function EmployeeManagement() {
     useEffect(() => {
         // Scroll to top when component mounts
         window.scrollTo({ top: 0, behavior: 'instant' });
-        
+
         loadEmployees()
         loadAbsentEmployees()
     }, [])
@@ -304,9 +308,9 @@ function EmployeeManagement() {
             employee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (employee.position || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
             (employee.phone || "").toLowerCase().includes(searchTerm.toLowerCase())
-        
+
         const matchesStatus = filterStatus === "all" || employee.status?.toLowerCase() === filterStatus.toLowerCase()
-        
+
         return matchesSearch && matchesStatus
     })
 
@@ -329,7 +333,7 @@ function EmployeeManagement() {
     const handleAddEmployee = async () => {
         console.log("=== handleAddEmployee called ===")
         console.log("newEmployee data:", newEmployee)
-        
+
         if (!newEmployee.name.trim()) {
             console.log("Validation failed: name is empty")
             toast({
@@ -339,7 +343,7 @@ function EmployeeManagement() {
             })
             return
         }
-        
+
         if (!newEmployee.email.trim() || !/\S+@\S+\.\S+/.test(newEmployee.email)) {
             console.log("Validation failed: email invalid")
             toast({
@@ -349,7 +353,7 @@ function EmployeeManagement() {
             })
             return
         }
-        
+
         if (!newEmployee.position.trim()) {
             console.log("Validation failed: position is empty")
             toast({
@@ -359,7 +363,7 @@ function EmployeeManagement() {
             })
             return
         }
-        
+
         if (!newEmployee.pin || newEmployee.pin.length !== 6) {
             console.log("Validation failed: PIN invalid", { pin: newEmployee.pin, length: newEmployee.pin?.length })
             toast({
@@ -401,9 +405,9 @@ function EmployeeManagement() {
             })
 
             setIsAddDialogOpen(false)
-            setNewEmployee({ 
-                name: "", 
-                email: "", 
+            setNewEmployee({
+                name: "",
+                email: "",
                 phone: "",
                 position: "",
                 pin: "",
@@ -759,7 +763,7 @@ function EmployeeManagement() {
             <Tabs defaultValue="grid" className="space-y-4 md:space-y-6">
                 <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 h-auto gap-1">
                     <TabsTrigger value="grid" className="text-xs md:text-sm py-2">Grid View</TabsTrigger>
-                    <TabsTrigger value="transactions" className="text-xs md:text-sm py-2">Komisi & Point</TabsTrigger>
+                    <TabsTrigger value="transactions" className="text-xs md:text-sm py-2">Komisi</TabsTrigger>
                     <TabsTrigger value="attendance" className="text-xs md:text-sm py-2">Presensi</TabsTrigger>
                     <TabsTrigger value="payroll" className="text-xs md:text-sm py-2">Penggajian</TabsTrigger>
                 </TabsList>
@@ -781,28 +785,30 @@ function EmployeeManagement() {
                                 const attendance = employeeAttendance[employee.id] || { attendanceRate: 100 }
 
                                 return (
-                                    <Card key={employee.id} className="hover:shadow-lg transition-shadow">
+                                    <Card key={employee.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                                         <CardHeader className="p-3 md:p-4 lg:p-6">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
-                                                    <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
-                                                        <AvatarImage src={employee.avatar_url || "/images/pigtown-logo.png"} />
-                                                        <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
-                                                            {employee.name
-                                                                .split(" ")
-                                                                .map((n) => n[0])
-                                                                .join("")
-                                                                .toUpperCase()}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1 min-w-0">
-                                                        <CardTitle className="text-sm md:text-base lg:text-lg truncate">{employee.name}</CardTitle>
-                                                        <CardDescription className="text-xs md:text-sm truncate">
-                                                            {employee.position || "Karyawan"}
-                                                        </CardDescription>
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0 overflow-hidden">
+                                                        <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
+                                                            <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="w-auto-h-auto" />
+                                                            <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
+                                                                {employee.name
+                                                                    .split(" ")
+                                                                    .map((n) => n[0])
+                                                                    .join("")
+                                                                    .toUpperCase()}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                                            <CardTitle className="text-sm md:text-base lg:text-lg truncate">{employee.name}</CardTitle>
+                                                            <CardDescription className="text-xs md:text-sm truncate">
+                                                                {employee.position || "Karyawan"}
+                                                            </CardDescription>
+                                                        </div>
                                                     </div>
+                                                    <Badge className={`${getStatusColor(employee.status)} text-[10px] md:text-xs flex-shrink-0 whitespace-nowrap`}>{getStatusText(employee.status)}</Badge>
                                                 </div>
-                                                <Badge className={`${getStatusColor(employee.status)} text-[10px] md:text-xs flex-shrink-0`}>{getStatusText(employee.status)}</Badge>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="space-y-3 md:space-y-4 p-3 md:p-4 lg:p-6 pt-0">
@@ -836,7 +842,7 @@ function EmployeeManagement() {
                                                 </div>
                                             </div>
 
-                                            {/* 🔥 INFO HARI LIBUR - RESPONSIVE */}
+                                            {/*  INFO HARI LIBUR - RESPONSIVE */}
                                             <div className="p-2 md:p-3 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div className="flex items-center justify-between mb-1 md:mb-2">
                                                     <span className="text-xs md:text-sm font-medium text-blue-800">Hari Libur</span>
@@ -845,44 +851,45 @@ function EmployeeManagement() {
                                                     </Badge>
                                                 </div>
                                                 <div className="text-[10px] md:text-xs text-blue-600">
-                                                    {employee.current_absent_days && employee.current_absent_days > (employee.max_absent_days || 4) 
-                                                        ? "⚠️ Melebihi batas" 
+                                                    {employee.current_absent_days && employee.current_absent_days > (employee.max_absent_days || 4)
+                                                        ? "⚠️ Melebihi batas"
                                                         : "✅ Masih dalam batas"}
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-2 pt-2 border-t">
+                                            {/* Tombol Aksi - FIXED */}
+                                            <div className="flex items-center gap-1 pt-2 border-t flex-wrap">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="flex-1 gap-1 bg-transparent text-xs md:text-sm h-8 md:h-9"
+                                                    className="flex-1 min-w-0 gap-1 bg-transparent text-xs h-8"
                                                     onClick={() => handleViewDetail(employee)}
                                                 >
-                                                    <Eye className="h-3 w-3" />
-                                                    <span className="hidden sm:inline">Detail</span>
+                                                    <Eye className="h-3 w-3 flex-shrink-0" />
+                                                    <span className="hidden sm:inline truncate">Detail</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="flex-1 gap-1 bg-transparent text-xs md:text-sm h-8 md:h-9"
+                                                    className="flex-1 min-w-0 gap-1 bg-transparent text-xs h-8"
                                                     onClick={() => handleEditEmployee(employee)}
                                                 >
-                                                    <Edit className="h-3 w-3" />
-                                                    <span className="hidden sm:inline">Edit</span>
+                                                    <Edit className="h-3 w-3 flex-shrink-0" />
+                                                    <span className="hidden sm:inline truncate">Edit</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="flex-1 gap-1 text-blue-600 hover:text-blue-700 bg-transparent text-xs md:text-sm h-8 md:h-9"
+                                                    className="flex-1 min-w-0 gap-1 text-blue-600 hover:text-blue-700 bg-transparent text-xs h-8"
                                                     onClick={() => handleOpenAbsenceDialog(employee)}
                                                 >
-                                                    <Calendar className="h-3 w-3" />
-                                                    <span className="hidden sm:inline">Libur</span>
+                                                    <Calendar className="h-3 w-3 flex-shrink-0" />
+                                                    <span className="hidden sm:inline truncate">Libur</span>
                                                 </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="gap-1 text-red-600 hover:text-red-700 bg-transparent text-xs md:text-sm h-8 md:h-9 px-2"
+                                                    className="gap-1 text-red-600 hover:text-red-700 bg-transparent text-xs h-8 px-2 flex-shrink-0"
                                                     onClick={() => handleDeleteConfirmation(employee)}
                                                 >
                                                     <Trash2 className="h-3 w-3" />
@@ -901,15 +908,15 @@ function EmployeeManagement() {
                 </TabsContent>
 
                 <TabsContent value="attendance" className="mt-6">
-                    <KontrolPresensi employees={filteredEmployees} employeeAttendance={employeeAttendance} />
+                    <KontrolPresensi employees={filteredEmployees} />
                 </TabsContent>
 
                 <TabsContent value="payroll" className="mt-6">
-                    <KontrolGaji employees={filteredEmployees} employeeStats={employeeStats} />
+                    <KontrolGaji />
                 </TabsContent>
             </Tabs>
 
-            {/* 🔥 DIALOG BARU: MANAJEMEN HARI LIBUR */}
+            {/*  DIALOG BARU: MANAJEMEN HARI LIBUR */}
             <Dialog open={isAbsenceDialogOpen} onOpenChange={setIsAbsenceDialogOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
@@ -918,16 +925,15 @@ function EmployeeManagement() {
                             Atur kuota hari libur untuk {selectedEmployeeForAbsence?.name}
                         </DialogDescription>
                     </DialogHeader>
-                    
+
                     <div className="space-y-4">
                         {/* Status Info */}
-                        <div className={`p-3 rounded-lg border ${
-                            absenceInfo.excessDays > 0 
-                                ? "bg-red-100 text-red-800 border-red-200" 
-                                : absenceInfo.remainingDays > 2 
+                        <div className={`p-3 rounded-lg border ${absenceInfo.excessDays > 0
+                            ? "bg-red-100 text-red-800 border-red-200"
+                            : absenceInfo.remainingDays > 2
                                 ? "bg-green-100 text-green-800 border-green-200"
                                 : "bg-yellow-100 text-yellow-800 border-yellow-200"
-                        }`}>
+                            }`}>
                             <div className="flex items-center gap-2 mb-2">
                                 {absenceInfo.excessDays > 0 ? (
                                     <XCircle className="h-5 w-5" />
@@ -937,29 +943,28 @@ function EmployeeManagement() {
                                     <AlertTriangle className="h-5 w-5" />
                                 )}
                                 <span className="font-semibold">
-                                    {absenceInfo.excessDays > 0 
+                                    {absenceInfo.excessDays > 0
                                         ? `⚠️ LEBIH ${absenceInfo.excessDays} HARI!`
-                                        : absenceInfo.remainingDays > 2 
-                                        ? "✅ Masih dalam batas"
-                                        : "⏳ Hampir mencapai batas"
+                                        : absenceInfo.remainingDays > 2
+                                            ? "✅ Masih dalam batas"
+                                            : "⏳ Hampir mencapai batas"
                                     }
                                 </span>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div>Total Tidak Hadir:</div>
                                 <div className="font-semibold">{absenceInfo.currentAbsentDays} hari</div>
-                                
+
                                 <div>Batas Maksimal:</div>
-                                <div className="font-semibold">{absenceInfo.maxAbsentDays} hari/bulan</div>
-                                
+                                <div className="font-semibold">{absenceInfo.maxAbsentDays} hari</div>
+
                                 <div>Sisa Kuota:</div>
-                                <div className={`font-semibold ${
-                                    absenceInfo.remainingDays > 2 ? "text-green-600" : "text-red-600"
-                                }`}>
+                                <div className={`font-semibold ${absenceInfo.remainingDays > 2 ? "text-green-600" : "text-red-600"
+                                    }`}>
                                     {absenceInfo.remainingDays} hari
                                 </div>
-                                
+
                                 {absenceInfo.excessDays > 0 && (
                                     <>
                                         <div>Kelebihan:</div>
@@ -971,22 +976,28 @@ function EmployeeManagement() {
 
                         {/* Atur Jumlah Libur */}
                         <div className="space-y-2">
-                            <Label htmlFor="maxDays">Atur Jumlah Hari Libur Maksimal per Bulan</Label>
+                            <Label htmlFor="maxDays">Atur Jumlah Hari Libur Maksimal</Label>
                             <div className="flex gap-2 items-center">
                                 <Input
                                     id="maxDays"
-                                    type="number"
-                                    min="0"
-                                    max="31"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={absenceInfo.maxAbsentDays}
-                                    onChange={(e) => setAbsenceInfo({
-                                        ...absenceInfo,
-                                        maxAbsentDays: Number(e.target.value)
-                                    })}
+                                    onChange={(e) => {
+                                        // Hanya izinkan angka
+                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                        const numValue = value === '' ? 0 : Math.min(31, Math.max(0, parseInt(value, 10)));
+                                        setAbsenceInfo({
+                                            ...absenceInfo,
+                                            maxAbsentDays: numValue
+                                        });
+                                    }}
                                     className="w-20"
+                                    placeholder="0"
                                 />
-                                <span>hari/bulan</span>
-                                <Button 
+                                <span>hari</span>
+                                <Button
                                     onClick={() => handleUpdateMaxDays(selectedEmployeeForAbsence!.id, absenceInfo.maxAbsentDays)}
                                     disabled={updatingAbsence}
                                     size="sm"
@@ -995,7 +1006,7 @@ function EmployeeManagement() {
                                 </Button>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                Setiap karyawan boleh tidak hadir maksimal {absenceInfo.maxAbsentDays} hari dalam sebulan
+                                Setiap karyawan boleh tidak hadir maksimal {absenceInfo.maxAbsentDays} hari
                             </p>
                         </div>
 
@@ -1007,7 +1018,7 @@ function EmployeeManagement() {
                                     <span className="font-semibold">Peringatan!</span>
                                 </div>
                                 <p className="text-sm text-red-700 mt-1">
-                                    {selectedEmployeeForAbsence?.name} telah melebihi {absenceInfo.excessDays} hari dari batas yang diperbolehkan. 
+                                    {selectedEmployeeForAbsence?.name} telah melebihi {absenceInfo.excessDays} hari dari batas yang diperbolehkan.
                                     Perlu perhatian khusus!
                                 </p>
                             </div>
@@ -1057,7 +1068,9 @@ function EmployeeManagement() {
                                 <div className="space-y-2">
                                     <Label className="text-sm font-medium">Tanggal Bergabung</Label>
                                     <p className="text-sm text-muted-foreground">
-                                        {new Date(selectedEmployeeDetail.created_at).toLocaleDateString("id-ID")}
+                                        {selectedEmployeeDetail.created_at
+                                            ? new Date(selectedEmployeeDetail.created_at).toLocaleDateString("id-ID")
+                                            : "N/A"}
                                     </p>
                                 </div>
                             </div>

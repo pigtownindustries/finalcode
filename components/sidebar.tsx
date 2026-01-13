@@ -140,8 +140,9 @@ export default function Sidebar({
                 alt="Pigtown Logo"
                 width={40}
                 height={40}
-                className="object-contain transition-all duration-500"
-                style={{ width: 'auto', height: 'auto', maxWidth: '40px', maxHeight: '40px' }}
+                priority={true}
+                className="object-contain transition-all duration-500 w-auto-h-auto"
+                style={{ maxWidth: '40px', maxHeight: '40px' }}
               />
             </div>
 
@@ -168,8 +169,8 @@ export default function Sidebar({
                   key={item.href}
                   variant={isActive ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 h-14 transition-all duration-300 transform hover:scale-105 rounded-xl ${isActive
-                      ? "bg-red-700/80 text-white border-2 border-red-600 shadow-lg"
-                      : "text-red-200 hover:text-white hover:bg-red-800/50 border border-transparent hover:border-red-600/50"
+                    ? "bg-red-700/80 text-white border-2 border-red-600 shadow-lg"
+                    : "text-red-200 hover:text-white hover:bg-red-800/50 border border-transparent hover:border-red-600/50"
                     } ${collapsed ? "px-2" : "px-4"}`}
                   onClick={() => handleMenuClick(item.href)}
                 >

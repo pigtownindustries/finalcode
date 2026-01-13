@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -83,17 +83,33 @@ export function KasbonSystem() {
 
   useEffect(() => {
     fetchKasbonData()
+
+    // Setup real-time subscription untuk tabel kasbon
+    const channel = supabase
+      .channel('kasbon-realtime')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kasbon'
+        },
+        (payload) => {
+          console.log('🔄 Data pinjaman berubah, memperbarui tampilan...', payload)
+          fetchKasbonData()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription saat component unmount
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const handleAddKasbon = async () => {
     try {
       setAddKasbonLoading(true)
       setError(null)
-
-      if (!newKasbon.user_id || !newKasbon.amount || !newKasbon.reason || !newKasbon.due_date) {
-        setError("Mohon lengkapi semua field termasuk tanggal jatuh tempo")
-        return
-      }
 
       const result = await createKasbonRequest({
         user_id: newKasbon.user_id,
@@ -123,15 +139,10 @@ export function KasbonSystem() {
 
   const handleEditKasbon = async () => {
     if (!editingKasbon) return
-    
+
     try {
       setUpdateKasbonLoading(true)
       setError(null)
-
-      if (!editKasbon.amount || !editKasbon.reason || !editKasbon.due_date) {
-        setError("Mohon lengkapi semua field termasuk tanggal jatuh tempo")
-        return
-      }
 
       const { error: updateError } = await supabase
         .from('kasbon')
@@ -366,7 +377,11 @@ export function KasbonSystem() {
                 <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={addKasbonLoading} className="text-sm md:text-base">
                   Batal
                 </Button>
-                <Button onClick={handleAddKasbon} className="bg-red-600 hover:bg-red-700 text-sm md:text-base" disabled={addKasbonLoading}>
+                <Button
+                  onClick={handleAddKasbon}
+                  className="bg-red-600 hover:bg-red-700 text-sm md:text-base"
+                  disabled={addKasbonLoading || !newKasbon.user_id || !newKasbon.amount || !newKasbon.reason || !newKasbon.due_date}
+                >
                   {addKasbonLoading && <Loader2 className="h-4 w-4 mr-1 md:mr-2 animate-spin" />}
                   Ajukan Pinjaman
                 </Button>
@@ -377,11 +392,11 @@ export function KasbonSystem() {
 
         {/* Dialog Edit Pinjaman */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-[95vw] md:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] md:max-w-xl max-h-[90vh] overflow-y-auto" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="text-lg md:text-xl">Edit Pinjaman</DialogTitle>
               <DialogDescription className="text-sm md:text-base">
-                Ubah detail pinjamanpinjaman Anda yang masih pending
+                Ubah detail pinjaman Anda yang masih pending
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 md:space-y-4">
@@ -414,7 +429,7 @@ export function KasbonSystem() {
                 <Label htmlFor="edit_reason" className="text-sm md:text-base">Alasan Pinjaman *</Label>
                 <Textarea
                   id="edit_reason"
-                  placeholder="Jelaskan alasan pinjamanpinjaman"
+                  placeholder="Jelaskan alasan pinjaman"
                   value={editKasbon.reason}
                   onChange={(e) => setEditKasbon({ ...editKasbon, reason: e.target.value })}
                   disabled={updateKasbonLoading}
@@ -448,22 +463,22 @@ export function KasbonSystem() {
                 />
               </div>
               <div className="flex justify-end gap-2 md:gap-3 pt-3 md:pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setShowEditDialog(false)
                     setEditingKasbon(null)
                     setEditKasbon({ amount: "", reason: "", due_date: "", notes: "" })
-                  }} 
-                  disabled={updateKasbonLoading} 
+                  }}
+                  disabled={updateKasbonLoading}
                   className="text-sm md:text-base"
                 >
                   Batal
                 </Button>
-                <Button 
-                  onClick={handleEditKasbon} 
-                  className="bg-red-600 hover:bg-red-700" 
-                  disabled={updateKasbonLoading}
+                <Button
+                  onClick={handleEditKasbon}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={updateKasbonLoading || !editKasbon.amount || !editKasbon.reason || !editKasbon.due_date}
                 >
                   {updateKasbonLoading && <Loader2 className="h-4 w-4 mr-1 md:mr-2 animate-spin" />}
                   Simpan Perubahan
@@ -505,7 +520,7 @@ export function KasbonSystem() {
           </CardHeader>
           <CardContent className="p-3 md:p-4 pt-0">
             <div className="text-xl md:text-2xl font-bold text-red-600">{myStats.rejected}</div>
-            <p className="text-xs text-muted-foreground">pinjamanditolak</p>
+            <p className="text-xs text-muted-foreground">Pinjaman ditolak</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500 h-full">
@@ -564,7 +579,7 @@ export function KasbonSystem() {
                         <Badge className={`${getStatusColor(request.status)} font-semibold text-xs md:text-sm px-2 md:px-3 py-1`}>
                           {getStatusText(request.status)}
                         </Badge>
-                        
+
                         {request.status === "pending" && (
                           <>
                             <Button
@@ -587,7 +602,7 @@ export function KasbonSystem() {
                             </Button>
                           </>
                         )}
-                        
+
                         <Dialog
                           open={showDetailDialog && selectedKasbon?.id === request.id}
                           onOpenChange={(open) => {
@@ -689,18 +704,18 @@ export function KasbonSystem() {
                   })
                   .map((request) => {
                     if (!request.due_date) return null;
-                    
+
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const dueDate = new Date(request.due_date);
                     dueDate.setHours(0, 0, 0, 0);
                     const diffTime = dueDate.getTime() - today.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
+
                     let statusColor = "";
                     let statusText = "";
                     let borderColor = "";
-                    
+
                     if (diffDays < 0) {
                       statusColor = "bg-red-100 text-red-800 border-red-200";
                       statusText = `Terlambat ${Math.abs(diffDays)} hari`;
@@ -722,7 +737,7 @@ export function KasbonSystem() {
                     const paidAmount = request.paid_amount || 0;
                     const remaining = request.amount - paidAmount;
                     const progress = (paidAmount / request.amount) * 100;
-                    
+
                     return (
                       <div
                         key={request.id}
@@ -757,8 +772,8 @@ export function KasbonSystem() {
                               <span>Sisa: {formatCurrency(remaining)}</span>
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                                 style={{ width: `${progress}%` }}
                               />
                             </div>
@@ -794,47 +809,47 @@ export function KasbonSystem() {
                 {myKasbonRequests
                   .filter((k) => k.status === "approved" || k.status === "rejected" || k.status === "paid")
                   .map((request) => (
-                  <div
-                    key={request.id}
-                    className="p-3 md:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div
-                          className={`p-2 rounded-full flex-shrink-0 ${request.status === "approved" || request.status === "paid"
-                            ? "bg-green-100"
-                            : "bg-red-100"
-                          }`}
-                        >
-                          {request.status === "approved" || request.status === "paid" ? (
-                            <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
-                          ) : (
-                            <XCircle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
-                          )}
+                    <div
+                      key={request.id}
+                      className="p-3 md:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className={`p-2 rounded-full flex-shrink-0 ${request.status === "approved" || request.status === "paid"
+                              ? "bg-green-100"
+                              : "bg-red-100"
+                              }`}
+                          >
+                            {request.status === "approved" || request.status === "paid" ? (
+                              <CheckCircle className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+                            ) : (
+                              <XCircle className="h-3 w-3 md:h-4 md:w-4 text-red-600" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-sm md:text-base">{formatCurrency(request.amount)}</p>
+                            <p className="text-xs md:text-sm text-muted-foreground">
+                              Pengaju: {request.user?.name || "-"}
+                            </p>
+                            <p className="text-xs md:text-sm text-muted-foreground">
+                              Tanggal: {new Date(request.request_date).toLocaleDateString("id-ID")}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm md:text-base">{formatCurrency(request.amount)}</p>
-                          <p className="text-xs md:text-sm text-muted-foreground">
-                            Pengaju: {request.user?.name || "-"}
-                          </p>
-                          <p className="text-xs md:text-sm text-muted-foreground">
-                            Tanggal: {new Date(request.request_date).toLocaleDateString("id-ID")}
-                          </p>
-                        </div>
+                        <Badge className={`${getStatusColor(request.status)} font-medium text-xs md:text-sm flex-shrink-0`}>
+                          {getStatusText(request.status)}
+                        </Badge>
                       </div>
-                      <Badge className={`${getStatusColor(request.status)} font-medium text-xs md:text-sm flex-shrink-0`}>
-                        {getStatusText(request.status)}
-                      </Badge>
+
+                      {request.status === "rejected" && request.notes && (
+                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-xs md:text-sm font-semibold text-red-700 mb-1">Alasan Penolakan:</p>
+                          <p className="text-xs md:text-sm text-red-600">{request.notes}</p>
+                        </div>
+                      )}
                     </div>
-                    
-                    {request.status === "rejected" && request.notes && (
-                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-xs md:text-sm font-semibold text-red-700 mb-1">Alasan Penolakan:</p>
-                        <p className="text-xs md:text-sm text-red-600">{request.notes}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))}
                 {myKasbonRequests.filter((k) => k.status === "approved" || k.status === "rejected" || k.status === "paid").length === 0 && (
                   <div className="text-center py-8 md:py-12 text-muted-foreground">
                     <UserIcon className="h-8 w-8 md:h-12 md:w-12 mx-auto mb-3 md:mb-4 opacity-50" />

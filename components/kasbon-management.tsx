@@ -81,8 +81,29 @@ export default function KasbonManagement() {
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     fetchData()
+
+    // Setup real-time subscription untuk tabel kasbon
+    const channel = supabase
+      .channel('kasbon-management-realtime')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'kasbon'
+        },
+        (payload) => {
+          console.log('🔄 Data pinjaman berubah, memperbarui tampilan...', payload)
+          fetchData(false)
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription saat component unmount
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const fetchData = async (showLoading = true) => {
@@ -122,7 +143,7 @@ export default function KasbonManagement() {
 
   const handleReject = async () => {
     if (!rejectingKasbon) return;
-    
+
     if (!rejectionReason.trim()) {
       toast({
         title: "Error",
@@ -136,7 +157,7 @@ export default function KasbonManagement() {
     setIsRejectDialogOpen(false);
     setRejectingKasbon(null);
     setRejectionReason("");
-    
+
     // Refresh tanpa show loading
     await fetchData(false);
   };
@@ -209,7 +230,7 @@ export default function KasbonManagement() {
       setIsPaymentDialogOpen(false);
       setPayingKasbon(null);
       setPaymentAmount("");
-      
+
       // Refresh tanpa show loading
       await fetchData(false);
     } catch (error) {
@@ -251,7 +272,7 @@ export default function KasbonManagement() {
       setIsExtendDialogOpen(false);
       setExtendingKasbon(null);
       setNewDueDate("");
-      
+
       // Refresh tanpa show loading
       await fetchData(false);
     } catch (error) {
@@ -269,7 +290,7 @@ export default function KasbonManagement() {
     // Remove non-numeric characters
     const numericValue = value.replace(/[^0-9]/g, '');
     if (!numericValue) return '';
-    
+
     // Format with thousand separators
     return new Intl.NumberFormat('id-ID').format(Number(numericValue));
   };
@@ -286,12 +307,12 @@ export default function KasbonManagement() {
         status,
         updated_at: new Date().toISOString()
       };
-      
+
       // Tambahkan approved_at untuk status approved atau rejected
       if (status === "approved" || status === "rejected") {
         updateData.approved_at = new Date().toISOString();
       }
-      
+
       // Tambahkan notes jika ada (untuk alasan penolakan)
       if (notes) {
         updateData.notes = notes;
@@ -303,7 +324,7 @@ export default function KasbonManagement() {
         .select("amount, paid_amount")
         .eq("id", id)
         .single();
-      
+
       if (kasbonData) {
         updateData.remaining_amount = kasbonData.amount - (kasbonData.paid_amount || 0);
       }
@@ -314,7 +335,7 @@ export default function KasbonManagement() {
         .eq("id", id)
         .select()
         .single();
-      
+
       if (error) {
         console.error("Update error:", error);
         throw new Error(error.message || "Gagal mengupdate kasbon");
@@ -326,18 +347,18 @@ export default function KasbonManagement() {
 
       const statusText = status === "approved" ? "disetujui" : status === "rejected" ? "ditolak" : "dibayar";
       toast({ title: "Berhasil", description: `Kasbon berhasil ${statusText}` });
-      
+
       // Refresh tanpa show loading
       await fetchData(false);
 
     } catch (error: any) {
       console.error("Error detail:", error);
-      
+
       let errorMessage = "Gagal mengupdate status kasbon.";
       if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -346,7 +367,7 @@ export default function KasbonManagement() {
     }
   };
 
- const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
@@ -358,7 +379,7 @@ export default function KasbonManagement() {
         status: formData.status,
         notes: formData.notes,
       };
-      
+
       // Tambahkan approved_at jika status bukan pending
       if (formData.status !== "pending") {
         kasbonData.approved_at = new Date().toISOString();
@@ -375,7 +396,7 @@ export default function KasbonManagement() {
           console.error("Update error:", updateError);
           throw updateError;
         }
-        
+
         toast({ title: "Berhasil", description: "Kasbon berhasil diperbarui" });
       } else {
         const { data: insertData, error: insertError } = await supabase
@@ -387,21 +408,21 @@ export default function KasbonManagement() {
           console.error("Insert error:", insertError);
           throw insertError;
         }
-        
+
         toast({ title: "Berhasil", description: "Kasbon berhasil ditambahkan" });
       }
 
       setIsDialogOpen(false);
       setEditingKasbon(null);
       setFormData({ user_id: "", amount: "", reason: "", status: "pending", notes: "" });
-      
+
       // Refresh tanpa show loading
       fetchData(false);
     } catch (error) {
       console.error("Error in handleSubmit:", error);
-      
+
       let errorMessage = "Gagal menyimpan kasbon.";
-      
+
       // Handle specific database errors
       if (error instanceof Error) {
         if (error.message.includes('foreign key constraint')) {
@@ -410,10 +431,10 @@ export default function KasbonManagement() {
           errorMessage = error.message;
         }
       }
-      
+
       // Log detailed error for debugging
       console.error("Detailed error:", JSON.stringify(error, null, 2));
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -442,7 +463,7 @@ export default function KasbonManagement() {
 
       if (error) throw error
       toast({ title: "Berhasil", description: "Kasbon berhasil dihapus" })
-      
+
       // Refresh tanpa show loading
       fetchData(false)
     } catch (error) {
@@ -487,15 +508,15 @@ export default function KasbonManagement() {
 
   const getDueDateStatus = (dueDate: string | null | undefined, status: string) => {
     if (!dueDate || status === "paid") return null;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
-    
+
     const diffTime = due.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 0) {
       return {
         status: "overdue",
@@ -556,7 +577,7 @@ export default function KasbonManagement() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingKasbon ? "Edit Pinjaman" : "Tambah Pinjaman"}</DialogTitle>
-              <DialogDescription>Kelola pinjaman pinjaman karyawan</DialogDescription>
+              <DialogDescription>Kelola pinjaman karyawan</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -628,7 +649,12 @@ export default function KasbonManagement() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Batal
                 </Button>
-                <Button type="submit">{editingKasbon ? "Perbarui" : "Tambah"}</Button>
+                <Button
+                  type="submit"
+                  disabled={!formData.user_id || !formData.amount || !formData.reason}
+                >
+                  {editingKasbon ? "Perbarui" : "Tambah"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -768,87 +794,88 @@ export default function KasbonManagement() {
                   {kasbonRequests.filter((k) => k.status === "approved" || k.status === "paid" || k.status === "rejected").map((kasbon) => {
                     const dueDateStatus = getDueDateStatus(kasbon.due_date, kasbon.status);
                     return (
-                    <TableRow key={kasbon.id}>
-                      <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{(kasbon as any).user_name || kasbon.user?.name || 'N/A'}</div>
-                      </TableCell>
-                      <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium text-green-600">
-                            {formatCurrency(kasbon.paid_amount || 0)}
-                          </div>
-                          {kasbon.amount > (kasbon.paid_amount || 0) && kasbon.status !== "rejected" && (
-                            <div className="text-xs text-gray-500">
-                              Sisa: {formatCurrency(kasbon.amount - (kasbon.paid_amount || 0))}
-                            </div>
-                          )}
-                          {(kasbon.paid_amount || 0) > 0 && kasbon.amount > 0 && (
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                              <div
-                                className="bg-green-600 h-1.5 rounded-full transition-all"
-                                style={{ width: `${((kasbon.paid_amount || 0) / kasbon.amount) * 100}%` }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(kasbon.status)}</TableCell>
-                      <TableCell>
-                        {kasbon.due_date ? (
+                      <TableRow key={kasbon.id}>
+                        <TableCell>{new Date(kasbon.created_at).toLocaleDateString("id-ID")}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{(kasbon as any).user_name || kasbon.user?.name || 'N/A'}</div>
+                        </TableCell>
+                        <TableCell className="font-medium">{formatCurrency(kasbon.amount)}</TableCell>
+                        <TableCell>
                           <div className="space-y-1">
-                            <div className="text-sm font-medium">
-                              {new Date(kasbon.due_date).toLocaleDateString("id-ID")}
+                            <div className="text-sm font-medium text-green-600">
+                              {formatCurrency(kasbon.paid_amount || 0)}
                             </div>
-                            {dueDateStatus && (
-                              <Badge className={`${dueDateStatus.color} text-xs font-semibold border-0`}>
-                                {dueDateStatus.text}
-                              </Badge>
+                            {kasbon.amount > (kasbon.paid_amount || 0) && kasbon.status !== "rejected" && (
+                              <div className="text-xs text-gray-500">
+                                Sisa: {formatCurrency(kasbon.amount - (kasbon.paid_amount || 0))}
+                              </div>
+                            )}
+                            {(kasbon.paid_amount || 0) > 0 && kasbon.amount > 0 && (
+                              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                                <div
+                                  className="bg-green-600 h-1.5 rounded-full transition-all"
+                                  style={{ width: `${((kasbon.paid_amount || 0) / kasbon.amount) * 100}%` }}
+                                />
+                              </div>
                             )}
                           </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate">{kasbon.reason}</TableCell>
-                      <TableCell>{kasbon.approver?.name || "-"}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2 flex-wrap gap-1">
-                          {kasbon.status === "approved" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openPaymentDialog(kasbon)}
-                                className="text-blue-600 hover:text-blue-700"
-                              >
-                                <DollarSign className="w-4 h-4 mr-1" />
-                                Bayar
-                              </Button>
-                              {kasbon.due_date && (
+                        </TableCell>
+                        <TableCell>{getStatusBadge(kasbon.status)}</TableCell>
+                        <TableCell>
+                          {kasbon.due_date ? (
+                            <div className="space-y-1">
+                              <div className="text-sm font-medium">
+                                {new Date(kasbon.due_date).toLocaleDateString("id-ID")}
+                              </div>
+                              {dueDateStatus && (
+                                <Badge className={`${dueDateStatus.color} text-xs font-semibold border-0`}>
+                                  {dueDateStatus.text}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">{kasbon.reason}</TableCell>
+                        <TableCell>{kasbon.approver?.name || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2 flex-wrap gap-1">
+                            {kasbon.status === "approved" && (
+                              <>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => openExtendDialog(kasbon)}
-                                  className="text-purple-600 hover:text-purple-700"
+                                  onClick={() => openPaymentDialog(kasbon)}
+                                  className="text-blue-600 hover:text-blue-700"
                                 >
-                                  <Clock className="w-4 h-4 mr-1" />
-                                  Perpanjang
+                                  <DollarSign className="w-4 h-4 mr-1" />
+                                  Bayar
                                 </Button>
-                              )}
-                            </>
-                          )}
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(kasbon)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDelete(kasbon.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )})}
+                                {kasbon.due_date && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openExtendDialog(kasbon)}
+                                    className="text-purple-600 hover:text-purple-700"
+                                  >
+                                    <Clock className="w-4 h-4 mr-1" />
+                                    Perpanjang
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(kasbon)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(kasbon.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -862,13 +889,13 @@ export default function KasbonManagement() {
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <X className="w-5 h-5" />
-              Tolak pinjaman Pinjaman
+              Tolak Pinjaman
             </DialogTitle>
             <DialogDescription>
-              Berikan alasan penolakan untuk pinjaman pinjaman dari {rejectingKasbon?.user?.name || 'N/A'}
+              Berikan alasan penolakan untuk pinjaman dari {rejectingKasbon?.user?.name || 'N/A'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {rejectingKasbon && (
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
@@ -886,7 +913,7 @@ export default function KasbonManagement() {
                 </div>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="rejection-reason" className="text-base">
                 Alasan Penolakan <span className="text-red-500">*</span>

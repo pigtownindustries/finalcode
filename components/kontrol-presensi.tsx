@@ -34,7 +34,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [employeePhotos, setEmployeePhotos] = useState<AttendanceWithDetails[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // Photo Manager State
   const [isPhotoManagerOpen, setIsPhotoManagerOpen] = useState(false)
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
@@ -91,7 +91,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
       const { data, error } = await getEmployeePhotos(userId)
       if (!error && data) {
         const photoItems: PhotoItem[] = []
-        
+
         data.forEach((attendance: AttendanceWithDetails) => {
           if (attendance.check_in_photo) {
             photoItems.push({
@@ -105,7 +105,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
               shiftType: attendance.shift_type
             })
           }
-          
+
           if (attendance.check_out_photo) {
             photoItems.push({
               id: `${attendance.id}_checkout`,
@@ -119,7 +119,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
             })
           }
         })
-        
+
         setPhotos(photoItems)
       }
     } catch (error) {
@@ -172,7 +172,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
     setDeleting(true)
     try {
       const photosToDelete = photos.filter(p => selectedPhotos.has(p.id))
-      
+
       for (const photo of photosToDelete) {
         const updateData: any = {}
         if (photo.photoType === 'check_in') {
@@ -195,10 +195,10 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
       if (selectedEmployeeId) {
         await loadEmployeePhotoManager(selectedEmployeeId)
       }
-      
+
       setSelectedPhotos(new Set())
       loadAttendanceData() // Refresh main data
-      
+
       toast({
         title: "Berhasil",
         description: `${photosToDelete.length} foto berhasil dihapus`,
@@ -239,9 +239,9 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
       if (selectedEmployeeId) {
         await loadEmployeePhotoManager(selectedEmployeeId)
       }
-      
+
       loadAttendanceData() // Refresh main data
-      
+
       toast({
         title: "Berhasil",
         description: "Foto berhasil dihapus",
@@ -270,7 +270,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       toast({
         title: "Berhasil",
         description: "Foto berhasil diunduh",
@@ -287,7 +287,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     loadAttendanceData()
 
     // Setup real-time subscription
@@ -315,14 +315,14 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
   const getStatusBadge = (status: string) => {
     const variants = {
       checked_in: "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/25 border-0 animate-pulse",
-      checked_out: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25 border-0", 
+      checked_out: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25 border-0",
       on_break: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/25 border-0",
       absent: "bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/25 border-0"
     }
-    
+
     const labels = {
       checked_in: "🟢 Sedang Bekerja",
-      checked_out: "🔵 Selesai Kerja", 
+      checked_out: "🔵 Selesai Kerja",
       on_break: "🟡 Istirahat",
       absent: "🔴 Tidak Hadir"
     }
@@ -413,8 +413,8 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   const latestAttendance = attendance.data?.[0] as AttendanceWithDetails
 
                   return (
-                    <div 
-                      key={employee.id} 
+                    <div
+                      key={employee.id}
                       className="bg-white border-t border-gray-200 first:border-t-0 p-6 hover:bg-gray-50 transition-colors duration-200"
                     >
                       <div>
@@ -422,7 +422,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                           <div className="flex items-center gap-4">
                             <div className="flex-shrink-0">
                               <Avatar className="h-16 w-16 ring-2 ring-gray-200">
-                                <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover" />
+                                <AvatarImage src={employee.avatar || "/images/pigtown-logo.png"} className="object-cover w-auto-h-auto" />
                                 <AvatarFallback className="bg-red-600 text-white text-lg font-bold">
                                   {employee.name
                                     .split(" ")
@@ -449,7 +449,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="text-center lg:text-right bg-green-50 p-4 rounded-lg border border-green-200">
                             <p className="text-xs text-green-700 font-medium mb-2 flex items-center justify-center lg:justify-end gap-1">
                               <TrendingUp className="h-4 w-4" />
@@ -542,8 +542,8 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                                   </DialogHeader>
                                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                     {employeePhotos.map((record, photoIndex) => (
-                                      <div 
-                                        key={record.id} 
+                                      <div
+                                        key={record.id}
                                         className="space-y-3 hover:shadow-md transition-shadow"
                                       >
                                         <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
@@ -605,12 +605,12 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                               </Button>
                             </div>
                           </div>
-                          
+
                           {/* Photo Grid */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             {attendance.data?.slice(0, 4).map((record: AttendanceWithDetails, index: number) => (
-                              <div 
-                                key={record.id || index} 
+                              <div
+                                key={record.id || index}
                                 className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 hover:shadow-md transition-shadow"
                               >
                                 {record.check_in_photo || record.check_out_photo ? (
@@ -656,14 +656,14 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                 🎯 Kelola foto presensi karyawan - hapus foto individual atau dalam jumlah banyak
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4 md:space-y-8 p-3 md:p-6">
               {/* Enhanced Controls */}
               <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-xl md:rounded-2xl p-3 md:p-6 border border-red-200/50">
                 <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 md:gap-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-6 w-full lg:w-auto">
                     <div className="flex items-center gap-2 md:gap-3 bg-white/70 backdrop-blur-sm px-3 md:px-4 py-2 rounded-lg md:rounded-xl w-full sm:w-auto">
-                      <Checkbox 
+                      <Checkbox
                         checked={photos.length > 0 && selectedPhotos.size === photos.length}
                         onCheckedChange={handleSelectAll}
                         className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0"
@@ -672,14 +672,14 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                         Pilih Semua ({selectedPhotos.size}/{photos.length})
                       </span>
                     </div>
-                    
+
                     {selectedPhotos.size > 0 && (
                       <Badge className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-bold shadow-lg animate-bounce w-full sm:w-auto justify-center">
                         ✨ {selectedPhotos.size} foto dipilih
                       </Badge>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-2 md:gap-4 w-full lg:w-auto">
                     {selectedPhotos.size > 0 && (
                       <Button
@@ -716,8 +716,8 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 md:gap-6">
                   {photos.map((photo, photoIndex) => (
-                    <div 
-                      key={photo.id} 
+                    <div
+                      key={photo.id}
                       className="relative group/item transform hover:scale-105 transition-all duration-300"
                       style={{
                         animationDelay: `${photoIndex * 50}ms`,
@@ -737,11 +737,11 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
                       {/* Enhanced Photo Type Badge */}
                       <div className="absolute top-3 right-3 z-20">
-                        <Badge 
-                          className={`${photo.photoType === 'check_in' 
-                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg" 
+                        <Badge
+                          className={`${photo.photoType === 'check_in'
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg"
                             : "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg"
-                          } font-bold`}
+                            } font-bold`}
                         >
                           {photo.photoType === 'check_in' ? '🔸 Masuk' : '🔹 Keluar'}
                         </Badge>
@@ -749,8 +749,8 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
 
                       {/* Enhanced Photo Container */}
                       <div className="aspect-square bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl overflow-hidden shadow-lg group-hover/item:shadow-2xl transition-all duration-300">
-                        <img 
-                          src={photo.photoUrl} 
+                        <img
+                          src={photo.photoUrl}
                           alt={`${photo.photoType} ${format(new Date(photo.date), 'dd MMM yyyy', { locale: id })}`}
                           className="w-full h-full object-cover cursor-pointer group-hover/item:scale-110 transition-transform duration-500"
                           onClick={() => setPreviewPhoto(photo)}
@@ -763,17 +763,17 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                           <Calendar className="w-4 h-4 text-red-600" />
                           <span>{format(new Date(photo.date), 'dd MMM yyyy', { locale: id })}</span>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Clock className="w-4 h-4 text-cyan-600" />
                           <span className="font-medium">{formatTime(photo.time)}</span>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <MapPin className="w-4 h-4 text-green-600" />
                           <span className="truncate font-medium">{photo.branchName}</span>
                         </div>
-                        
+
                         <p className="text-xs text-gray-500 font-medium">
                           {formatShiftTime(photo.shiftType)}
                         </p>
@@ -788,18 +788,18 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        
+
                         <Button
                           size="sm"
                           className="bg-white/90 backdrop-blur-sm text-gray-800 hover:bg-white hover:scale-110 transition-all duration-300 rounded-xl shadow-lg"
                           onClick={() => handleDownloadPhoto(
-                            photo.photoUrl, 
+                            photo.photoUrl,
                             `${selectedEmployeeName}_${photo.photoType}_${photo.date}_${photo.time}.jpg`
                           )}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
-                        
+
                         <Button
                           size="sm"
                           className="bg-red-500/90 backdrop-blur-sm text-white hover:bg-red-500 hover:scale-110 transition-all duration-300 rounded-xl shadow-lg"
@@ -829,16 +829,16 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                   {previewPhoto.photoType === 'check_in' ? '🔸 Foto Check-in' : '🔹 Foto Check-out'} - {formatTime(previewPhoto.time)}
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-8">
                 <div className="flex justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6">
-                  <img 
-                    src={previewPhoto.photoUrl} 
+                  <img
+                    src={previewPhoto.photoUrl}
                     alt="Preview"
                     className="max-w-full max-h-[60vh] object-contain rounded-xl shadow-2xl"
                   />
                 </div>
-                
+
                 <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-6 border border-red-200/50">
                   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="space-y-3">
@@ -851,13 +851,13 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                         {format(new Date(previewPhoto.date), 'dd MMM yyyy', { locale: id })} - {formatTime(previewPhoto.time)}
                       </p>
                     </div>
-                    
+
                     <div className="flex gap-4">
                       <Button
                         size="lg"
                         variant="outline"
                         onClick={() => handleDownloadPhoto(
-                          previewPhoto.photoUrl, 
+                          previewPhoto.photoUrl,
                           `${selectedEmployeeName}_${previewPhoto.photoType}_${previewPhoto.date}_${previewPhoto.time}.jpg`
                         )}
                         className="gap-3 bg-white/80 backdrop-blur-sm border-red-200 hover:bg-red-50 hover:border-rose-300 hover:scale-105 transition-all duration-300 rounded-xl shadow-lg"
@@ -865,7 +865,7 @@ export function KontrolPresensi({ employees }: KontrolPresensiProps) {
                         <Download className="w-5 h-5" />
                         Download
                       </Button>
-                      
+
                       <Button
                         size="lg"
                         variant="destructive"

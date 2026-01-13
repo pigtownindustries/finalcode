@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,7 @@ import {
   getPointsStatistics,
   getPointTransactions,
   getBranches,
+  supabase,
   type UserWithPoints,
   type Point,
   type Branch,
@@ -29,6 +30,16 @@ interface PointTransaction extends Point {
       name: string;
     } | null;
   } | null;
+}
+
+// Helper untuk format Rupiah
+const formatRupiah = (value: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value)
 }
 
 export function PointsSystem() {
@@ -47,7 +58,7 @@ export function PointsSystem() {
   const [pointTransactions, setPointTransactions] = useState<PointTransaction[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -74,11 +85,33 @@ export function PointsSystem() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedBranch])
 
+  // Load data awal dan setup real-time subscription
   useEffect(() => {
     fetchData()
-  }, [selectedBranch])
+
+    // Setup real-time subscription untuk tabel points
+    const channel = supabase
+      .channel('points-realtime')
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'points'
+        },
+        (payload) => {
+          console.log('🔄 Data bonus/penalty berubah, memperbarui tampilan...', payload)
+          fetchData()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription saat component unmount
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [fetchData])
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch = employee.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -104,6 +137,8 @@ export function PointsSystem() {
         return "bg-green-100 text-green-800"
       case "bonus":
         return "bg-blue-100 text-blue-800"
+      case "reward":
+        return "bg-green-100 text-green-800"
       case "redeemed":
         return "bg-orange-100 text-orange-800"
       case "penalty":
@@ -121,9 +156,9 @@ export function PointsSystem() {
     }
     switch (type) {
       case "reward":
-        return "Hadiah"
+        return "Bonus"
       case "penalty":
-        return "Penalti"
+        return "Potongan"
       case "earned":
         return "Diperoleh"
       case "bonus":
@@ -131,7 +166,7 @@ export function PointsSystem() {
       case "deducted":
         return "Dikurangi"
       default:
-        return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); 
+        return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
   }
 
@@ -140,7 +175,7 @@ export function PointsSystem() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex items-center gap-2">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Memuat data sistem poin...</span>
+          <span>Memuat data bonus & penalty...</span>
         </div>
       </div>
     )
@@ -159,8 +194,8 @@ export function PointsSystem() {
       {/* Header - Responsif untuk semua perangkat */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Sistem Poin</h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">Leaderboard dan pencapaian semua karyawan</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Bonus & Penalty Karyawan</h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-1">Leaderboard dan riwayat bonus/potongan gaji karyawan</p>
         </div>
         <div className="flex items-center gap-2 md:gap-4">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
@@ -201,27 +236,27 @@ export function PointsSystem() {
               {statistics.topPerformer?.name?.split(' ')[0] || "-"}
             </div>
             <p className="text-xs md:text-sm text-muted-foreground truncate">
-              {statistics.topPerformer?.total_points?.toLocaleString() || 0} poin
+              {formatRupiah(statistics.topPerformer?.total_points || 0)}
             </p>
           </CardContent>
         </Card>
         <Card className="h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm md:text-base font-medium">Rata-rata Poin</CardTitle>
+            <CardTitle className="text-sm md:text-base font-medium">Rata-rata</CardTitle>
             <TrendingUp className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-xl md:text-2xl font-bold text-green-600">{statistics.averagePoints.toLocaleString()}</div>
-            <p className="text-xs md:text-sm text-muted-foreground">Poin per karyawan</p>
+            <div className="text-xl md:text-2xl font-bold text-green-600">{formatRupiah(statistics.averagePoints)}</div>
+            <p className="text-xs md:text-sm text-muted-foreground">Per karyawan</p>
           </CardContent>
         </Card>
         <Card className="h-full">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm md:text-base font-medium">Total Poin</CardTitle>
+            <CardTitle className="text-sm md:text-base font-medium">Total Bonus</CardTitle>
             <Star className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-xl md:text-2xl font-bold text-red-600">{statistics.totalPoints.toLocaleString()}</div>
+            <div className="text-xl md:text-2xl font-bold text-red-600">{formatRupiah(statistics.totalPoints)}</div>
             <p className="text-xs md:text-sm text-muted-foreground">Semua karyawan</p>
           </CardContent>
         </Card>
@@ -231,7 +266,7 @@ export function PointsSystem() {
         <TabsList className="w-full flex overflow-x-auto">
           <TabsTrigger value="leaderboard" className="flex-1 text-sm">Leaderboard</TabsTrigger>
           <TabsTrigger value="achievements" className="flex-1 text-sm">Pencapaian</TabsTrigger>
-          <TabsTrigger value="history" className="flex-1 text-sm">Riwayat Poin</TabsTrigger>
+          <TabsTrigger value="history" className="flex-1 text-sm">Riwayat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="leaderboard" className="space-y-4 md:space-y-6">
@@ -277,15 +312,15 @@ export function PointsSystem() {
                 <CardContent className="p-4 md:p-5 pt-0">
                   <div className="space-y-2 md:space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm md:text-base font-medium">Total Poin:</span>
+                      <span className="text-sm md:text-base font-medium">Total:</span>
                       <span className="font-bold text-primary text-base md:text-lg">
-                        {(employee.total_points || 0).toLocaleString()}
+                        {formatRupiah(employee.total_points || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm md:text-base font-medium">Bulan Ini:</span>
                       <span className="font-bold text-green-600 text-sm md:text-base">
-                        +{(employee.monthly_points || 0).toLocaleString()}
+                        +{formatRupiah(employee.monthly_points || 0)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -313,7 +348,7 @@ export function PointsSystem() {
                 <Award className="h-5 w-5 md:h-6 md:w-6" />
                 Pencapaian Terbaru
               </CardTitle>
-              <CardDescription className="text-sm md:text-base">Daftar karyawan berdasarkan performa poin</CardDescription>
+              <CardDescription className="text-sm md:text-base">Daftar karyawan berdasarkan total bonus/penalty</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
@@ -335,7 +370,7 @@ export function PointsSystem() {
                       </div>
                     </div>
                     <div className="text-right ml-3">
-                      <p className="font-bold text-primary text-base md:text-lg">{(employee.total_points || 0).toLocaleString()} poin</p>
+                      <p className="font-bold text-primary text-base md:text-lg">{formatRupiah(employee.total_points || 0)}</p>
                       <p className="text-muted-foreground text-xs md:text-sm">Peringkat #{employee.rank}</p>
                     </div>
                   </div>
@@ -350,9 +385,9 @@ export function PointsSystem() {
             <CardHeader className="p-4 md:p-6">
               <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
                 <Calendar className="h-5 w-5 md:h-6 md:w-6" />
-                Riwayat Poin Semua Karyawan
+                Riwayat Bonus & Penalty
               </CardTitle>
-              <CardDescription className="text-sm md:text-base">Aktivitas poin terbaru dari semua karyawan</CardDescription>
+              <CardDescription className="text-sm md:text-base">Aktivitas bonus dan potongan terbaru dari semua karyawan</CardDescription>
             </CardHeader>
             <CardContent className="p-4 md:p-6">
               <div className="space-y-3 md:space-y-4">
@@ -374,13 +409,13 @@ export function PointsSystem() {
                         className={`font-bold text-base md:text-lg ${transaction.points_type === "penalty" || transaction.points_type === "deducted" ? "text-red-600" : "text-green-600"}`}
                       >
                         {transaction.points_type === "penalty" || transaction.points_type === "deducted" ? "-" : "+"}
-                        {transaction.points_earned} poin
+                        {formatRupiah(Math.abs(transaction.points_earned))}
                       </p>
                     </div>
                   </div>
                 ))}
                 {pointTransactions.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground text-sm md:text-base">Belum ada transaksi poin</div>
+                  <div className="text-center py-8 text-muted-foreground text-sm md:text-base">Belum ada transaksi bonus/penalty</div>
                 )}
               </div>
             </CardContent>

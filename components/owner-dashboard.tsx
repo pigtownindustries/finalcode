@@ -113,7 +113,7 @@ export function OwnerDashboard() {
         currentPin: (user as any).pin || "",
         currentPassword: "",
       }))
-      
+
       setLoading(false)
       testDatabaseConnection()
     }
@@ -146,13 +146,13 @@ export function OwnerDashboard() {
 
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validasi password
     if (accountSettings.newPassword && accountSettings.newPassword !== accountSettings.confirmPassword) {
       toast({ title: "Error", description: "Password baru dan konfirmasi tidak cocok!", variant: "destructive" })
       return
     }
-    
+
     // Validasi PIN
     if (accountSettings.pin && (accountSettings.pin.length !== 6 || !/^\d+$/.test(accountSettings.pin))) {
       toast({ title: "Error", description: "PIN harus 6 digit angka!", variant: "destructive" })
@@ -189,9 +189,9 @@ export function OwnerDashboard() {
       // Update data user lainnya
       const { error: dbError } = await supabase
         .from("users")
-        .update({ 
+        .update({
           email: accountSettings.email,
-          pin: accountSettings.pin 
+          pin: accountSettings.pin
         })
         .eq("id", currentUser.id)
 
@@ -199,14 +199,14 @@ export function OwnerDashboard() {
 
       toast({ title: "Berhasil", description: "Pengaturan akun berhasil diperbarui!" })
       setSettingsOpen(false)
-      setAccountSettings((prev) => ({ 
-        ...prev, 
-        currentPassword: "", 
-        newPassword: "", 
+      setAccountSettings((prev) => ({
+        ...prev,
+        currentPassword: "",
+        newPassword: "",
         confirmPassword: "",
         currentPin: prev.pin // Update current pin dengan yang baru
       }))
-      
+
     } catch (error: any) {
       console.error("Error updating settings:", error)
       toast({ title: "Error", description: `Gagal memperbarui pengaturan: ${error.message}`, variant: "destructive" })
@@ -263,14 +263,14 @@ export function OwnerDashboard() {
         {/* Connection Status Indicator - Enhanced */}
         <div className="fixed top-4 right-4 z-50">
           <div className={`px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md border transition-all duration-300 shadow-lg ${connectionStatus === 'connected'
-              ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 shadow-green-500/20'
-              : connectionStatus === 'error'
-                ? 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30 shadow-red-500/20'
-                : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30 shadow-yellow-500/20'
+            ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 shadow-green-500/20'
+            : connectionStatus === 'error'
+              ? 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30 shadow-red-500/20'
+              : 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 border-yellow-500/30 shadow-yellow-500/20'
             }`}>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' :
-                  connectionStatus === 'error' ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'
+                connectionStatus === 'error' ? 'bg-red-500' : 'bg-yellow-500 animate-pulse'
                 }`} />
               {connectionStatus === 'connected' ? '✅ Terhubung' :
                 connectionStatus === 'error' ? '❌ Error' : '⚠️ Menghubungkan'}
@@ -285,34 +285,34 @@ export function OwnerDashboard() {
             <div className="lg:hidden flex items-center justify-between p-4 gap-3">
               {/* Left: Back Button + Logo + Title (Horizontal) */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => router.push("/dashboard")} 
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/dashboard")}
                   className="flex-shrink-0 h-10 w-10 p-0 bg-gradient-to-r from-red-500/80 to-rose-500/80 text-white border-0 hover:from-red-600/90 hover:to-rose-600/90 shadow-lg"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                
-                <Image 
-                  src="/images/pigtown-logo.png" 
+
+                <Image
+                  src="/images/pigtown-logo.png"
                   alt="Pigtown Logo"
                   width={48}
                   height={48}
-                  className="object-contain flex-shrink-0"
-                  style={{ width: 'auto', height: 'auto', maxWidth: '48px', maxHeight: '48px' }}
+                  className="object-contain flex-shrink-0 w-auto-h-auto"
+                  style={{ maxWidth: '48px', maxHeight: '48px' }}
                 />
-                
+
                 <div className="flex flex-col min-w-0 flex-1">
                   <h1 className="text-lg font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-tight truncate">
-                    Dashboard Owner 
+                    Dashboard Owner
                   </h1>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-tight truncate">
                     Kontrol penuh operasional
                   </p>
                 </div>
               </div>
-              
+
               {/* Right: Action Buttons (Icon Only) */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Button
@@ -320,8 +320,8 @@ export function OwnerDashboard() {
                   size="sm"
                   onClick={() => setRealTimeEnabled(!realTimeEnabled)}
                   className={`h-10 w-10 p-0 backdrop-blur-md transition-all ${realTimeEnabled
-                      ? 'bg-green-500/20 text-green-700 border-green-500/30'
-                      : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+                    ? 'bg-green-500/20 text-green-700 border-green-500/30'
+                    : 'bg-gray-500/20 text-gray-700 border-gray-500/30'
                     }`}
                 >
                   <RefreshCw className={`h-4 w-4 ${realTimeEnabled ? 'animate-spin' : ''}`} />
@@ -355,7 +355,7 @@ export function OwnerDashboard() {
                           placeholder="owner@example.com"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="newPassword" className="text-sm font-medium">Password Baru (Opsional)</Label>
                         <div className="relative">
@@ -381,7 +381,7 @@ export function OwnerDashboard() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="confirmPassword" className="text-sm font-medium">Konfirmasi Password Baru</Label>
                         <Input
@@ -393,7 +393,7 @@ export function OwnerDashboard() {
                           placeholder="Konfirmasi password baru"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="currentPin" className="text-sm font-medium">PIN Saat Ini</Label>
                         <div className="relative">
@@ -419,7 +419,7 @@ export function OwnerDashboard() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="pin" className="text-sm font-medium">PIN Baru (6 digit)</Label>
                         <div className="relative">
@@ -452,7 +452,7 @@ export function OwnerDashboard() {
                           PIN digunakan untuk autentikasi akses ke dashboard
                         </p>
                       </div>
-                      
+
                       <div className="flex gap-2 pt-4">
                         <Button
                           type="submit"
@@ -474,38 +474,38 @@ export function OwnerDashboard() {
                 </Dialog>
               </div>
             </div>
-            
+
             {/* Desktop: Original Layout */}
             <div className="hidden lg:flex items-center justify-between p-6 lg:p-8">
               <div className="flex items-start gap-4 lg:gap-6">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => router.push("/dashboard")} 
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/dashboard")}
                   className="group gap-2 bg-gradient-to-r from-red-500/80 to-rose-500/80 text-white border-0 hover:from-red-600/90 hover:to-rose-600/90 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 backdrop-blur-sm mt-3"
                 >
                   <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-300" />
                   Kembali
                 </Button>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="relative flex-shrink-0 group">
                     <div>
-                      <Image 
-                        src="/images/pigtown-logo.png" 
+                      <Image
+                        src="/images/pigtown-logo.png"
                         alt="Pigtown Logo"
                         width={80}
                         height={80}
-                        className="object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12"
-                        style={{ width: 'auto', height: 'auto', maxWidth: '80px', maxHeight: '80px' }}
+                        className="object-contain animate-bounce transition-all duration-300 group-hover:scale-125 group-hover:rotate-12 w-auto-h-auto"
+                        style={{ maxWidth: '80px', maxHeight: '80px' }}
                       />
                     </div>
                     <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-xl transition-all duration-300 group-hover:bg-blue-400/30 group-hover:blur-2xl" />
                   </div>
-                  
+
                   <div className="flex flex-col justify-center">
                     <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 dark:from-red-400 dark:via-rose-400 dark:to-orange-400 bg-clip-text text-transparent leading-none">
-                      Dashboard Owner 
+                      Dashboard Owner
                     </h1>
                     <p className="text-base lg:text-lg text-slate-600 dark:text-slate-400 font-medium mt-1 leading-none">
                       Kelola seluruh operasional dengan data real-time dan analytics mendalam
@@ -513,15 +513,15 @@ export function OwnerDashboard() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setRealTimeEnabled(!realTimeEnabled)}
                   className={`gap-2 backdrop-blur-md transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 ${realTimeEnabled
-                      ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/30'
-                      : 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 hover:bg-gray-500/30'
+                    ? 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/30 hover:bg-green-500/30'
+                    : 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30 hover:bg-gray-500/30'
                     }`}
                 >
                   <RefreshCw className={`h-4 w-4 ${realTimeEnabled ? 'animate-spin' : ''}`} />
@@ -577,8 +577,8 @@ export function OwnerDashboard() {
                             key={tab.value}
                             variant={activeTab === tab.value ? "default" : "ghost"}
                             className={`w-full justify-start group relative overflow-hidden transition-all duration-300 ${activeTab === tab.value
-                                ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30'
-                                : 'text-slate-300 hover:text-white hover:bg-white/10'
+                              ? 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/30'
+                              : 'text-slate-300 hover:text-white hover:bg-white/10'
                               }`}
                             onClick={() => {
                               setActiveTab(tab.value)
@@ -607,8 +607,8 @@ export function OwnerDashboard() {
                             key={tab.value}
                             value={tab.value}
                             className={`group relative overflow-hidden px-3 sm:px-4 lg:px-5 py-3 rounded-xl font-medium transition-all duration-500 hover:scale-105 flex-1 min-w-[80px] max-w-[140px] ${activeTab === tab.value
-                                ? 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-600 text-white shadow-xl shadow-red-500/30'
-                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
+                              ? 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-600 text-white shadow-xl shadow-red-500/30'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10'
                               }`}
                             style={{ animationDelay: `${index * 100}ms` }}
                           >

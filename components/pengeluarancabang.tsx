@@ -34,7 +34,7 @@ import {
   FileText,
   Clock,
   AlertCircle,
-  RefreshCw,
+
   CheckCircle,
   XCircle,
   Eye,
@@ -76,7 +76,7 @@ export function PengeluaranCabang() {
     averagePerTransaction: 0,
   })
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -106,10 +106,10 @@ export function PengeluaranCabang() {
   // Gunakan useEffect untuk menghindari hydration mismatch
   useEffect(() => {
     loadData()
-    
+
     // Setup realtime subscription hanya di client side
     const cleanup = setupRealtimeSubscription()
-    
+
     return () => {
       if (cleanup) cleanup()
     }
@@ -117,17 +117,17 @@ export function PengeluaranCabang() {
 
   const setupRealtimeSubscription = () => {
     // Pastikan kita di client side sebelum setup realtime
-    if (typeof window === 'undefined') return () => {}
-    
+    if (typeof window === 'undefined') return () => { }
+
     try {
       const channel = supabase
         .channel('expenses-realtime')
-        .on('postgres_changes', 
-          { 
-            event: '*', 
-            schema: 'public', 
-            table: 'expenses' 
-          }, 
+        .on('postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'expenses'
+          },
           (payload) => {
             console.log('🔄 Real-time update received:', payload)
             loadData()
@@ -140,7 +140,7 @@ export function PengeluaranCabang() {
       }
     } catch (error) {
       console.error('Error setting up realtime subscription:', error)
-      return () => {}
+      return () => { }
     }
   }
 
@@ -161,28 +161,25 @@ export function PengeluaranCabang() {
       console.error("Error loading expense data:", error)
     } finally {
       setLoading(false)
-      setRefreshing(false)
+
     }
   }
 
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await loadData()
-  }
+
 
   const filteredExpenses = useMemo(() => {
-    console.log('🔍 Filtering expenses:', { 
-      total: expenses.length, 
-      selectedBranch, 
-      selectedCategory 
+    console.log('🔍 Filtering expenses:', {
+      total: expenses.length,
+      selectedBranch,
+      selectedCategory
     });
-    
+
     const filtered = expenses.filter((expense) => {
       const matchesBranch = selectedBranch === "all" || expense.branch_id === selectedBranch
       const matchesCategory = selectedCategory === "all" || expense.category === selectedCategory
       return matchesBranch && matchesCategory
     });
-    
+
     console.log('✅ Filtered result:', filtered.length);
     return filtered;
   }, [expenses, selectedBranch, selectedCategory])
@@ -279,7 +276,7 @@ export function PengeluaranCabang() {
 
   const handleEditExpense = async () => {
     if (!currentExpense) return
-    
+
     try {
       // Hanya kirim field yang boleh diupdate
       const expenseData = {
@@ -287,7 +284,7 @@ export function PengeluaranCabang() {
         amount: Number(currentExpense.amount),
         category: currentExpense.category,
         branch_id: currentExpense.branch_id,
-        notes: currentExpense.notes || null,
+        notes: currentExpense.notes || undefined,
       }
 
       const result = await updateExpenseRequest(currentExpense.id, expenseData)
@@ -344,16 +341,7 @@ export function PengeluaranCabang() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-2 text-xs sm:text-sm"
-          >
-            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 bg-red-600 hover:bg-red-700 text-xs sm:text-sm">
@@ -534,10 +522,10 @@ export function PengeluaranCabang() {
           ) : (
             filteredExpenses.map((expense) => {
               const categoryInfo = getCategoryInfo(expense.category)
-              const branchName = expense.branch_id 
-                ? branches.find(b => b.id === expense.branch_id)?.name 
+              const branchName = expense.branch_id
+                ? branches.find(b => b.id === expense.branch_id)?.name
                 : "Semua Cabang"
-              
+
               return (
                 <Card key={expense.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-red-500">
                   <CardContent className="p-4 sm:p-6">
@@ -549,7 +537,7 @@ export function PengeluaranCabang() {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-2">
                             <div className="flex-1 min-w-0">
-                              <h3 
+                              <h3
                                 className="font-semibold text-base sm:text-lg cursor-pointer hover:text-red-600 transition-colors truncate"
                                 onClick={() => openViewDialog(expense)}
                                 title={expense.description}
@@ -590,8 +578,8 @@ export function PengeluaranCabang() {
                       <div className="flex items-center gap-1 sm:gap-2 self-end sm:self-auto">
                         {expense.status === "pending" && (
                           <>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
                               onClick={() => openEditDialog(expense)}
                               className="h-8 w-8 p-0"
@@ -609,8 +597,8 @@ export function PengeluaranCabang() {
                           </>
                         )}
                         {expense.status !== "pending" && (
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => openViewDialog(expense)}
                             className="h-8 w-8 p-0"
@@ -756,64 +744,64 @@ export function PengeluaranCabang() {
         </DialogContent>
       </Dialog>
 
-        {/* View Dialog - Responsif untuk mobile */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-[95vw] sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Detail Pengajuan Pengeluaran</DialogTitle>
-            </DialogHeader>
-            {currentExpense && (
-              <div className="space-y-3 sm:space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Kategori</Label>
-                    <p className="font-medium text-sm sm:text-base">
-                      {getCategoryInfo(currentExpense.category).name}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Cabang</Label>
-                    <p className="font-medium text-sm sm:text-base">
-                      {currentExpense.branch_id 
-                        ? branches.find(b => b.id === currentExpense.branch_id)?.name 
-                        : "Semua Cabang"}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Jumlah</Label>
-                    <p className="font-medium text-red-600 text-sm sm:text-base">{formatPrice(currentExpense.amount)}</p>
-                  </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Status</Label>
-                    <Badge className={`${getStatusColor(currentExpense.status)} text-xs`}>
-                      {getStatusText(currentExpense.status)}
-                    </Badge>
-                  </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Tanggal Pengajuan</Label>
-                    <p className="font-medium text-sm sm:text-base">{formatDate(currentExpense.expense_date)}</p>
-                  </div>
+      {/* View Dialog - Responsif untuk mobile */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-[95vw] sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg sm:text-xl">Detail Pengajuan Pengeluaran</DialogTitle>
+          </DialogHeader>
+          {currentExpense && (
+            <div className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Kategori</Label>
+                  <p className="font-medium text-sm sm:text-base">
+                    {getCategoryInfo(currentExpense.category).name}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs sm:text-sm text-muted-foreground">Deskripsi</Label>
-                  <p className="font-medium text-sm sm:text-base">{currentExpense.description}</p>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Cabang</Label>
+                  <p className="font-medium text-sm sm:text-base">
+                    {currentExpense.branch_id
+                      ? branches.find(b => b.id === currentExpense.branch_id)?.name
+                      : "Semua Cabang"}
+                  </p>
                 </div>
-                {currentExpense.status === "rejected" && currentExpense.rejection_reason && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Alasan Penolakan</Label>
-                    <p className="font-medium text-red-700 text-sm sm:text-base">{currentExpense.rejection_reason}</p>
-                  </div>
-                )}
-                {currentExpense.notes && (
-                  <div>
-                    <Label className="text-xs sm:text-sm text-muted-foreground">Catatan</Label>
-                    <p className="font-medium text-sm sm:text-base">{currentExpense.notes}</p>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Jumlah</Label>
+                  <p className="font-medium text-red-600 text-sm sm:text-base">{formatPrice(currentExpense.amount)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Status</Label>
+                  <Badge className={`${getStatusColor(currentExpense.status)} text-xs`}>
+                    {getStatusText(currentExpense.status)}
+                  </Badge>
+                </div>
+                <div>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Tanggal Pengajuan</Label>
+                  <p className="font-medium text-sm sm:text-base">{formatDate(currentExpense.expense_date)}</p>
+                </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    )
-  }
+              <div>
+                <Label className="text-xs sm:text-sm text-muted-foreground">Deskripsi</Label>
+                <p className="font-medium text-sm sm:text-base">{currentExpense.description}</p>
+              </div>
+              {currentExpense.status === "rejected" && currentExpense.rejection_reason && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Alasan Penolakan</Label>
+                  <p className="font-medium text-red-700 text-sm sm:text-base">{currentExpense.rejection_reason}</p>
+                </div>
+              )}
+              {currentExpense.notes && (
+                <div>
+                  <Label className="text-xs sm:text-sm text-muted-foreground">Catatan</Label>
+                  <p className="font-medium text-sm sm:text-base">{currentExpense.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

@@ -170,6 +170,12 @@
       min-width: 44px;
     }
   }
+
+  /* Utility class to fix Next.js image aspect ratio warning */
+  .w-auto-h-auto {
+    width: auto;
+    height: auto;
+  }
 }
 
 /* Improve card responsiveness */

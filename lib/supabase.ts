@@ -50,19 +50,19 @@ export const testSupabaseConnection = async () => {
 // 🔥 FUNGSI BARU: Hitung Hari Kerja
 // =============================
 function getBusinessDaysCount(startDate: Date, endDate: Date): number {
-    let count = 0;
-    const curDate = new Date(startDate.getTime());
-    
-    while (curDate <= endDate) {
-        const dayOfWeek = curDate.getDay();
-        // 0 = Minggu, 6 = Sabtu (tidak dihitung sebagai hari kerja)
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-            count++;
-        }
-        curDate.setDate(curDate.getDate() + 1);
+  let count = 0;
+  const curDate = new Date(startDate.getTime());
+
+  while (curDate <= endDate) {
+    const dayOfWeek = curDate.getDay();
+    // 0 = Minggu, 6 = Sabtu (tidak dihitung sebagai hari kerja)
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      count++;
     }
-    
-    return count;
+    curDate.setDate(curDate.getDate() + 1);
+  }
+
+  return count;
 }
 
 
@@ -564,13 +564,13 @@ export async function createTransactionItems(items: Partial<TransactionItem>[]) 
         .select("name, type, service_categories(name)")
         .eq("id", item.service_id)
         .single()
-      
+
       return {
         ...item,
         service_name: service?.name || 'Unknown Service',
         service_type: service?.type,
-        service_category: Array.isArray(service?.service_categories) 
-          ? service.service_categories[0]?.name 
+        service_category: Array.isArray(service?.service_categories)
+          ? service.service_categories[0]?.name
           : (service?.service_categories as any)?.name
       }
     }
@@ -593,20 +593,20 @@ export async function getActiveReceiptTemplate(branchId?: string) {
   let query = supabase.from("receipt_templates").select("*").eq("is_active", true)
   if (branchId) query = query.eq("branch_id", branchId)
   const { data: activeData, error: activeError } = await query.single()
-  
+
   if (activeData && !activeError) {
     return { data: activeData, error: null }
   }
-  
+
   // Priority 2: If no active template, get default template (is_default = true)
   let defaultQuery = supabase.from("receipt_templates").select("*").eq("is_default", true)
   if (branchId) defaultQuery = defaultQuery.eq("branch_id", branchId)
   const { data: defaultData, error: defaultError } = await defaultQuery.single()
-  
+
   if (defaultData && !defaultError) {
     return { data: defaultData, error: null }
   }
-  
+
   // Priority 3: Fallback to any template
   return await getReceiptTemplate(branchId)
 }
@@ -764,12 +764,12 @@ export async function getPointTransactions(branchId?: string, limit = 50) {
         .from("users")
         .select("id")
         .eq("branch_id", branchId);
-      
+
       if (usersError) {
         console.error("Error fetching users in branch:", usersError);
         return { data: [], error: usersError };
       }
-      
+
       if (usersInBranch && usersInBranch.length > 0) {
         const userIds = usersInBranch.map(u => u.id);
         query = query.in("user_id", userIds);
@@ -798,13 +798,13 @@ export async function getPointTransactions(branchId?: string, limit = 50) {
     // Get user details for all points
     const userIds = [...new Set(pointsData.map(p => p.user_id).filter(Boolean))];
     let usersMap: Record<string, any> = {};
-    
+
     if (userIds.length > 0) {
       const { data: users } = await supabase
         .from("users")
         .select("id, name, branch_id")
         .in("id", userIds);
-      
+
       if (users) {
         usersMap = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
       }
@@ -812,7 +812,7 @@ export async function getPointTransactions(branchId?: string, limit = 50) {
 
     // Get all unique branch_ids
     const branchIds = [...new Set(Object.values(usersMap).map((u: any) => u.branch_id).filter(Boolean))];
-    
+
     // Fetch branch details
     let branchesMap: Record<string, any> = {};
     if (branchIds.length > 0) {
@@ -820,7 +820,7 @@ export async function getPointTransactions(branchId?: string, limit = 50) {
         .from("branches")
         .select("id, name")
         .in("id", branchIds);
-      
+
       if (branches) {
         branchesMap = branches.reduce((acc, b) => ({ ...acc, [b.id]: b }), {});
       }
@@ -892,12 +892,12 @@ export async function getKasbonRequests(branchId?: string, statusFilter?: string
         .from("users")
         .select("id")
         .eq("branch_id", branchId);
-      
+
       if (usersError) {
         console.error("Error fetching users in branch:", usersError);
         return { data: [], error: usersError };
       }
-      
+
       if (usersInBranch && usersInBranch.length > 0) {
         const userIds = usersInBranch.map(u => u.id);
         query = query.in("user_id", userIds);
@@ -926,13 +926,13 @@ export async function getKasbonRequests(branchId?: string, statusFilter?: string
     // Get user details
     const userIds = [...new Set(kasbonData.map(k => k.user_id).filter(Boolean))];
     let usersMap: Record<string, any> = {};
-    
+
     if (userIds.length > 0) {
       const { data: users } = await supabase
         .from("users")
         .select("id, name, email, position, branch_id")
         .in("id", userIds);
-      
+
       if (users) {
         usersMap = users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
       }
@@ -941,13 +941,13 @@ export async function getKasbonRequests(branchId?: string, statusFilter?: string
     // Get approver details
     const approverIds = [...new Set(kasbonData.map(k => k.approved_by).filter(Boolean))];
     let approversMap: Record<string, any> = {};
-    
+
     if (approverIds.length > 0) {
       const { data: approvers } = await supabase
         .from("users")
         .select("id, name")
         .in("id", approverIds);
-      
+
       if (approvers) {
         approversMap = approvers.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
       }
@@ -980,7 +980,7 @@ export async function getKasbonStatistics(branchId?: string) {
         .from("users")
         .select("id")
         .eq("branch_id", branchId);
-      
+
       if (usersError) {
         console.error("Error fetching users in branch:", usersError);
         return {
@@ -993,7 +993,7 @@ export async function getKasbonStatistics(branchId?: string) {
           error: usersError,
         }
       }
-      
+
       if (usersInBranch && usersInBranch.length > 0) {
         const userIds = usersInBranch.map(u => u.id);
         query = query.in("user_id", userIds);
@@ -1177,7 +1177,9 @@ export interface Employee {
   status?: string
   avatar?: string
   rating?: number
+  salary?: number
   baseSalary?: number
+  created_at?: string
   attendanceRate?: number
   currentMonthCustomers?: number
   totalCustomers?: number
@@ -1214,11 +1216,11 @@ export async function getEmployeeAbsenceInfo(employeeId: string) {
 
     if (empError || !employee) {
       console.error("Error getting employee:", empError);
-      return { 
-        maxAbsentDays: 4, 
-        currentAbsentDays: 0, 
+      return {
+        maxAbsentDays: 4,
+        currentAbsentDays: 0,
         remainingDays: 4,
-        excessDays: 0 
+        excessDays: 0
       };
     }
 
@@ -1236,16 +1238,16 @@ export async function getEmployeeAbsenceInfo(employeeId: string) {
 
     if (attendanceError) {
       console.error("Error getting attendance data:", attendanceError);
-      return { 
-        maxAbsentDays: employee.max_absent_days || 4, 
-        currentAbsentDays: 0, 
+      return {
+        maxAbsentDays: employee.max_absent_days || 4,
+        currentAbsentDays: 0,
         remainingDays: employee.max_absent_days || 4,
-        excessDays: 0 
+        excessDays: 0
       };
     }
 
     // Hitung hari tidak hadir (status absent atau tidak ada data attendance)
-    const currentAbsentDays = attendanceData?.filter(record => 
+    const currentAbsentDays = attendanceData?.filter(record =>
       record.status === "absent" || record.status === null
     ).length || 0;
 
@@ -1253,27 +1255,27 @@ export async function getEmployeeAbsenceInfo(employeeId: string) {
     const remainingDays = Math.max(0, maxAbsentDays - currentAbsentDays);
     const excessDays = Math.max(0, currentAbsentDays - maxAbsentDays);
 
-    console.log("[SIMPLE] Absence info:", { 
-      maxAbsentDays, 
-      currentAbsentDays, 
-      remainingDays, 
-      excessDays 
+    console.log("[SIMPLE] Absence info:", {
+      maxAbsentDays,
+      currentAbsentDays,
+      remainingDays,
+      excessDays
     });
 
-    return { 
-      maxAbsentDays, 
-      currentAbsentDays, 
-      remainingDays, 
-      excessDays 
+    return {
+      maxAbsentDays,
+      currentAbsentDays,
+      remainingDays,
+      excessDays
     };
 
   } catch (error) {
     console.error("Error in getEmployeeAbsenceInfo:", error);
-    return { 
-      maxAbsentDays: 4, 
-      currentAbsentDays: 0, 
+    return {
+      maxAbsentDays: 4,
+      currentAbsentDays: 0,
       remainingDays: 4,
-      excessDays: 0 
+      excessDays: 0
     };
   }
 }
@@ -1352,8 +1354,8 @@ export async function getEmployees() {
     `)
     .order("name");  // Tampilkan SEMUA karyawan (aktif dan tidak aktif)
 
-  console.log("[MODERN] Result:", { 
-    usersCount: users?.length, 
+  console.log("[MODERN] Result:", {
+    usersCount: users?.length,
     hasError: !!usersError,
     firstUser: users?.[0]
   });
@@ -1465,24 +1467,24 @@ export async function deleteEmployee(id: string) {
 
     console.log("[deleteEmployee] User exists:", existingUser)
 
-    // SOFT DELETE - ubah status jadi 'inactive' agar data tetap ada untuk transaksi
+    // HARD DELETE - benar-benar menghapus data dari database
     const { data, error } = await supabase
       .from("users")
-      .update({ status: 'inactive' })
+      .delete()
       .eq("id", id)
       .select()
       .single()
 
-    console.log("[deleteEmployee] Soft delete response:", { data, error })
+    console.log("[deleteEmployee] Hard delete response:", { data, error })
 
     if (error) {
-      console.error("[deleteEmployee] Soft delete error:", error)
+      console.error("[deleteEmployee] Hard delete error:", error)
       return { data: null, error }
     }
 
-    console.log("[deleteEmployee] Soft delete successful - status changed to inactive")
+    console.log("[deleteEmployee] Hard delete successful - user removed from database")
     return { data, error: null }
-    
+
   } catch (e) {
     console.error("[deleteEmployee] Exception:", e)
     return { data: null, error: { message: String(e) } as any }
@@ -1515,7 +1517,7 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
     let totalCommission = 0;
     try {
       console.log("[getEmployeeStats] Calculating commission for employee:", employeeId);
-      
+
       const { data: commissionData, error: commissionError } = await supabase
         .from("transaction_items")
         .select("commission_amount, commission_status")
@@ -1527,7 +1529,7 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
         totalCommission = commissionData.reduce((sum, item) => {
           return sum + (item.commission_amount || 0);
         }, 0);
-        
+
         console.log("[getEmployeeStats] Commission items found:", commissionData.length, "Total:", totalCommission);
       } else if (commissionError) {
         console.error("[v13-FIXED] Error calculating commission:", commissionError);
@@ -1546,7 +1548,7 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
 
     let bonusPoints = 0;
     let penaltyPoints = 0;
-    
+
     if (!pointsError && pointsData) {
       pointsData.forEach(point => {
         if (point.points_earned > 0) {
@@ -1572,7 +1574,7 @@ export async function getEmployeeStats(employeeId: string): Promise<EmployeeStat
     return stats;
   } catch (error) {
     console.error("[v13-FIXED] Unexpected error in getEmployeeStats:", error);
-    
+
     // Return default stats jika terjadi error
     return {
       totalTransactions: 0,
@@ -1638,7 +1640,7 @@ export async function getEmployeeAttendance(employeeId: string) {
     }
 
     const totalWorkDays = getBusinessDaysCount(firstDayOfMonth, lastDayOfMonth);
-    const presentDays = data.filter(record => 
+    const presentDays = data.filter(record =>
       record.status === "checked_out" || record.status === "checked_in"
     ).length;
 
@@ -1653,12 +1655,12 @@ export async function getEmployeeAttendance(employeeId: string) {
     const overtimeHours = Math.max(0, totalHours - regularHours);
     const attendanceRate = totalWorkDays > 0 ? Math.round((presentDays / totalWorkDays) * 100) : 0;
 
-    console.log("[v13-FIXED] Employee attendance result:", { 
-      totalWorkDays, 
-      presentDays, 
-      lateDays, 
+    console.log("[v13-FIXED] Employee attendance result:", {
+      totalWorkDays,
+      presentDays,
+      lateDays,
       overtimeHours: Math.max(0, overtimeHours),
-      attendanceRate 
+      attendanceRate
     });
 
     return {
@@ -1884,10 +1886,10 @@ export async function getEmployeeAttendanceWithPhotos(userId: string, days: numb
 export async function getCurrentUser() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-    
+
     console.log("[getCurrentUser] Auth user:", user);
     console.log("[getCurrentUser] Auth error:", error);
-    
+
     if (error) {
       console.error("[getCurrentUser] Error getting current user:", error);
       return null;
@@ -1905,7 +1907,7 @@ export async function getCurrentUser() {
 async function getAuthUserProfile(userId: string) {
   try {
     const { data: authData } = await supabase.auth.getUser();
-    
+
     if (authData.user && authData.user.id === userId) {
       return {
         id: authData.user.id,
@@ -1917,7 +1919,7 @@ async function getAuthUserProfile(userId: string) {
         created_at: new Date().toISOString()
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error("[getAuthUserProfile] Error:", error);
@@ -1930,7 +1932,7 @@ async function createUserProfileFromAuth(userId: string) {
   try {
     // Get auth user data
     const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
-    
+
     if (authError || !authData.user) {
       console.error("[createUserProfile] Cannot get auth user:", authError);
       return getAuthUserProfile(userId);
@@ -1972,7 +1974,7 @@ export async function updateExpenseRequest(expenseId: string, expenseData: Parti
 
   const { data, error } = await supabase
     .from("expenses")
-    .update({ 
+    .update({
       ...expenseData,
       updated_at: new Date().toISOString()
     })
@@ -2093,11 +2095,11 @@ export async function createExpenseRequest(expenseData: {
     .single()
 
   console.log("[v0] Create expense result:", { data, error })
-  
+
   if (error) {
     console.error("Detail error:", error)
   }
-  
+
   return error ? { data: null, error } : { data, error: null }
 }
 
@@ -2107,13 +2109,13 @@ export async function createExpenseRequest(expenseData: {
 
 export interface ExpenseWithDetails extends Expense {
   branches?: { id: string; name: string };
-  
+
 }
 
 export async function getAllExpensesWithDetails() {
   try {
     console.log("🔍 Fetching expenses without users relationship...");
-    
+
     // PASTIKAN hanya select branches saja, tanpa users
     const { data, error } = await supabase
       .from('expenses')
@@ -2137,13 +2139,13 @@ export async function getAllExpensesWithDetails() {
 }
 
 export async function updateExpenseStatus(
-  expenseId: string, 
+  expenseId: string,
   status: "approved" | "rejected" | "paid",
   rejectionReason?: string
 ) {
   try {
     console.log("🔄 Updating expense status:", { expenseId, status, rejectionReason });
-    
+
     // Update status dan rejection_reason jika ada
     const updateData: any = {
       status,
@@ -2419,15 +2421,15 @@ export const getOutletStock = async (outletId: string): Promise<{ data: OutletSt
 
 // 🔥 UPDATE stock per outlet (with UPSERT)
 export const updateOutletStock = async (
-  outletId: string, 
-  serviceId: string, 
+  outletId: string,
+  serviceId: string,
   newStock: number
 ): Promise<{ data: OutletStock | null; error: any }> => {
   try {
     // Use upsert to create if not exists, update if exists
     const { data, error } = await supabase
       .from('outlet_stock')
-      .upsert({ 
+      .upsert({
         outlet_id: outletId,
         service_id: serviceId,
         stock_quantity: newStock,
@@ -2467,7 +2469,7 @@ export const getLowStockAlerts = async (): Promise<{ data: OutletStock[] | null;
     }
 
     // Filter manually for low stock
-    const lowStock = (allStock || []).filter(item => 
+    const lowStock = (allStock || []).filter(item =>
       item.stock_quantity <= item.min_stock_threshold
     );
 
@@ -2504,7 +2506,7 @@ export const reduceOutletStock = async (
     // Update stock
     const { data, error } = await supabase
       .from('outlet_stock')
-      .update({ 
+      .update({
         stock_quantity: newStock,
         updated_at: new Date().toISOString()
       })
@@ -2609,12 +2611,12 @@ export const processTransaction = async (
 export const setupTransactionsRealtime = (callback: () => void) => {
   const channel = supabase
     .channel('transactions-global')
-    .on('postgres_changes', 
-      { 
-        event: '*', 
-        schema: 'public', 
-        table: 'transactions' 
-      }, 
+    .on('postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'transactions'
+      },
       (payload) => {
         console.log('Transaction change detected:', payload);
         callback();
@@ -2706,12 +2708,12 @@ export const setupEmployeeRealtime = (callback: () => void) => {
 
   const channel = supabase
     .channel('employees-global')
-    .on('postgres_changes', 
-      { 
-        event: '*', 
-        schema: 'public', 
-        table: 'users' 
-      }, 
+    .on('postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'users'
+      },
       (payload) => {
         console.log('Employee change detected:', payload);
         callback();
@@ -2749,7 +2751,7 @@ export const setupEmployeeRealtime = (callback: () => void) => {
 export async function getApprovedExpenses() {
   try {
     console.log("🔍 Fetching approved expenses...");
-    
+
     const { data, error } = await supabase
       .from('expenses')
       .select(`
