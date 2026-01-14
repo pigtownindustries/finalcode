@@ -964,7 +964,7 @@ export function POSSystem() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
             <div className="hidden md:block">
               <h1 className="text-xl md:text-2xl font-bold">Point of Sale</h1>
-              <p className="text-muted-foreground text-sm md:text-base">Pigtown Barbershop</p>
+              <p className="text-muted-foreground text-sm md:text-base">Dashboard Utama</p>
             </div>
             <div className="flex items-center gap-2 md:gap-4 flex-wrap">
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
