@@ -101,16 +101,6 @@ export default function PointsManagement() {
 
       if (usersError) throw usersError;
 
-      // Map ke format yang dibutuhkan
-      const usersWithTotals = (usersData || []).map(user => ({
-        ...user,
-        total_bonus: 0,
-        total_penalty: 0,
-        total_points: 0
-      }))
-
-      setUsers(usersWithTotals || []);
-
       // Fetch points (using snapshot column: user_name)
       const { data: transactionsData, error: transactionsError } = await supabase
         .from("points")
@@ -132,6 +122,36 @@ export default function PointsManagement() {
       }));
 
       setTransactions(mappedTransactions);
+
+      // Hitung total bonus/penalty per user dari transaksi
+      const usersWithTotals = (usersData || []).map(user => {
+        // Filter transaksi untuk user ini
+        const userTransactions = mappedTransactions.filter(t => t.user_id === user.id);
+
+        // Hitung total bonus (amount > 0)
+        const totalBonus = userTransactions
+          .filter(t => t.amount > 0)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        // Hitung total penalty (amount < 0, ambil nilai absolut)
+        const totalPenalty = Math.abs(
+          userTransactions
+            .filter(t => t.amount < 0)
+            .reduce((sum, t) => sum + t.amount, 0)
+        );
+
+        // Net amount = bonus - penalty
+        const netAmount = totalBonus - totalPenalty;
+
+        return {
+          ...user,
+          total_bonus: totalBonus,
+          total_penalty: totalPenalty,
+          net_amount: netAmount
+        };
+      });
+
+      setUsers(usersWithTotals || []);
     } catch (error) {
       let errorMessage = "Gagal memuat data. Terjadi kesalahan yang tidak diketahui.";
 
@@ -198,14 +218,36 @@ export default function PointsManagement() {
         const { error } = await supabase.from("points").update(transactionData).eq("id", editingTransaction.id)
 
         if (error) throw error
-        sonnerToast.success("Data berhasil diperbarui")
+
+        const categoryLabel = formData.category === "reward" ? "Reward" : "Penalty"
+
+        if (formData.category === "reward") {
+          sonnerToast.success(`${categoryLabel} Berhasil Diperbarui! ✅`, {
+            description: `${categoryLabel} untuk ${userName} sebesar Rp ${Math.abs(amount).toLocaleString("id-ID")} telah diperbarui.`,
+            duration: 5000,
+          })
+        } else {
+          sonnerToast.warning(`${categoryLabel} Berhasil Diperbarui! ⚠️`, {
+            description: `${categoryLabel} untuk ${userName} sebesar Rp ${Math.abs(amount).toLocaleString("id-ID")} telah diperbarui.`,
+            duration: 5000,
+          })
+        }
       } else {
         const { error } = await supabase.from("points").insert([transactionData])
 
         if (error) throw error
-        sonnerToast.success(needsApproval
-          ? "Data berhasil ditambahkan dan menunggu approval"
-          : "Data berhasil ditambahkan")
+
+        if (formData.category === "reward") {
+          sonnerToast.success(`🎁 Reward Berhasil Ditambahkan!`, {
+            description: `Reward sebesar Rp ${Math.abs(amount).toLocaleString("id-ID")} untuk ${userName} berhasil dicatat.${needsApproval ? " Menunggu approval." : ""}`,
+            duration: 5000,
+          })
+        } else {
+          sonnerToast.warning(`⚠️ Penalty Berhasil Ditambahkan!`, {
+            description: `Penalty sebesar Rp ${Math.abs(amount).toLocaleString("id-ID")} untuk ${userName} berhasil dicatat.${needsApproval ? " Menunggu approval." : ""}`,
+            duration: 5000,
+          })
+        }
       }
 
       setIsDialogOpen(false)

@@ -37,7 +37,9 @@ import {
   Crown,
   Plus,
   Shield,
-  Lock
+  Lock,
+  Check,
+  Save
 } from "lucide-react"
 
 // Supabase & Logic Imports
@@ -83,6 +85,12 @@ export function OwnerDashboard() {
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "error">("disconnected")
   const [currentUserData, setCurrentUserData] = useState<any>(null)
 
+  // State untuk daftar PIN karyawan
+  const [userPinList, setUserPinList] = useState<{ id: string, name: string, pin: string | null, position: string | null }[]>([])
+  const [showPinForUser, setShowPinForUser] = useState<string | null>(null)
+  const [editingPinUserId, setEditingPinUserId] = useState<string | null>(null)
+  const [editingPinValue, setEditingPinValue] = useState("")
+
   // Tab configuration untuk mobile responsive
   const tabsConfig = [
     { value: "overview", label: "Overview", icon: BarChart3, shortLabel: "Home" },
@@ -121,6 +129,23 @@ export function OwnerDashboard() {
     initializeDashboard()
   }, [])
 
+  // Load user PIN list when settings dialog opens
+  useEffect(() => {
+    const loadUserPins = async () => {
+      if (settingsOpen) {
+        const { data: users } = await supabase
+          .from('users')
+          .select('id, name, pin, position')
+          .eq('status', 'active')
+          .order('name');
+        if (users) {
+          setUserPinList(users);
+        }
+      }
+    }
+    loadUserPins();
+  }, [settingsOpen])
+
   // Fungsi Test Koneksi Database
   const testDatabaseConnection = async () => {
     try {
@@ -147,18 +172,6 @@ export function OwnerDashboard() {
   const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validasi password
-    if (accountSettings.newPassword && accountSettings.newPassword !== accountSettings.confirmPassword) {
-      toast({ title: "Error", description: "Password baru dan konfirmasi tidak cocok!", variant: "destructive" })
-      return
-    }
-
-    // Validasi PIN
-    if (accountSettings.pin && (accountSettings.pin.length !== 6 || !/^\d+$/.test(accountSettings.pin))) {
-      toast({ title: "Error", description: "PIN harus 6 digit angka!", variant: "destructive" })
-      return
-    }
-
     try {
       const currentUser = await getCurrentUser()
       if (!currentUser) {
@@ -166,46 +179,54 @@ export function OwnerDashboard() {
         return
       }
 
+      let changesCount = 0
+
       // Update email jika berubah
       if (currentUser.email !== accountSettings.email) {
         const { error: emailError } = await supabase.auth.updateUser({ email: accountSettings.email })
         if (emailError) throw emailError
+        
+        // Update juga di tabel users
+        await supabase.from("users").update({ email: accountSettings.email }).eq("id", currentUser.id)
+        changesCount++
       }
 
       // Update password jika diisi
-      if (accountSettings.newPassword) {
+      if (accountSettings.newPassword && accountSettings.newPassword.length > 0) {
         const { error: passwordError } = await supabase.auth.updateUser({ password: accountSettings.newPassword })
         if (passwordError) throw passwordError
+        changesCount++
       }
 
-      // Update PIN di database
-      if (accountSettings.pin !== accountSettings.currentPin) {
-        const pinUpdated = await updateUserPin(currentUser.id, accountSettings.pin)
-        if (!pinUpdated) {
-          throw new Error("Gagal update PIN")
+      // Simpan semua perubahan PIN dari userPinList
+      if (editingPinUserId && editingPinValue.length === 6) {
+        const updated = await updateUserPin(editingPinUserId, editingPinValue)
+        if (updated) {
+          changesCount++
         }
       }
 
-      // Update data user lainnya
-      const { error: dbError } = await supabase
-        .from("users")
-        .update({
-          email: accountSettings.email,
-          pin: accountSettings.pin
-        })
-        .eq("id", currentUser.id)
+      if (changesCount > 0) {
+        toast({ title: "Berhasil", description: `${changesCount} perubahan berhasil disimpan!` })
+      } else {
+        toast({ title: "Info", description: "Tidak ada perubahan yang disimpan" })
+      }
 
-      if (dbError) throw dbError
+      // Refresh user PIN list
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, name, pin, position')
+        .eq('status', 'active')
+        .order('name');
+      if (users) setUserPinList(users);
 
-      toast({ title: "Berhasil", description: "Pengaturan akun berhasil diperbarui!" })
       setSettingsOpen(false)
       setAccountSettings((prev) => ({
         ...prev,
-        currentPassword: "",
         newPassword: "",
-        confirmPassword: "",
-        currentPin: prev.pin // Update current pin dengan yang baru
       }))
+      setEditingPinUserId(null)
+      setEditingPinValue('')
 
     } catch (error: any) {
       console.error("Error updating settings:", error)
@@ -357,6 +378,32 @@ export function OwnerDashboard() {
                       </div>
 
                       <div className="space-y-2">
+                        <Label htmlFor="currentPassword" className="text-sm font-medium">Password Saat Ini</Label>
+                        <div className="relative">
+                          <Input
+                            id="currentPassword"
+                            type={showCurrentPin ? "text" : "password"}
+                            value={accountSettings.currentPassword || "••••••••"}
+                            disabled
+                            className="bg-gray-100 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 pr-10 backdrop-blur-sm cursor-not-allowed"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowCurrentPin(!showCurrentPin)}
+                          >
+                            {showCurrentPin ?
+                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
+                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
+                            }
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Password tersimpan di sistem</p>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="newPassword" className="text-sm font-medium">Password Baru (Opsional)</Label>
                         <div className="relative">
                           <Input
@@ -365,7 +412,7 @@ export function OwnerDashboard() {
                             value={accountSettings.newPassword}
                             onChange={(e) => setAccountSettings((prev) => ({ ...prev, newPassword: e.target.value }))}
                             className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
-                            placeholder="Masukkan password baru"
+                            placeholder="Masukkan password baru jika ingin mengubah"
                           />
                           <Button
                             type="button"
@@ -382,74 +429,117 @@ export function OwnerDashboard() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-sm font-medium">Konfirmasi Password Baru</Label>
-                        <Input
-                          id="confirmPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={accountSettings.confirmPassword}
-                          onChange={(e) => setAccountSettings((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 backdrop-blur-sm transition-all duration-300"
-                          placeholder="Konfirmasi password baru"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPin" className="text-sm font-medium">PIN Saat Ini</Label>
-                        <div className="relative">
-                          <Input
-                            id="currentPin"
-                            type={showCurrentPin ? "text" : "password"}
-                            value={accountSettings.currentPin}
-                            disabled
-                            className="bg-gray-100 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 pr-10 backdrop-blur-sm"
-                            placeholder="PIN saat ini"
-                          />
+                      {/* PIN Management Section - List all users */}
+                      <div className="space-y-3 border-t pt-4">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium flex items-center gap-2">
+                            <Lock className="h-4 w-4 text-red-500" />
+                            Daftar PIN Karyawan
+                          </Label>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowCurrentPin(!showCurrentPin)}
+                            className="text-xs text-slate-500 hover:text-slate-700"
+                            onClick={async () => {
+                              const { data: users } = await supabase
+                                .from('users')
+                                .select('id, name, pin, position')
+                                .eq('status', 'active')
+                                .order('name');
+                              if (users) {
+                                setUserPinList(users);
+                              }
+                            }}
                           >
-                            {showCurrentPin ?
-                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
-                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
-                            }
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Refresh
                           </Button>
                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="pin" className="text-sm font-medium">PIN Baru (6 digit)</Label>
-                        <div className="relative">
-                          <Input
-                            id="pin"
-                            type={showPin ? "text" : "password"}
-                            value={accountSettings.pin}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                              setAccountSettings((prev) => ({ ...prev, pin: value }));
-                            }}
-                            className="bg-white/70 dark:bg-slate-800/70 border-slate-300 dark:border-slate-600 focus:border-red-500 focus:ring-red-500/50 pr-10 backdrop-blur-sm transition-all duration-300"
-                            placeholder="123456"
-                            maxLength={6}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                            onClick={() => setShowPin(!showPin)}
-                          >
-                            {showPin ?
-                              <EyeOff className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" /> :
-                              <Eye className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors duration-200" />
-                            }
-                          </Button>
+                        <div className="max-h-48 overflow-y-auto space-y-2 rounded-lg border border-slate-200 dark:border-slate-700 p-2">
+                          {userPinList.length > 0 ? (
+                            userPinList.map((user) => (
+                              <div
+                                key={user.id}
+                                className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
+                                    {user.name}
+                                  </p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {user.position || 'Karyawan'}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1 ml-2">
+                                  <Input
+                                    type={showPinForUser === user.id ? "text" : "password"}
+                                    value={editingPinUserId === user.id ? editingPinValue : (user.pin || '')}
+                                    onChange={(e) => {
+                                      const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                                      setEditingPinUserId(user.id);
+                                      setEditingPinValue(value);
+                                    }}
+                                    className="w-20 h-8 text-center text-xs bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                                    placeholder="------"
+                                    maxLength={6}
+                                  />
+                                  {/* Tombol Simpan PIN */}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-8 w-8 p-0 ${editingPinUserId === user.id && editingPinValue.length === 6 ? 'bg-green-100 hover:bg-green-200' : ''}`}
+                                    disabled={!(editingPinUserId === user.id && editingPinValue.length === 6)}
+                                    onClick={async () => {
+                                      if (editingPinUserId === user.id && editingPinValue.length === 6) {
+                                        const updated = await updateUserPin(user.id, editingPinValue);
+                                        if (updated) {
+                                          toast({ title: "Berhasil", description: `PIN ${user.name} berhasil disimpan ke database!` });
+                                          // Refresh list
+                                          const { data: users } = await supabase
+                                            .from('users')
+                                            .select('id, name, pin, position')
+                                            .eq('status', 'active')
+                                            .order('name');
+                                          if (users) setUserPinList(users);
+                                        } else {
+                                          toast({ title: "Error", description: "Gagal menyimpan PIN ke database", variant: "destructive" });
+                                        }
+                                        setEditingPinUserId(null);
+                                        setEditingPinValue('');
+                                      }
+                                    }}
+                                  >
+                                    <Check className={`h-3 w-3 ${editingPinUserId === user.id && editingPinValue.length === 6 ? 'text-green-600' : 'text-slate-300'}`} />
+                                  </Button>
+                                  {/* Tombol Lihat/Sembunyikan PIN */}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setShowPinForUser(showPinForUser === user.id ? null : user.id)}
+                                  >
+                                    {showPinForUser === user.id ? (
+                                      <EyeOff className="h-3 w-3 text-slate-500" />
+                                    ) : (
+                                      <Eye className="h-3 w-3 text-slate-500" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-4 text-sm text-slate-500">
+                              <Shield className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                              <p>Tidak ada data karyawan</p>
+                              <p className="text-xs">Klik Refresh untuk memuat data</p>
+                            </div>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          PIN digunakan untuk autentikasi akses ke dashboard
+                          PIN 6 digit digunakan untuk autentikasi akses ke sistem
                         </p>
                       </div>
 

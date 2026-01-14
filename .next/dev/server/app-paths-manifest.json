@@ -1,6 +1,10 @@
 {
+  "/(dashboard)/attendance/page": "app/(dashboard)/attendance/page.js",
   "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/expenses/page": "app/(dashboard)/expenses/page.js",
+  "/(dashboard)/kasbon/page": "app/(dashboard)/kasbon/page.js",
   "/(dashboard)/owner/page": "app/(dashboard)/owner/page.js",
+  "/(dashboard)/points/page": "app/(dashboard)/points/page.js",
   "/(dashboard)/pos/page": "app/(dashboard)/pos/page.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js"

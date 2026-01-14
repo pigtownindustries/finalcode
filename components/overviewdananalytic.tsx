@@ -123,7 +123,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
     try {
       const { data, error } = await getApprovedExpenses();
       if (error) return [];
-      
+
       return (data || []).map((expense: any) => ({
         id: expense.id,
         branch_id: expense.branch_id,
@@ -157,7 +157,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
     try {
       setLoading(true)
       console.log('🔄 Fetching dashboard data from database...')
-      
+
       const approvedExpensesData = await fetchApprovedExpenses();
       setApprovedExpenses(approvedExpensesData);
       setExpenseCategories(analyzeExpenseCategories(approvedExpensesData));
@@ -177,7 +177,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       const transactions = transactionsRes.data || []
       const users = usersRes.data || []
       const branches = branchesRes.data || []
-      
+
       console.log('✅ Data loaded - Transactions:', transactions.length, '| Users:', users.length, '| Branches:', branches.length)
 
       const getTransactionAmount = (transaction: any) => {
@@ -214,9 +214,9 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         const branchExpenses = approvedExpensesData
           .filter((expense: any) => expense.branch_id === branch.id)
           .reduce((sum: number, expense: any) => sum + expense.amount, 0)
-        
+
         const netProfit = branchRevenue - branchExpenses
-        
+
         return {
           name: branch.name,
           revenue: branchRevenue,
@@ -236,12 +236,12 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         const date = new Date()
         date.setDate(date.getDate() - (6 - i))
         const dateStr = date.toISOString().split('T')[0]
-        
+
         const dayTransactions = completedTransactions.filter((t: any) => {
           const transactionDate = new Date(t.created_at)
           return transactionDate.toISOString().split('T')[0] === dateStr
         })
-        
+
         const dayRevenue = dayTransactions.reduce((sum: number, t: any) => sum + getTransactionAmount(t), 0)
         const dayExpenses = approvedExpensesData
           .filter((expense: any) => {
@@ -249,9 +249,9 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
             return expenseDate.toISOString().split('T')[0] === dateStr
           })
           .reduce((sum: number, expense: any) => sum + expense.amount, 0)
-        
+
         const dayNetProfit = dayRevenue - dayExpenses
-        
+
         return {
           date: date.toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }),
           revenue: dayRevenue,
@@ -287,7 +287,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       // Fetch Employee Performance
       console.log('👥 Fetching employee performance...')
       await fetchEmployeePerformance(transactions, approvedExpensesData)
-      
+
       console.log('✅ Dashboard data fetch completed successfully!')
 
     } catch (error) {
@@ -321,25 +321,37 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       // Ambil data lengkap termasuk check_in_time, check_out_time, total_hours
       let attendance: any[] = []
       try {
-        // Query 1: Coba dengan status filter
+        // Query attendance data
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
           .select("*")
 
         if (attendanceError) {
-          console.error('❌ Attendance fetch failed:', attendanceError)
-          console.log('⚠️ Trying alternative query...')
+          // Log lebih detail untuk error
+          const errorDetails = {
+            message: attendanceError.message || 'Unknown error',
+            code: attendanceError.code || 'N/A',
+            details: attendanceError.details || 'N/A',
+            hint: attendanceError.hint || 'N/A',
+            raw: JSON.stringify(attendanceError)
+          }
+          console.warn('⚠️ Attendance fetch issue:', errorDetails)
+
+          // Jika error adalah empty object, kemungkinan RLS issue - continue dengan empty array
+          if (JSON.stringify(attendanceError) === '{}') {
+            console.log('ℹ️ Empty error object - likely RLS policy issue. Continuing with empty attendance data.')
+          }
         } else {
           attendance = attendanceData || []
           console.log('✅ Attendance loaded:', attendance.length, 'total records')
-          
-          // Debug: tampilkan sample data
+
+          // Debug: tampilkan sample data jika ada
           if (attendance.length > 0) {
             console.log('📋 Sample attendance record:', {
               columns: Object.keys(attendance[0]),
               sample: attendance[0]
             })
-            
+
             // Group by user_id untuk debug
             const userCounts = attendance.reduce((acc: any, record: any) => {
               const userId = record.user_id
@@ -350,7 +362,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
           }
         }
       } catch (err) {
-        console.error('⚠️ Could not fetch attendance:', err)
+        console.warn('⚠️ Could not fetch attendance (non-critical):', err)
       }
 
       // Get current month range for filtering
@@ -369,7 +381,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       }
 
       const allTransactionItems = transactionItems || []
-      
+
       // Log breakdown commission status
       const commissionBreakdown = {
         total: allTransactionItems.length,
@@ -385,12 +397,12 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       // Calculate performance for each employee
       const performanceData: EmployeePerformance[] = employees.map(emp => {
         // PENTING: Gunakan server_id untuk transaksi (karyawan yang melayani)
-        const empTransactions = transactions.filter(t => 
-          t.server_id === emp.id && 
+        const empTransactions = transactions.filter(t =>
+          t.server_id === emp.id &&
           t.payment_status === "completed"
         )
         const totalTransactions = empTransactions.length
-        
+
         // Calculate total revenue from employee's transactions
         const totalRevenue = empTransactions.reduce((sum, t) => {
           const amount = t.final_amount || t.total_amount || t.subtotal || 0
@@ -399,26 +411,26 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
 
         // Calculate total commission dari transaction_items (gunakan barber_id)
         // Hitung commission yang sudah credited (dibayar)
-        const empCommissionItemsCredited = allTransactionItems.filter(item => 
-          item.barber_id === emp.id && 
+        const empCommissionItemsCredited = allTransactionItems.filter(item =>
+          item.barber_id === emp.id &&
           item.commission_status === "credited"
         )
-        const totalCommission = empCommissionItemsCredited.reduce((sum, item) => 
+        const totalCommission = empCommissionItemsCredited.reduce((sum, item) =>
           sum + (item.commission_amount || 0), 0
         )
 
         // Hitung commission yang masih pending (belum dibayar)
-        const empCommissionItemsPending = allTransactionItems.filter(item => 
-          item.barber_id === emp.id && 
+        const empCommissionItemsPending = allTransactionItems.filter(item =>
+          item.barber_id === emp.id &&
           item.commission_status === "pending"
         )
-        const pendingCommission = empCommissionItemsPending.reduce((sum, item) => 
+        const pendingCommission = empCommissionItemsPending.reduce((sum, item) =>
           sum + (item.commission_amount || 0), 0
         )
 
         // Count unique attendance days - PENTING: gunakan user_id, bukan employee_id
         const empAttendance = attendance.filter(a => a.user_id === emp.id)
-        
+
         console.log(`🔍 Checking attendance for ${emp.name} (${emp.id}):`, {
           totalRecords: empAttendance.length,
           records: empAttendance.map(a => ({
@@ -428,7 +440,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
             status: a.status
           }))
         })
-        
+
         // Get unique dates to avoid counting multiple check-ins on same day
         const uniqueDates = new Set(
           empAttendance.map(a => {
@@ -446,7 +458,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
             const checkOut = new Date(a.check_out_time)
             const diffMs = checkOut.getTime() - checkIn.getTime()
             const diffSeconds = Math.floor(diffMs / 1000)
-            
+
             // Kurangi break duration jika ada (dalam menit)
             const breakSeconds = (a.break_duration || 0) * 60
             totalSeconds += Math.max(0, diffSeconds - breakSeconds)
@@ -511,7 +523,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
       const activeEmployees = performanceData.filter(e => e.totalTransactions > 0 || e.totalRevenue > 0)
       const totalAttendanceDays = performanceData.reduce((sum, e) => sum + e.attendanceDays, 0)
       const totalWorkHours = performanceData.reduce((sum, e) => sum + e.totalWorkHours, 0)
-      
+
       console.log('📊 Employee Performance Summary:', {
         total: performanceData.length,
         withTransactions: activeEmployees.length,
@@ -565,10 +577,10 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
             Pantau performa bisnis Anda secara real-time
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => { fetchDashboardData(); onRefreshData(); }} 
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { fetchDashboardData(); onRefreshData(); }}
           className="gap-2"
         >
           <RefreshCw className="h-4 w-4" />
@@ -677,7 +689,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
 
       {/* Main Charts - 2 Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
+
         {/* Revenue Trend Line Chart - GRAFIK GARIS YANG JELAS */}
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader>
@@ -694,17 +706,17 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     stroke="#64748b"
                     fontSize={12}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#64748b"
                     fontSize={12}
                     tickFormatter={(value) => formatRupiah(value)}
                   />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
                       border: '1px solid #e2e8f0',
@@ -713,33 +725,33 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
                     }}
                     formatter={(value: any) => [formatRupiah(Number(value)), '']}
                   />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
                     iconType="line"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
                     name="Pendapatan"
-                    stroke="#3b82f6" 
+                    stroke="#3b82f6"
                     strokeWidth={3}
                     dot={{ fill: '#3b82f6', r: 4 }}
                     activeDot={{ r: 6 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="expenses" 
+                  <Line
+                    type="monotone"
+                    dataKey="expenses"
                     name="Pengeluaran"
-                    stroke="#ef4444" 
+                    stroke="#ef4444"
                     strokeWidth={3}
                     dot={{ fill: '#ef4444', r: 4 }}
                     activeDot={{ r: 6 }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="netProfit" 
+                  <Line
+                    type="monotone"
+                    dataKey="netProfit"
                     name="Net Profit"
-                    stroke="#10b981" 
+                    stroke="#10b981"
                     strokeWidth={3}
                     dot={{ fill: '#10b981', r: 4 }}
                     activeDot={{ r: 6 }}
@@ -774,17 +786,17 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={branchPerformance}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="name" 
+                  <XAxis
+                    dataKey="name"
                     stroke="#64748b"
                     fontSize={12}
                   />
-                  <YAxis 
+                  <YAxis
                     stroke="#64748b"
                     fontSize={12}
                     tickFormatter={(value) => formatRupiah(value)}
                   />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
                       border: '1px solid #e2e8f0',
@@ -793,7 +805,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
                     }}
                     formatter={(value: any) => [formatRupiah(Number(value)), '']}
                   />
-                  <Legend 
+                  <Legend
                     wrapperStyle={{ paddingTop: '20px' }}
                     iconType="rect"
                   />
@@ -846,7 +858,7 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                       {branchPerformance.map((branch, index) => {
-                        const profitMargin = branch.revenue > 0 
+                        const profitMargin = branch.revenue > 0
                           ? ((branch.revenue - branch.expense) / branch.revenue * 100).toFixed(1)
                           : '0';
                         const avgPerTransaction = branch.revenue > 0 && branch.revenue > 0
@@ -854,19 +866,18 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
                           : 0;
                         const netProfit = branch.revenue - branch.expense;
                         const isProfitable = netProfit > 0;
-                        
+
                         return (
-                          <tr 
+                          <tr
                             key={branch.name}
                             className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                           >
                             <td className="p-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                                index === 0 ? 'bg-yellow-500' : 
-                                index === 1 ? 'bg-slate-400' : 
-                                index === 2 ? 'bg-orange-600' : 
-                                'bg-blue-500'
-                              }`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm ${index === 0 ? 'bg-yellow-500' :
+                                  index === 1 ? 'bg-slate-400' :
+                                    index === 2 ? 'bg-orange-600' :
+                                      'bg-blue-500'
+                                }`}>
                                 {index + 1}
                               </div>
                             </td>
@@ -906,26 +917,24 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
                             </td>
                             <td className="p-3 text-right">
                               <div className="flex flex-col items-end">
-                                <span className={`font-bold text-lg ${
-                                  isProfitable 
-                                    ? 'text-green-600 dark:text-green-400' 
+                                <span className={`font-bold text-lg ${isProfitable
+                                    ? 'text-green-600 dark:text-green-400'
                                     : 'text-red-600 dark:text-red-400'
-                                }`}>
+                                  }`}>
                                   {formatRupiah(netProfit)}
                                 </span>
                                 <span className="text-xs text-slate-500">profit</span>
                               </div>
                             </td>
                             <td className="p-3 text-center">
-                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full ${
-                                parseFloat(profitMargin) >= 30 
+                              <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full ${parseFloat(profitMargin) >= 30
                                   ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                   : parseFloat(profitMargin) >= 15
-                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                  : parseFloat(profitMargin) > 0
-                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                              }`}>
+                                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                    : parseFloat(profitMargin) > 0
+                                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                }`}>
                                 <span className="font-bold text-sm">{profitMargin}%</span>
                               </div>
                             </td>
@@ -1075,273 +1084,271 @@ export function OverviewAndAnalytics({ onRefreshData, realTimeEnabled }: Overvie
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-purple-500" />
-              Performa Karyawan Detail
-            </CardTitle>
-            <CardDescription>
-              Analisis lengkap kinerja setiap karyawan - transaksi, komisi, kehadiran, dan produktivitas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {employeePerformance.length > 0 ? (
-              <div className="space-y-4">
-                {/* Performance Table */}
-                <div className="border rounded-lg overflow-hidden relative">
-                  {/* Gradient indicator kanan */}
-                  <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none z-[5]"></div>
-                  
-                  <div 
-                    className="overflow-x-auto overflow-y-auto max-h-[400px] table-scroll-container"
-                  >
-                    <table className="w-full text-sm" style={{ minWidth: '1400px' }}>
-                      <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left p-3 font-semibold whitespace-nowrap sticky left-0 bg-slate-100 dark:bg-slate-800 z-20 border-r border-slate-300 dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Karyawan</th>
-                          <th className="text-center p-3 font-semibold whitespace-nowrap">Transaksi</th>
-                          <th className="text-right p-3 font-semibold whitespace-nowrap">Total Penjualan</th>
-                          <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Dibayar</th>
-                          <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Pending</th>
-                          <th className="text-center p-3 font-semibold min-w-[160px]">
-                            <div className="whitespace-nowrap">Kehadiran</div>
-                            <div className="text-[10px] font-normal text-slate-500 mt-0.5 whitespace-nowrap">(Hari + Total Jam Kerja)</div>
-                          </th>
-                          <th className="text-right p-3 font-semibold whitespace-nowrap">Avg/Transaksi</th>
-                          <th className="text-center p-3 font-semibold whitespace-nowrap">Produktivitas</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                        {employeePerformance.map((emp, index) => {
-                          const productivity = emp.attendanceDays > 0 
-                            ? (emp.totalTransactions / emp.attendanceDays).toFixed(1) 
-                            : '0';
-                          const avgTransaction = emp.totalTransactions > 0 
-                            ? emp.totalRevenue / emp.totalTransactions 
-                            : 0;
-                          
-                          return (
-                            <tr 
-                              key={emp.id} 
-                              className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                            >
-                              <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 ${
-                                    index === 0 ? 'bg-yellow-500' : 
-                                    index === 1 ? 'bg-slate-400' : 
-                                    index === 2 ? 'bg-orange-600' : 
-                                    'bg-blue-500'
+            Performa Karyawan Detail
+          </CardTitle>
+          <CardDescription>
+            Analisis lengkap kinerja setiap karyawan - transaksi, komisi, kehadiran, dan produktivitas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {employeePerformance.length > 0 ? (
+            <div className="space-y-4">
+              {/* Performance Table */}
+              <div className="border rounded-lg overflow-hidden relative">
+                {/* Gradient indicator kanan */}
+                <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none z-[5]"></div>
+
+                <div
+                  className="overflow-x-auto overflow-y-auto max-h-[400px] table-scroll-container"
+                >
+                  <table className="w-full text-sm" style={{ minWidth: '1400px' }}>
+                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10">
+                      <tr>
+                        <th className="text-left p-3 font-semibold whitespace-nowrap sticky left-0 bg-slate-100 dark:bg-slate-800 z-20 border-r border-slate-300 dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Karyawan</th>
+                        <th className="text-center p-3 font-semibold whitespace-nowrap">Transaksi</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Total Penjualan</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Dibayar</th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Komisi Pending</th>
+                        <th className="text-center p-3 font-semibold min-w-[160px]">
+                          <div className="whitespace-nowrap">Kehadiran</div>
+                          <div className="text-[10px] font-normal text-slate-500 mt-0.5 whitespace-nowrap">(Hari + Total Jam Kerja)</div>
+                        </th>
+                        <th className="text-right p-3 font-semibold whitespace-nowrap">Avg/Transaksi</th>
+                        <th className="text-center p-3 font-semibold whitespace-nowrap">Produktivitas</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {employeePerformance.map((emp, index) => {
+                        const productivity = emp.attendanceDays > 0
+                          ? (emp.totalTransactions / emp.attendanceDays).toFixed(1)
+                          : '0';
+                        const avgTransaction = emp.totalTransactions > 0
+                          ? emp.totalRevenue / emp.totalTransactions
+                          : 0;
+
+                        return (
+                          <tr
+                            key={emp.id}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-r border-slate-200 dark:border-slate-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 ${index === 0 ? 'bg-yellow-500' :
+                                    index === 1 ? 'bg-slate-400' :
+                                      index === 2 ? 'bg-orange-600' :
+                                        'bg-blue-500'
                                   }`}>
-                                    {index + 1}
-                                  </div>
-                                  <div className="min-w-[120px]">
-                                    <p className="font-medium text-slate-900 dark:text-white whitespace-nowrap">
-                                      {emp.name}
-                                    </p>
-                                    <p className="text-xs text-slate-500 whitespace-nowrap">
-                                      {emp.position}
-                                    </p>
-                                  </div>
+                                  {index + 1}
                                 </div>
-                              </td>
-                              <td className="p-3 text-center">
+                                <div className="min-w-[120px]">
+                                  <p className="font-medium text-slate-900 dark:text-white whitespace-nowrap">
+                                    {emp.name}
+                                  </p>
+                                  <p className="text-xs text-slate-500 whitespace-nowrap">
+                                    {emp.position}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex flex-col items-center">
+                                <span className="font-bold text-blue-600 dark:text-blue-400">
+                                  {emp.totalTransactions}
+                                </span>
+                                <span className="text-xs text-slate-500">transaksi</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                  {formatRupiah(emp.totalRevenue)}
+                                </span>
+                                <span className="text-xs text-slate-500">penjualan</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-purple-600 dark:text-purple-400">
+                                  {formatRupiah(emp.totalCommission)}
+                                </span>
+                                <span className="text-xs text-slate-500">dibayar</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                {emp.pendingCommission > 0 ? (
+                                  <>
+                                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                      {formatRupiah(emp.pendingCommission)}
+                                    </span>
+                                    <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      pending
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-semibold text-slate-400">
+                                      {formatRupiah(0)}
+                                    </span>
+                                    <span className="text-xs text-slate-400">-</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              {emp.attendanceDays > 0 ? (
                                 <div className="flex flex-col items-center">
-                                  <span className="font-bold text-blue-600 dark:text-blue-400">
-                                    {emp.totalTransactions}
-                                  </span>
-                                  <span className="text-xs text-slate-500">transaksi</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex flex-col items-end">
-                                  <span className="font-semibold text-green-600 dark:text-green-400">
-                                    {formatRupiah(emp.totalRevenue)}
-                                  </span>
-                                  <span className="text-xs text-slate-500">penjualan</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex flex-col items-end">
-                                  <span className="font-semibold text-purple-600 dark:text-purple-400">
-                                    {formatRupiah(emp.totalCommission)}
-                                  </span>
-                                  <span className="text-xs text-slate-500">dibayar</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex flex-col items-end">
-                                  {emp.pendingCommission > 0 ? (
-                                    <>
-                                      <span className="font-semibold text-amber-600 dark:text-amber-400">
-                                        {formatRupiah(emp.pendingCommission)}
+                                  <div className="space-y-1">
+                                    {/* Hari Hadir */}
+                                    <div className="flex items-center justify-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                                      <span className="font-bold text-blue-700 dark:text-blue-300 text-base">
+                                        {emp.attendanceDays}
                                       </span>
-                                      <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        pending
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="font-semibold text-slate-400">
-                                        {formatRupiah(0)}
-                                      </span>
-                                      <span className="text-xs text-slate-400">-</span>
-                                    </>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-3 text-center">
-                                {emp.attendanceDays > 0 ? (
-                                  <div className="flex flex-col items-center">
-                                    <div className="space-y-1">
-                                      {/* Hari Hadir */}
-                                      <div className="flex items-center justify-center gap-1 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
-                                        <span className="font-bold text-blue-700 dark:text-blue-300 text-base">
-                                          {emp.attendanceDays}
+                                      <span className="text-xs text-blue-600 dark:text-blue-400">hari</span>
+                                    </div>
+                                    {/* Total Jam Kerja */}
+                                    <div className="bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded">
+                                      <div className="flex items-center justify-center gap-1 text-xs font-mono">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                          {emp.totalWorkHours}
                                         </span>
-                                        <span className="text-xs text-blue-600 dark:text-blue-400">hari</span>
-                                      </div>
-                                      {/* Total Jam Kerja */}
-                                      <div className="bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded">
-                                        <div className="flex items-center justify-center gap-1 text-xs font-mono">
-                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                            {emp.totalWorkHours}
-                                          </span>
-                                          <span className="text-slate-500 text-[10px]">jam</span>
-                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                            {emp.totalWorkMinutes}
-                                          </span>
-                                          <span className="text-slate-500 text-[10px]">menit</span>
-                                          <span className="font-semibold text-slate-700 dark:text-slate-300">
-                                            {emp.totalWorkSeconds}
-                                          </span>
-                                          <span className="text-slate-500 text-[10px]">detik</span>
-                                        </div>
+                                        <span className="text-slate-500 text-[10px]">jam</span>
+                                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                          {emp.totalWorkMinutes}
+                                        </span>
+                                        <span className="text-slate-500 text-[10px]">menit</span>
+                                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                          {emp.totalWorkSeconds}
+                                        </span>
+                                        <span className="text-slate-500 text-[10px]">detik</span>
                                       </div>
                                     </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center">
+                                  <span className="text-slate-400 text-sm">-</span>
+                                  <span className="text-xs text-slate-400">belum hadir</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-orange-600 dark:text-orange-400">
+                                  {formatRupiah(avgTransaction)}
+                                </span>
+                                <span className="text-xs text-slate-500">rata-rata</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-center">
+                              <div className="flex flex-col items-center">
+                                {emp.totalTransactions === 0 ? (
+                                  <div className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    Belum Ada
                                   </div>
                                 ) : (
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-slate-400 text-sm">-</span>
-                                    <span className="text-xs text-slate-400">belum hadir</span>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex flex-col items-end">
-                                  <span className="font-semibold text-orange-600 dark:text-orange-400">
-                                    {formatRupiah(avgTransaction)}
-                                  </span>
-                                  <span className="text-xs text-slate-500">rata-rata</span>
-                                </div>
-                              </td>
-                              <td className="p-3 text-center">
-                                <div className="flex flex-col items-center">
-                                  {emp.totalTransactions === 0 ? (
-                                    <div className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                      Belum Ada
-                                    </div>
-                                  ) : (
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                      parseFloat(productivity) >= 5 
-                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                        : parseFloat(productivity) >= 3 
-                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' 
+                                  <div className={`px-3 py-1 rounded-full text-xs font-bold ${parseFloat(productivity) >= 5
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                      : parseFloat(productivity) >= 3
+                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                         : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                     }`}>
-                                      {productivity}
-                                    </div>
-                                  )}
-                                  <span className="text-xs text-slate-500 mt-1">
-                                    {emp.totalTransactions === 0 ? 'data' : 'trx/hari'}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                                    {productivity}
+                                  </div>
+                                )}
+                                <span className="text-xs text-slate-500 mt-1">
+                                  {emp.totalTransactions === 0 ? 'data' : 'trx/hari'}
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
+              </div>
 
-                {/* Performance Indicators Legend */}
-                <div className="space-y-3 pt-3 border-t">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                      <span className="text-xs text-slate-600 dark:text-slate-400">
-                        Produktivitas Tinggi (≥5 transaksi/hari)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                      <span className="text-xs text-slate-600 dark:text-slate-400">
-                        Produktivitas Sedang (3-4 transaksi/hari)
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                      <span className="text-xs text-slate-600 dark:text-slate-400">
-                        Produktivitas Rendah (&lt;3 transaksi/hari)
-                      </span>
-                    </div>
+              {/* Performance Indicators Legend */}
+              <div className="space-y-3 pt-3 border-t">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Produktivitas Tinggi (≥5 transaksi/hari)
+                    </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                      <div className="flex items-start gap-2">
-                        <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                            Komisi Pending
-                          </p>
-                          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                            Komisi yang masih pending akan otomatis update setelah diatur di menu "Atur Komisi" atau menu "Transaksi". Data akan langsung ter-update secara real-time.
-                          </p>
-                        </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Produktivitas Sedang (3-4 transaksi/hari)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      Produktivitas Rendah (&lt;3 transaksi/hari)
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                          Komisi Pending
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                          Komisi yang masih pending akan otomatis update setelah diatur di menu "Atur Komisi" atau menu "Transaksi". Data akan langsung ter-update secara real-time.
+                        </p>
                       </div>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                      <div className="flex items-start gap-2">
-                        <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
-                            Kehadiran Detail
-                          </p>
-                          <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-                            Menampilkan jumlah hari hadir + total jam kerja lengkap (jam, menit, detik). Dihitung dari check-in hingga check-out dikurangi waktu istirahat.
-                          </p>
-                        </div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                          Kehadiran Detail
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                          Menampilkan jumlah hari hadir + total jam kerja lengkap (jam, menit, detik). Dihitung dari check-in hingga check-out dikurangi waktu istirahat.
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="h-[400px] flex items-center justify-center">
-                <div className="text-center max-w-md">
-                  <Users className="h-16 w-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                    Belum Ada Data Performa Karyawan
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                    Data akan muncul setelah ada transaksi yang diselesaikan oleh karyawan
+            </div>
+          ) : (
+            <div className="h-[400px] flex items-center justify-center">
+              <div className="text-center max-w-md">
+                <Users className="h-16 w-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Belum Ada Data Performa Karyawan
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                  Data akan muncul setelah ada transaksi yang diselesaikan oleh karyawan
+                </p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+                  <p className="text-xs text-blue-800 dark:text-blue-300 font-semibold mb-2">
+                    📋 Yang akan ditampilkan:
                   </p>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
-                    <p className="text-xs text-blue-800 dark:text-blue-300 font-semibold mb-2">
-                      📋 Yang akan ditampilkan:
-                    </p>
-                    <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
-                      <li>• Total transaksi per karyawan</li>
-                      <li>• Total penjualan yang dihasilkan</li>
-                      <li>• Komisi yang diterima</li>
-                      <li>• Kehadiran dan produktivitas</li>
-                      <li>• Rata-rata nilai transaksi</li>
-                    </ul>
-                  </div>
+                  <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-1">
+                    <li>• Total transaksi per karyawan</li>
+                    <li>• Total penjualan yang dihasilkan</li>
+                    <li>• Komisi yang diterima</li>
+                    <li>• Kehadiran dan produktivitas</li>
+                    <li>• Rata-rata nilai transaksi</li>
+                  </ul>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }

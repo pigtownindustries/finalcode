@@ -59,7 +59,7 @@ interface DailyAttendanceSummary {
   shifts: AttendanceRecord[]
   totalDailyHours: number
   totalDailyBreaks: number
-  currentStatus: "present" | "absent" | "on-break" | "checked-out"
+  currentStatus: "present" | "absent" | "late" | "on-break" | "checked-out"
   canCheckIn: boolean
 }
 
@@ -223,7 +223,7 @@ export function AttendanceSystem() {
           id: user.id,
           name: user.name,
           position: user.position || "Karyawan",
-          branch: branchNameMap.get(user.branch_id) || "Unknown Branch",
+          branch: branchNameMap.get(user.branch_id) || "Tanpa Cabang",
           branchId: user.branch_id,
           avatar: user.avatar,
         }))
@@ -442,7 +442,7 @@ export function AttendanceSystem() {
 
     setBranchShifts(shifts || [])
     if (shifts && shifts.length > 0) {
-      setSelectedShift(shifts[0].type || shifts[0].id || "pagi")
+      setSelectedShift((shifts[0].type || shifts[0].id || "pagi") as "pagi" | "siang" | "malam")
     }
   }, [])
 
@@ -518,20 +518,21 @@ export function AttendanceSystem() {
       setCameraPermission("denied")
       setIsCameraReady(false)
 
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      const errorName = error instanceof Error ? error.name : ""
+      if (errorName === "NotAllowedError" || errorName === "PermissionDeniedError") {
         setShowCameraPermissionDialog(true)
         toast({
           title: "Izin Kamera Ditolak",
           description: "Anda perlu mengizinkan akses kamera untuk menggunakan fitur presensi.",
           variant: "destructive",
         })
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      } else if (errorName === "NotFoundError" || errorName === "DevicesNotFoundError") {
         toast({
           title: "Kamera Tidak Ditemukan",
           description: "Tidak ada kamera yang terdeteksi pada perangkat Anda.",
           variant: "destructive",
         })
-      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+      } else if (errorName === "NotReadableError" || errorName === "TrackStartError") {
         toast({
           title: "Kamera Sedang Digunakan",
           description: "Kamera sedang digunakan oleh aplikasi lain. Tutup aplikasi lain dan coba lagi.",
@@ -1216,9 +1217,9 @@ export function AttendanceSystem() {
                           <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                             {summary.employeeName
                               ? summary.employeeName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
                               : "?"}
                           </AvatarFallback>
                         </Avatar>
@@ -1226,15 +1227,14 @@ export function AttendanceSystem() {
                           <h3 className="font-semibold text-sm sm:text-base">{summary.employeeName}</h3>
                         </div>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            summary.currentStatus === "present"
-                              ? "bg-green-100 text-green-800"
-                              : summary.currentStatus === "on-break"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : summary.currentStatus === "checked-out"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-red-100 text-red-800"
-                          }`}
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${summary.currentStatus === "present"
+                            ? "bg-green-100 text-green-800"
+                            : summary.currentStatus === "on-break"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : summary.currentStatus === "checked-out"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {summary.currentStatus === "present"
                             ? "Hadir"
@@ -1261,9 +1261,9 @@ export function AttendanceSystem() {
                             <p className="text-xs sm:text-sm font-bold text-green-800">
                               {summary.shifts.length > 0 && summary.shifts[0].checkIn
                                 ? new Date(summary.shifts[0].checkIn).toLocaleTimeString("id-ID", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
                                 : "--:--"}
                             </p>
                           </div>
@@ -1271,13 +1271,13 @@ export function AttendanceSystem() {
                             <p className="text-xs text-red-600 font-medium mb-1">Check Out</p>
                             <p className="text-xs sm:text-sm font-bold text-red-800">
                               {summary.shifts.length > 0 && summary.shifts[summary.shifts.length - 1].checkOut
-                                ? new Date(summary.shifts[summary.shifts.length - 1].checkOut).toLocaleTimeString(
-                                    "id-ID",
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )
+                                ? new Date(summary.shifts[summary.shifts.length - 1].checkOut!).toLocaleTimeString(
+                                  "id-ID",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                )
                                 : "--:--"}
                             </p>
                           </div>
@@ -1355,7 +1355,7 @@ export function AttendanceSystem() {
               </Label>
               <Select
                 value={selectedShift}
-                onValueChange={(value) => setSelectedShift(value)}
+                onValueChange={(value) => setSelectedShift(value as "pagi" | "siang" | "malam")}
                 disabled={!selectedCheckInBranch || branchShifts.length === 0}
               >
                 <SelectTrigger className="text-sm">
@@ -1502,16 +1502,14 @@ export function AttendanceSystem() {
 
               <div className="absolute top-2 right-2">
                 <div
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    isCameraReady && cameraPermission === "granted"
-                      ? "bg-green-500 text-white"
-                      : "bg-red-500 text-white"
-                  }`}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${isCameraReady && cameraPermission === "granted"
+                    ? "bg-green-500 text-white"
+                    : "bg-red-500 text-white"
+                    }`}
                 >
                   <div
-                    className={`w-2 h-2 rounded-full ${
-                      isCameraReady && cameraPermission === "granted" ? "bg-white" : "bg-white animate-pulse"
-                    }`}
+                    className={`w-2 h-2 rounded-full ${isCameraReady && cameraPermission === "granted" ? "bg-white" : "bg-white animate-pulse"
+                      }`}
                   />
                   {cameraPermission === "denied" ? "Izin Ditolak" : isCameraReady ? "Siap" : "Loading..."}
                 </div>

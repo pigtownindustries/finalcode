@@ -117,14 +117,29 @@ export function POSSystem() {
   // Load data functions dengan useCallback untuk optimasi
   const loadServicesData = useCallback(async () => {
     const { data, error } = await getServicesWithCategories()
-    if (error) console.error("Error loading services:", error)
-    else setServices(data)
+    if (error) {
+      // Check if error is empty object (likely RLS issue)
+      if (JSON.stringify(error) === '{}') {
+        console.warn("⚠️ Services: Empty error - likely RLS policy issue. Try adding SELECT policy to 'services' table in Supabase.")
+      } else {
+        console.error("Error loading services:", error)
+      }
+    } else {
+      setServices(data)
+    }
   }, [])
 
   const loadCategoriesData = useCallback(async () => {
     const { data, error } = await getServiceCategories()
-    if (error) console.error("Error loading categories:", error)
-    else setCategories(data)
+    if (error) {
+      if (JSON.stringify(error) === '{}') {
+        console.warn("⚠️ Categories: Empty error - likely RLS policy issue.")
+      } else {
+        console.error("Error loading categories:", error)
+      }
+    } else {
+      setCategories(data)
+    }
   }, [])
 
   const loadBranchesData = useCallback(async () => {

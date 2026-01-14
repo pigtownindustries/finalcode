@@ -397,8 +397,7 @@ export function PointsSystem() {
                       <p className="font-medium text-base md:text-lg truncate">{transaction.users?.name || "Unknown"}</p>
                       <p className="text-muted-foreground text-sm md:text-base truncate">{transaction.description}</p>
                       <p className="text-xs md:text-sm text-muted-foreground">
-                        {new Date(transaction.created_at).toLocaleDateString("id-ID")} •{" "}
-                        {transaction.users?.branches?.name || "Unknown Branch"}
+                        {new Date(transaction.created_at).toLocaleDateString("id-ID")}
                       </p>
                     </div>
                     <div className="text-right shrink-0">

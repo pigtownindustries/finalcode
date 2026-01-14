@@ -11,23 +11,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { 
-    CreditCard, DollarSign, TrendingUp, Award, Settings, Package, 
-    Trash2, Loader2, Printer, Users, Receipt, CheckCircle,
-    AlertCircle, Wifi, WifiOff, Calendar, Filter, Download
+import {
+  CreditCard, DollarSign, TrendingUp, Award, Settings, Package,
+  Trash2, Loader2, Printer, Users, Receipt, CheckCircle,
+  AlertCircle, Wifi, WifiOff, Calendar, Filter, Download
 } from "lucide-react";
 import { supabase, setupTransactionsRealtime, setupKomisiRealtime, broadcastTransactionEvent, setupGlobalEventsListener } from "@/lib/supabase";
 
 const formatNominal = (value: string | number): string => {
-    if (!value && value !== 0) return "";
-    const stringValue = String(value).replace(/[^0-9]/g, '');
-    if (stringValue === "") return "";
-    return new Intl.NumberFormat('id-ID').format(parseInt(stringValue, 10));
+  if (!value && value !== 0) return "";
+  const stringValue = String(value).replace(/[^0-9]/g, '');
+  if (stringValue === "") return "";
+  return new Intl.NumberFormat('id-ID').format(parseInt(stringValue, 10));
 };
 
 const parseNominal = (value: string): number => {
-    if (!value) return 0;
-    return parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0;
+  if (!value) return 0;
+  return parseInt(String(value).replace(/[^0-9]/g, ''), 10) || 0;
 };
 
 interface Employee {
@@ -36,7 +36,7 @@ interface Employee {
   email: string
   position?: string
   baseSalary?: number
-  commissions?: CommissionRule[] 
+  commissions?: CommissionRule[]
   branch?: string
   branchId?: string
   joinDate?: string
@@ -50,7 +50,7 @@ interface CommissionRule {
   service_id: string
   commission_type: 'percentage' | 'fixed'
   commission_value: number
-  service_name?: string 
+  service_name?: string
   service_price?: number
 }
 
@@ -62,15 +62,15 @@ interface Service {
 }
 
 interface EarnedCommissionStats {
-    [employeeId: string]: number;
+  [employeeId: string]: number;
 }
 
 interface ReportFilter {
-    period: 'day' | 'week' | 'month' | 'custom'
-    startDate: string
-    endDate: string
-    branch: string
-    employee: string
+  period: 'day' | 'week' | 'month' | 'custom'
+  startDate: string
+  endDate: string
+  branch: string
+  employee: string
 }
 
 interface BonusPenaltyData {
@@ -89,12 +89,12 @@ export function KontrolGaji() {
   const [bonusPenaltyData, setBonusPenaltyData] = useState<BonusPenaltyData>({});
   const [isOnline, setIsOnline] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
-  
+
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isKelolaGajiOpen, setIsKelolaGajiOpen] = useState(false);
   const [newBaseSalary, setNewBaseSalary] = useState('');
   const [selectedService, setSelectedService] = useState('');
-  
+
   const [commissionType, setCommissionType] = useState<'percentage' | 'fixed'>('percentage');
   const [commissionValue, setCommissionValue] = useState('');
 
@@ -108,31 +108,31 @@ export function KontrolGaji() {
   const fetchBonusPenaltyData = useCallback(async () => {
     try {
       console.log('🔄 Fetching bonus/penalty data from Supabase...');
-      
+
       const { data, error } = await supabase
         .from("points")
         .select("user_id, points_earned, points_type")
         .gte("created_at", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-      
+
       if (error) {
         console.error('❌ Error fetching bonus/penalty data:', error);
         return;
       }
-      
+
       const result: BonusPenaltyData = {};
-      
+
       data?.forEach(item => {
         if (!result[item.user_id]) {
           result[item.user_id] = { bonus: 0, penalty: 0 };
         }
-        
+
         if (item.points_type === 'reward' || item.points_type === 'bonus') {
           result[item.user_id].bonus += Math.abs(item.points_earned);
         } else if (item.points_type === 'penalty' || item.points_type === 'deducted') {
           result[item.user_id].penalty += Math.abs(item.points_earned);
         }
       });
-      
+
       setBonusPenaltyData(result);
       console.log('✅ Bonus/penalty data loaded:', result);
     } catch (error) {
@@ -145,10 +145,10 @@ export function KontrolGaji() {
       setPageLoading(true);
       setConnectionStatus('reconnecting');
     }
-    
+
     try {
       console.log('🔄 Fetching data from Supabase...');
-      
+
       const { data: users, error: usersError } = await supabase
         .from('users')
         .select(`
@@ -172,7 +172,7 @@ export function KontrolGaji() {
       const { data: commissionRules, error: commissionError } = await supabase
         .from('commission_rules')
         .select('*');
-      
+
       if (commissionError) {
         console.error('❌ Commission rules error:', commissionError);
         throw commissionError;
@@ -181,7 +181,7 @@ export function KontrolGaji() {
       const { data: allServices, error: servicesError } = await supabase
         .from('services')
         .select('id, name, price, type');
-      
+
       if (servicesError) {
         console.error('❌ Services error:', servicesError);
         throw servicesError;
@@ -190,7 +190,7 @@ export function KontrolGaji() {
       const { data: summaryData, error: summaryError } = await supabase
         .from('employee_summary')
         .select('employee_id, total_earned_commission');
-      
+
       if (summaryError) {
         console.error('❌ Summary error:', summaryError);
         throw summaryError;
@@ -200,14 +200,14 @@ export function KontrolGaji() {
         .from('branches')
         .select('id, name')
         .eq('status', 'active');
-      
+
       if (branchesError) {
         console.error('❌ Branches error:', branchesError);
         throw branchesError;
       }
-      
+
       setBranches(branchesData || []);
-      
+
       const commissionStats: EarnedCommissionStats = {};
       if (summaryData) {
         summaryData.forEach(summary => {
@@ -215,19 +215,19 @@ export function KontrolGaji() {
         });
       }
       setEarnedCommissions(commissionStats);
-      
+
       const servicesMap = new Map(allServices?.map(s => [s.id, { name: s.name, price: s.price }]));
 
       const processedEmployees: Employee[] = (users || []).map(user => {
         const userCommissions = commissionRules
           ?.filter(c => c.user_id === user.id)
           .map(c => {
-              const serviceInfo = servicesMap.get(c.service_id);
-              return { 
-                  ...c, 
-                  service_name: serviceInfo?.name || 'Layanan Dihapus',
-                  service_price: serviceInfo?.price || 0
-              };
+            const serviceInfo = servicesMap.get(c.service_id);
+            return {
+              ...c,
+              service_name: serviceInfo?.name || 'Layanan Dihapus',
+              service_price: serviceInfo?.price || 0
+            };
           }) || [];
 
         return {
@@ -237,7 +237,7 @@ export function KontrolGaji() {
           position: user.position || 'Karyawan',
           baseSalary: user.salary,
           commissions: userCommissions,
-          branch: (user.branches as any)?.name || 'Tidak Ada Cabang',
+          branch: (user.branches as any)?.name || '',
           branchId: user.branch_id,
           joinDate: user.created_at,
           phone: user.phone || '',
@@ -248,25 +248,25 @@ export function KontrolGaji() {
       setEmployees(processedEmployees);
       setIsOnline(true);
       setConnectionStatus('connected');
-      
+
       console.log(`✅ Data loaded: ${processedEmployees.length} employees, ${branchesData?.length} branches`);
 
     } catch (error) {
       console.error("❌ Error fetching data:", error);
       setIsOnline(false);
       setConnectionStatus('disconnected');
-      
-      toast({ 
-        title: "Gagal Memuat Data", 
+
+      toast({
+        title: "Gagal Memuat Data",
         description: "Tidak dapat terhubung ke database. Silakan refresh halaman.",
-        variant: "destructive" 
+        variant: "destructive"
       });
-      
+
       setTimeout(() => {
         console.log('🔄 Attempting to reconnect...');
         fetchData();
       }, 5000);
-      
+
     } finally {
       if (showLoading) {
         setPageLoading(false);
@@ -277,10 +277,10 @@ export function KontrolGaji() {
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo({ top: 0, behavior: 'instant' });
-    
+
     fetchData(true);
     fetchBonusPenaltyData();
-    
+
     const fetchActiveServices = async () => {
       setServicesLoading(true);
       try {
@@ -308,8 +308,8 @@ export function KontrolGaji() {
 
     const pointsChannel = supabase
       .channel('points-changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'points' }, 
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'points' },
         () => {
           console.log('Points data changed, refreshing bonus/penalty data...');
           fetchBonusPenaltyData();
@@ -364,29 +364,29 @@ export function KontrolGaji() {
     setLoading(true);
 
     try {
-        const commissionRule = {
-            user_id: selectedEmployee.id,
-            service_id: selectedService,
-            commission_type: commissionType,
-            commission_value: commissionType === 'percentage' 
-                ? parseFloat(commissionValue) 
-                : parseNominal(commissionValue),
-        };
+      const commissionRule = {
+        user_id: selectedEmployee.id,
+        service_id: selectedService,
+        commission_type: commissionType,
+        commission_value: commissionType === 'percentage'
+          ? parseFloat(commissionValue)
+          : parseNominal(commissionValue),
+      };
 
-        const { error } = await supabase
-            .from('commission_rules')
-            .upsert(commissionRule, { onConflict: 'user_id,service_id' });
-        if (error) throw error;
-        
-        setSelectedService('');
-        setCommissionValue('');
-        await fetchData();
-        toast({ title: "Aturan Komisi Disimpan" });
+      const { error } = await supabase
+        .from('commission_rules')
+        .upsert(commissionRule, { onConflict: 'user_id,service_id' });
+      if (error) throw error;
+
+      setSelectedService('');
+      setCommissionValue('');
+      await fetchData();
+      toast({ title: "Aturan Komisi Disimpan" });
 
     } catch (error) {
-        toast({ title: "Gagal Menyimpan Komisi", description: (error as Error).message, variant: "destructive" });
+      toast({ title: "Gagal Menyimpan Komisi", description: (error as Error).message, variant: "destructive" });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -399,7 +399,7 @@ export function KontrolGaji() {
         .delete()
         .eq('id', commissionId);
       if (error) throw error;
-      
+
       await fetchData();
       toast({ title: "Aturan Komisi Dihapus" });
 
@@ -435,7 +435,7 @@ export function KontrolGaji() {
   const handlePrintSlip = () => {
     if (!selectedEmployee) return;
     const bonusData = getBonusPenaltyData(selectedEmployee.id);
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     const printContent = `
@@ -526,7 +526,7 @@ export function KontrolGaji() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="p-6">
           <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
@@ -538,7 +538,7 @@ export function KontrolGaji() {
                 {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
               </Badge>
             </div>
-            
+
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <div className="text-center p-3 sm:p-4 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <Users className="h-5 w-5 sm:h-6 sm:w-6 mx-auto mb-2 text-red-600" />
@@ -573,76 +573,77 @@ export function KontrolGaji() {
             {filteredEmployees.map((employee) => {
               const bonusData = getBonusPenaltyData(employee.id);
               return (
-              <div key={employee.id} className="p-6 border-t border-gray-200 first:border-t-0 bg-white hover:bg-gray-50 transition-colors">
-                <div className="flex flex-col gap-3 md:gap-4">
-                  {/* Header Section - Mobile Stacked */}
-                  <div className="flex items-start gap-3 md:gap-4">
-                    <Avatar className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-red-100 flex-shrink-0">
-                      <AvatarFallback className="bg-red-100 text-red-600 font-semibold text-xs md:text-sm">
-                        {employee.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm md:text-base lg:text-lg text-gray-800 truncate">{employee.name}</p>
-                      <p className="text-xs md:text-sm text-gray-500 truncate">{employee.email}</p>
-                      <div className="flex flex-wrap gap-1 md:gap-2 mt-1">
-                        <Badge variant="outline" className="text-[10px] md:text-xs border-red-200 text-red-700">
-                          {employee.position || 'Karyawan'}
-                        </Badge>
-                        {employee.branch && (
-                          <Badge variant="outline" className="text-[10px] md:text-xs border-blue-200 text-blue-700 truncate max-w-[120px]">
-                            {employee.branch}
+                <div key={employee.id} className="p-6 border-t border-gray-200 first:border-t-0 bg-white hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col gap-3 md:gap-4">
+                    {/* Header Section - Mobile Stacked */}
+                    <div className="flex items-start gap-3 md:gap-4">
+                      <Avatar className="h-10 w-10 md:h-12 md:w-12 ring-2 ring-red-100 flex-shrink-0">
+                        <AvatarFallback className="bg-red-100 text-red-600 font-semibold text-xs md:text-sm">
+                          {employee.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm md:text-base lg:text-lg text-gray-800 truncate">{employee.name}</p>
+                        <p className="text-xs md:text-sm text-gray-500 truncate">{employee.email}</p>
+                        <div className="flex flex-wrap gap-1 md:gap-2 mt-1">
+                          <Badge variant="outline" className="text-[10px] md:text-xs border-red-200 text-red-700">
+                            {employee.position || 'Karyawan'}
                           </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px] md:text-xs border-green-200 text-green-700">
-                          {employee.status}
+                          {employee.branch && employee.branch.trim() !== '' && (
+                            <Badge variant="outline" className="text-[10px] md:text-xs border-blue-200 text-blue-700 truncate max-w-[120px]">
+                              {employee.branch}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-[10px] md:text-xs border-green-200 text-green-700">
+                            {employee.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Salary Section */}
+                    <div className="bg-gray-50 p-2 md:p-3 rounded-lg">
+                      <p className="text-xs md:text-sm text-gray-500 mb-1">Gaji Bulan Ini</p>
+                      <p className="font-bold text-lg md:text-xl lg:text-2xl text-red-600 mb-2">
+                        Rp {calculateTotalSalary(employee).toLocaleString("id-ID")}
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2">
+                        <Badge variant="secondary" className="text-[10px] md:text-xs bg-green-100 text-green-700 justify-center truncate">
+                          Pokok: Rp {formatNominal(employee.baseSalary || 0)}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] md:text-xs bg-yellow-100 text-yellow-700 justify-center truncate">
+                          Komisi: Rp {formatNominal(getEarnedCommission(employee.id))}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] md:text-xs bg-blue-100 text-blue-700 justify-center truncate">
+                          Bonus: Rp {formatNominal(bonusData.bonus)}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] md:text-xs bg-red-100 text-red-700 justify-center truncate">
+                          Penalty: Rp {formatNominal(bonusData.penalty)}
                         </Badge>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Salary Section */}
-                  <div className="bg-gray-50 p-2 md:p-3 rounded-lg">
-                    <p className="text-xs md:text-sm text-gray-500 mb-1">Gaji Bulan Ini</p>
-                    <p className="font-bold text-lg md:text-xl lg:text-2xl text-red-600 mb-2">
-                      Rp {calculateTotalSalary(employee).toLocaleString("id-ID")}
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-2">
-                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-green-100 text-green-700 justify-center truncate">
-                        Pokok: Rp {formatNominal(employee.baseSalary || 0)}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-yellow-100 text-yellow-700 justify-center truncate">
-                        Komisi: Rp {formatNominal(getEarnedCommission(employee.id))}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-blue-100 text-blue-700 justify-center truncate">
-                        Bonus: Rp {formatNominal(bonusData.bonus)}
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px] md:text-xs bg-red-100 text-red-700 justify-center truncate">
-                        Penalty: Rp {formatNominal(bonusData.penalty)}
-                      </Badge>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={() => openKelolaGajiModal(employee)}
+                        className="bg-red-600 hover:bg-red-700 text-white flex-1 h-9 text-xs md:text-sm"
+                        size="sm"
+                      >
+                        <Settings className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Kelola Gaji
+                      </Button>
+                      <Button
+                        onClick={() => openSlipGajiModal(employee)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white flex-1 h-9 text-xs md:text-sm"
+                        size="sm"
+                      >
+                        <Receipt className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Slip Gaji
+                      </Button>
                     </div>
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button 
-                      onClick={() => openKelolaGajiModal(employee)}
-                      className="bg-red-600 hover:bg-red-700 text-white flex-1 h-9 text-xs md:text-sm"
-                      size="sm"
-                    >
-                      <Settings className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Kelola Gaji
-                    </Button>
-                    <Button 
-                      onClick={() => openSlipGajiModal(employee)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white flex-1 h-9 text-xs md:text-sm"
-                      size="sm"
-                    >
-                      <Receipt className="h-3 w-3 md:h-4 md:w-4 mr-2" /> Slip Gaji
-                    </Button>
-                  </div>
                 </div>
-              </div>
-            )})}
+              )
+            })}
           </div>
 
           <Dialog open={isKelolaGajiOpen} onOpenChange={setIsKelolaGajiOpen}>
@@ -656,7 +657,7 @@ export function KontrolGaji() {
                   Atur gaji pokok dan komisi dalam satu tempat
                 </p>
               </DialogHeader>
-              
+
               <Tabs defaultValue="gaji" className="w-full mt-6">
                 <TabsList className="grid w-full grid-cols-2 bg-red-50 border border-red-100">
                   <TabsTrigger value="gaji" className="data-[state=active]:bg-red-600 data-[state=active]:text-white">
@@ -668,7 +669,7 @@ export function KontrolGaji() {
                     Komisi & Point
                   </TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="gaji" className="pt-6">
                   <div className="space-y-6">
                     <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
@@ -677,22 +678,22 @@ export function KontrolGaji() {
                         Gaji pokok saat ini: <span className="font-semibold text-red-600">Rp {formatNominal(selectedEmployee?.baseSalary || 0)}</span>
                       </p>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <Label htmlFor="salary" className="text-sm font-medium text-gray-700">
                         Gaji Pokok Baru (Rp)
                       </Label>
-                      <Input 
-                        id="salary" 
-                        type="text" 
-                        value={newBaseSalary} 
+                      <Input
+                        id="salary"
+                        type="text"
+                        value={newBaseSalary}
                         onChange={(e) => setNewBaseSalary(formatNominal(e.target.value))}
                         className="text-lg border-red-200 focus:border-red-400"
                         placeholder="Masukkan gaji pokok baru..."
                       />
-                      <Button 
-                        onClick={handleUpdateBaseSalary} 
-                        disabled={loading || !newBaseSalary} 
+                      <Button
+                        onClick={handleUpdateBaseSalary}
+                        disabled={loading || !newBaseSalary}
                         className="w-full bg-red-600 hover:bg-red-700 text-white"
                       >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
@@ -744,7 +745,7 @@ export function KontrolGaji() {
                       <Award className="h-4 w-4 text-red-600" />
                       Aturan Komisi Aktif ({selectedEmployee?.commissions?.length || 0})
                     </h4>
-                      
+
                     {selectedEmployee?.commissions?.length ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {selectedEmployee.commissions.map((comm) => {
@@ -769,8 +770,8 @@ export function KontrolGaji() {
                                   <div className="flex justify-between">
                                     <span>Rate Komisi:</span>
                                     <span className="font-medium">
-                                      {comm.commission_type === 'percentage' 
-                                        ? `${comm.commission_value}%` 
+                                      {comm.commission_type === 'percentage'
+                                        ? `${comm.commission_value}%`
                                         : `Rp ${formatNominal(comm.commission_value)}`
                                       }
                                     </span>
@@ -816,63 +817,65 @@ export function KontrolGaji() {
                     </div>
                     <div className="p-4 md:p-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm mb-4 md:mb-6 pb-3 md:pb-4 border-b border-gray-200">
-                          <div className="space-y-1">
-                              <p className="truncate"><span className="text-gray-600">Nama:</span> <span className="font-semibold">{selectedEmployee.name}</span></p>
-                              <p className="truncate"><span className="text-gray-600">Email:</span> <span className="font-semibold">{selectedEmployee.email}</span></p>
-                              <p className="truncate"><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.position || 'Karyawan'}</span></p>
-                              <p className="truncate"><span className="text-gray-600">Cabang:</span> <span className="font-semibold">{selectedEmployee.branch}</span></p>
-                          </div>
-                          <div className="text-left sm:text-right space-y-1">
-                              <p><span className="text-gray-600">Tanggal:</span> <span className="font-semibold">{new Date().toLocaleDateString('id-ID')}</span></p>
-                              <p><span className="text-gray-600">Periode:</span> <span className="font-semibold">{new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span></p>
-                              <p><span className="text-gray-600">Status:</span> <span className="font-semibold">{selectedEmployee.status}</span></p>
-                          </div>
+                        <div className="space-y-1">
+                          <p className="truncate"><span className="text-gray-600">Nama:</span> <span className="font-semibold">{selectedEmployee.name}</span></p>
+                          <p className="truncate"><span className="text-gray-600">Email:</span> <span className="font-semibold">{selectedEmployee.email}</span></p>
+                          <p className="truncate"><span className="text-gray-600">Posisi:</span> <span className="font-semibold">{selectedEmployee.position || 'Karyawan'}</span></p>
+                          {selectedEmployee.branch && selectedEmployee.branch.trim() !== '' && (
+                            <p className="truncate"><span className="text-gray-600">Cabang:</span> <span className="font-semibold">{selectedEmployee.branch}</span></p>
+                          )}
+                        </div>
+                        <div className="text-left sm:text-right space-y-1">
+                          <p><span className="text-gray-600">Tanggal:</span> <span className="font-semibold">{new Date().toLocaleDateString('id-ID')}</span></p>
+                          <p><span className="text-gray-600">Periode:</span> <span className="font-semibold">{new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</span></p>
+                          <p><span className="text-gray-600">Status:</span> <span className="font-semibold">{selectedEmployee.status}</span></p>
+                        </div>
                       </div>
                       <div className="mb-4 md:mb-6">
-                          <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
-                              <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" /> PENDAPATAN
-                          </h4>
-                          <div className="space-y-2 text-xs md:text-sm">
-                              <div className="flex justify-between items-center py-1">
-                                  <span className="text-gray-600">Gaji Pokok</span>
-                                  <span className="font-medium">Rp {formatNominal(selectedEmployee.baseSalary || 0)}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-1">
-                                  <span className="text-gray-600">Komisi Didapat</span>
-                                  <span className="font-medium text-green-600">+ Rp {formatNominal(getEarnedCommission(selectedEmployee.id))}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-1">
-                                  <span className="text-gray-600">Bonus</span>
-                                  <span className="font-medium text-green-600">+ Rp {formatNominal(getBonusPenaltyData(selectedEmployee.id).bonus)}</span>
-                              </div>
+                        <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
+                          <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-600" /> PENDAPATAN
+                        </h4>
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-gray-600">Gaji Pokok</span>
+                            <span className="font-medium">Rp {formatNominal(selectedEmployee.baseSalary || 0)}</span>
                           </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-gray-600">Komisi Didapat</span>
+                            <span className="font-medium text-green-600">+ Rp {formatNominal(getEarnedCommission(selectedEmployee.id))}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-gray-600">Bonus</span>
+                            <span className="font-medium text-green-600">+ Rp {formatNominal(getBonusPenaltyData(selectedEmployee.id).bonus)}</span>
+                          </div>
+                        </div>
                       </div>
                       <div className="mb-4 md:mb-6">
-                          <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
-                              <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" /> POTONGAN
-                          </h4>
-                          <div className="space-y-2 text-xs md:text-sm">
-                              <div className="flex justify-between items-center py-1">
-                                  <span className="text-gray-600">Denda/Penalti</span>
-                                  <span className="font-medium text-red-600">- Rp {formatNominal(getBonusPenaltyData(selectedEmployee.id).penalty)}</span>
-                              </div>
+                        <h4 className="font-semibold text-sm md:text-base text-gray-800 border-b border-red-200 pb-2 mb-3 flex items-center gap-2">
+                          <AlertCircle className="h-3.5 w-3.5 md:h-4 md:w-4 text-red-600" /> POTONGAN
+                        </h4>
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <div className="flex justify-between items-center py-1">
+                            <span className="text-gray-600">Denda/Penalti</span>
+                            <span className="font-medium text-red-600">- Rp {formatNominal(getBonusPenaltyData(selectedEmployee.id).penalty)}</span>
                           </div>
+                        </div>
                       </div>
                       <div className="border-t-2 border-red-200 pt-3 md:pt-4">
-                          <div className="flex justify-between items-center font-bold text-base md:text-lg bg-red-50 p-3 md:p-4 rounded-lg">
-                              <span className="text-gray-800 text-sm md:text-base">GAJI BERSIH</span>
-                              <span className="text-red-600 text-lg md:text-xl">Rp {formatNominal(calculateTotalSalary(selectedEmployee))}</span>
-                          </div>
+                        <div className="flex justify-between items-center font-bold text-base md:text-lg bg-red-50 p-3 md:p-4 rounded-lg">
+                          <span className="text-gray-800 text-sm md:text-base">GAJI BERSIH</span>
+                          <span className="text-red-600 text-lg md:text-xl">Rp {formatNominal(calculateTotalSalary(selectedEmployee))}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                     <Button onClick={handlePrintSlip} className="flex-1 bg-red-600 hover:bg-red-700 text-white h-10 text-sm">
-                        <Printer className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" /> 
-                        <span className="truncate">Cetak Slip Gaji</span>
+                      <Printer className="h-3.5 w-3.5 md:h-4 md:w-4 mr-2" />
+                      <span className="truncate">Cetak Slip Gaji</span>
                     </Button>
                     <Button variant="outline" onClick={() => setShowSlipModal(false)} className="border-red-200 text-red-600 hover:bg-red-50 h-10 text-sm">
-                        Tutup
+                      Tutup
                     </Button>
                   </div>
                 </div>

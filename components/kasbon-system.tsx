@@ -215,13 +215,13 @@ export function KasbonSystem() {
   const getStatusText = (status: string) => {
     switch (status) {
       case "pending":
-        return "Menunggu Persetujuan"
+        return "Pending"
       case "approved":
-        return "Disetujui"
+        return "Approved"
       case "rejected":
-        return "Ditolak"
+        return "Rejected"
       case "paid":
-        return "Sudah Dibayar"
+        return "Paid"
       default:
         return "Unknown"
     }
